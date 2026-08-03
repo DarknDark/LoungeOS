@@ -1,0 +1,1 @@
+- [Expo artifact routing](expo-artifact-routing.md) — grouped Expo Router screens may need an explicit root re-export for the proxied web preview.

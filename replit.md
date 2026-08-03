@@ -1,6 +1,6 @@
-# [Project name]
+# Nightfall Club Ordering
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A premium mobile-first table ordering experience for nightclub guests and the staff team running service.
 
 ## Run & Operate
 
@@ -22,23 +22,31 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/club-ordering-mobile/app/index.tsx` — Expo Router root entry.
+- `artifacts/club-ordering-mobile/app/(tabs)/index.tsx` — guest ordering and staff operations experience.
+- `artifacts/club-ordering-mobile/context/ClubContext.tsx` — local session state, menu, orders, song requests, waiter calls, and persistence.
+- `artifacts/club-ordering-mobile/constants/colors.ts` — Nightfall dark amber theme tokens.
+- `artifacts/club-ordering-mobile/assets/images/` — generated app icon and menu imagery.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- The first mobile build is local-first with AsyncStorage so the complete guest journey can be explored without requiring a club account or third-party setup.
+- Guests use a table session and never authenticate; the staff switch is a preview surface for role-specific operational workflows.
+- Shared session state keeps menu, running bill, staff order actions, DJ queue actions, and payment state consistent across screens.
+- M-Pesa is represented as a secure payment prompt entry point; provider wiring belongs in the server/integration pass.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Nightfall lets a guest at a numbered club table browse drinks and food, build rounds, follow a running tab, request a song, call a waiter, and choose a payment method. Staff can preview waiter, bartender, DJ, and admin operations from the same session.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+The user wants a premium nightclub experience with a dark background, gold and amber accents, rounded cards, modern typography, large touch targets, and smooth interactions.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- The Expo Router root entry explicitly re-exports the grouped home screen so the artifact preview root resolves correctly on web.
+- Use `pnpm --filter @workspace/club-ordering-mobile run typecheck` for mobile verification.
 
 ## Pointers
 
