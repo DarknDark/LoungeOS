@@ -7,130 +7,41 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import type { ClubSettings } from '@workspace/domain';
+import { clubSettings } from '@/config/clubSettings';
+import {
+  DEMO_STORAGE_KEY,
+  DEMO_TABLE_NUMBER,
+  demoMenu,
+  demoOrders,
+  demoSongRequests,
+} from './demoFixtures';
+import type {
+  CartItem,
+  ClubOrder,
+  MenuCategory,
+  MenuItem,
+  OrderStatus,
+  SongRequest,
+  StaffMode,
+  WaiterCall,
+} from './types';
 
-export type MenuCategory = 'Drinks' | 'Food';
-export type OrderStatus = 'new' | 'preparing' | 'ready' | 'completed';
-export type StaffMode = 'guest' | 'waiter' | 'bartender' | 'dj' | 'admin';
-
-export type MenuItem = {
-  id: string;
-  name: string;
-  description: string;
-  category: MenuCategory;
-  price: number;
-  image: number;
-  accent: string;
-  popular?: boolean;
-};
-
-export type CartItem = MenuItem & { quantity: number };
-
-export type ClubOrder = {
-  id: string;
-  round: number;
-  createdAt: string;
-  status: OrderStatus;
-  items: CartItem[];
-  total: number;
-  paid: boolean;
-};
-
-export type SongRequest = {
-  id: string;
-  song: string;
-  artist: string;
-  status: 'queued' | 'playing' | 'played' | 'skipped';
-};
-
-export type WaiterCall = {
-  id: string;
-  createdAt: string;
-  resolved: boolean;
-};
-
-const STORAGE_KEY = 'nightfall-club-session-v1';
-
-export const menu: MenuItem[] = [
-  {
-    id: 'spritz',
-    name: 'Nightfall Spritz',
-    description: 'Passionfruit, citrus, prosecco',
-    category: 'Drinks',
-    price: 850,
-    image: require('@/assets/images/smoked-old-fashioned.jpg'),
-    accent: '#d39a3b',
-    popular: true,
-  },
-  {
-    id: 'old-fashioned',
-    name: 'Smoked Old Fashioned',
-    description: 'Bourbon, bitters, orange',
-    category: 'Drinks',
-    price: 1200,
-    image: require('@/assets/images/smoked-old-fashioned.jpg'),
-    accent: '#a85e38',
-  },
-  {
-    id: 'gin-tonic',
-    name: 'Juniper & Tonic',
-    description: 'Gin, elderflower, tonic',
-    category: 'Drinks',
-    price: 900,
-    image: require('@/assets/images/smoked-old-fashioned.jpg'),
-    accent: '#799b77',
-  },
-  {
-    id: 'truffle-fries',
-    name: 'Truffle Fries',
-    description: 'Parmesan, herbs, aioli',
-    category: 'Food',
-    price: 750,
-    image: require('@/assets/images/truffle-fries.jpg'),
-    accent: '#d49a4a',
-    popular: true,
-  },
-  {
-    id: 'slider-trio',
-    name: 'Slider Trio',
-    description: 'Beef, chicken, house pickles',
-    category: 'Food',
-    price: 1400,
-    image: require('@/assets/images/truffle-fries.jpg'),
-    accent: '#9a5a4b',
-  },
-  {
-    id: 'chocolate',
-    name: 'Midnight Chocolate',
-    description: 'Dark chocolate, sea salt',
-    category: 'Food',
-    price: 650,
-    image: require('@/assets/images/truffle-fries.jpg'),
-    accent: '#765348',
-  },
-];
-
-const seedOrders: ClubOrder[] = [
-  {
-    id: 'round-1',
-    round: 1,
-    createdAt: '9:18 PM',
-    status: 'ready',
-    items: [
-      { ...menu[0], quantity: 2 },
-      { ...menu[3], quantity: 1 },
-    ],
-    total: 2450,
-    paid: false,
-  },
-];
-
-const seedRequests: SongRequest[] = [
-  { id: 'song-1', song: 'One Dance', artist: 'Drake', status: 'queued' },
-  { id: 'song-2', song: 'Finally', artist: 'Kings of Tomorrow', status: 'playing' },
-];
+export type {
+  CartItem,
+  ClubOrder,
+  MenuCategory,
+  MenuItem,
+  OrderStatus,
+  SongRequest,
+  StaffMode,
+  WaiterCall,
+} from './types';
 
 type ClubContextValue = {
   tableNumber: number;
+  clubSettings: ClubSettings;
+  menu: MenuItem[];
   cart: CartItem[];
   orders: ClubOrder[];
   songRequests: SongRequest[];
@@ -160,14 +71,14 @@ const totalForItems = (items: CartItem[]) =>
 
 export function ClubProvider({ children }: PropsWithChildren) {
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [orders, setOrders] = useState<ClubOrder[]>(seedOrders);
-  const [songRequests, setSongRequests] = useState<SongRequest[]>(seedRequests);
+  const [orders, setOrders] = useState<ClubOrder[]>(demoOrders);
+  const [songRequests, setSongRequests] = useState<SongRequest[]>(demoSongRequests);
   const [waiterCalls, setWaiterCalls] = useState<WaiterCall[]>([]);
   const [selectedMode, setSelectedMode] = useState<StaffMode>('guest');
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY)
+    AsyncStorage.getItem(DEMO_STORAGE_KEY)
       .then((value) => {
         if (!value) return;
         const saved = JSON.parse(value) as Partial<{
@@ -190,14 +101,16 @@ export function ClubProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (!hydrated) return;
     AsyncStorage.setItem(
-      STORAGE_KEY,
+      DEMO_STORAGE_KEY,
       JSON.stringify({ cart, orders, songRequests, waiterCalls, selectedMode }),
     ).catch(() => undefined);
   }, [cart, orders, songRequests, waiterCalls, selectedMode, hydrated]);
 
   const value = useMemo<ClubContextValue>(
     () => ({
-      tableNumber: 12,
+      tableNumber: DEMO_TABLE_NUMBER,
+      clubSettings,
+      menu: demoMenu,
       cart,
       orders,
       songRequests,
@@ -285,8 +198,8 @@ export function ClubProvider({ children }: PropsWithChildren) {
       setSelectedMode,
       resetSession: () => {
         setCart([]);
-        setOrders(seedOrders);
-        setSongRequests(seedRequests);
+        setOrders(demoOrders);
+        setSongRequests(demoSongRequests);
         setWaiterCalls([]);
         setSelectedMode('guest');
       },

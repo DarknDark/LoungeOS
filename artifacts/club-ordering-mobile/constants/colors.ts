@@ -12,22 +12,24 @@
  * The useColors() hook will automatically pick it up.
  */
 
+import { clubSettings } from '@/config/clubSettings';
+
 const colors = {
   light: {
-    text: '#f7f0e7',
-    tint: '#d9a441',
+    text: clubSettings.theme.foreground,
+    tint: clubSettings.theme.primary,
 
-    background: '#0b090a',
-    foreground: '#f7f0e7',
+    background: clubSettings.theme.background,
+    foreground: clubSettings.theme.foreground,
 
-    card: '#171214',
-    cardForeground: '#f7f0e7',
+    card: clubSettings.theme.card,
+    cardForeground: clubSettings.theme.foreground,
 
-    primary: '#d9a441',
-    primaryForeground: '#17100a',
+    primary: clubSettings.theme.primary,
+    primaryForeground: clubSettings.theme.primaryForeground,
 
     secondary: '#251c1c',
-    secondaryForeground: '#f7f0e7',
+    secondaryForeground: clubSettings.theme.foreground,
 
     muted: '#21191b',
     mutedForeground: '#a79a91',
@@ -38,7 +40,7 @@ const colors = {
     destructive: '#c95b55',
     destructiveForeground: '#fff7f2',
 
-    border: '#322526',
+    border: clubSettings.theme.border,
     input: '#382829',
   },
 

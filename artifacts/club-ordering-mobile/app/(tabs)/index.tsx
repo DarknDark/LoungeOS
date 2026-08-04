@@ -22,13 +22,31 @@ import {
   OrderStatus,
   StaffMode,
   useClub,
-  menu,
 } from '@/context/ClubContext';
 import colors from '@/constants/colors';
+import { clubSettings } from '@/config/clubSettings';
+import {
+  DEMO_ACTIVE_TABLES,
+  DEMO_DJ_NAME,
+  DEMO_SALES_DELTA,
+  DEMO_SALES_TOTAL,
+  DEMO_TOTAL_TABLES,
+} from '@/context/demoFixtures';
 
 type ViewName = 'home' | 'menu' | 'cart' | 'request' | 'bill' | 'staff';
 
-const money = (amount: number) => `KSh ${amount.toLocaleString('en-KE')}`;
+const formatMoney = (amount: number) => {
+  try {
+    return new Intl.NumberFormat(clubSettings.currency.locale, {
+      style: 'currency',
+      currency: clubSettings.currency.code,
+      maximumFractionDigits: clubSettings.currency.minorUnit,
+    }).format(amount);
+  } catch {
+    return `${clubSettings.currency.code} ${amount.toLocaleString()}`;
+  }
+};
+
 const roleLabel: Record<StaffMode, string> = {
   guest: 'Guest view',
   waiter: 'Waiter',
@@ -66,15 +84,17 @@ function Pill({
 }
 
 function TopBar({
-  title = 'NIGHTFALL',
+  title = 'LOUNGEOS',
   subtitle,
   onBack,
   onStaff,
+  tableNumber,
 }: {
   title?: string;
   subtitle?: string;
   onBack?: () => void;
   onStaff?: () => void;
+  tableNumber?: number;
 }) {
   return (
     <View style={styles.topBar}>
@@ -96,12 +116,12 @@ function TopBar({
           <Icon name="grid-outline" size={15} color={colors.light.primary} />
           <Text style={styles.staffButtonText}>Staff</Text>
         </Pressable>
-      ) : (
+      ) : tableNumber !== undefined ? (
         <View style={styles.tablePill}>
           <View style={styles.liveDot} />
-          <Text style={styles.tableText}>TABLE 12</Text>
+          <Text style={styles.tableText}>TABLE {tableNumber}</Text>
         </View>
-      )}
+      ) : <View style={styles.topBarSpacer} />}
     </View>
   );
 }
@@ -156,7 +176,7 @@ function MenuCard({
         <View style={styles.menuTextWrap}>
           <Text style={styles.menuName} numberOfLines={1}>{item.name}</Text>
           <Text style={styles.menuDescription} numberOfLines={1}>{item.description}</Text>
-          <Text style={styles.menuPrice}>{money(item.price)}</Text>
+          <Text style={styles.menuPrice}>{formatMoney(item.price)}</Text>
         </View>
         <Pressable
           onPress={() => onAdd(item)}
@@ -200,7 +220,7 @@ function OrderRow({
           <Text style={styles.orderTime}>{order.createdAt} · {order.items.reduce((sum, item) => sum + item.quantity, 0)} items</Text>
         </View>
         <View style={styles.orderRight}>
-          <Text style={styles.orderTotal}>{money(order.total)}</Text>
+          <Text style={styles.orderTotal}>{formatMoney(order.total)}</Text>
           <OrderStatusPill status={order.status} />
         </View>
       </View>
@@ -237,6 +257,9 @@ export default function HomeScreen() {
   const [feedback, setFeedback] = useState('');
   const [staffMode, setStaffMode] = useState<StaffMode>('waiter');
   const {
+    clubSettings,
+    menu,
+    tableNumber,
     cart,
     orders,
     songRequests,
@@ -256,6 +279,8 @@ export default function HomeScreen() {
     removeSongRequest,
     setSelectedMode,
   } = useClub();
+  const money = formatMoney;
+  const clubShortName = clubSettings.branding.shortName;
 
   const show = (next: ViewName) => {
     setFeedback('');
@@ -278,7 +303,7 @@ export default function HomeScreen() {
 
   const renderHome = () => (
     <>
-      <TopBar onStaff={() => show('staff')} />
+      <TopBar tableNumber={tableNumber} onStaff={() => show('staff')} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scrollContent, { paddingTop: topInset + 8, paddingBottom: bottomInset + 30 }]}
@@ -289,7 +314,7 @@ export default function HomeScreen() {
             <Text style={styles.welcomeTitle}>Your night,<Text style={styles.goldText}> your way.</Text></Text>
           </View>
           <View style={styles.tableCircle}>
-            <Text style={styles.tableCircleNumber}>12</Text>
+            <Text style={styles.tableCircleNumber}>{tableNumber}</Text>
             <Text style={styles.tableCircleLabel}>TABLE</Text>
           </View>
         </View>
@@ -340,8 +365,8 @@ export default function HomeScreen() {
         <View style={styles.liveCard}>
           <View style={styles.liveCardIcon}><Icon name="sparkles-outline" size={19} color={colors.light.primary} /></View>
           <View style={styles.liveCardCopy}>
-            <Text style={styles.liveCardTitle}>Live at Nightfall</Text>
-            <Text style={styles.liveCardText}>DJ Kito is on deck · requests are open</Text>
+            <Text style={styles.liveCardTitle}>Live at {clubShortName}</Text>
+            <Text style={styles.liveCardText}>{DEMO_DJ_NAME} is on deck · requests are open</Text>
           </View>
           <Icon name="chevron-forward" size={18} color={colors.light.mutedForeground} />
         </View>
@@ -355,7 +380,7 @@ export default function HomeScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingTop: topInset + 8, paddingBottom: bottomInset + 112 }]}>
         <View style={styles.menuIntro}>
           <Text style={styles.pageTitle}>Set the pace.</Text>
-          <Text style={styles.pageDescription}>Everything arrives at table 12.</Text>
+         <Text style={styles.pageDescription}>Everything arrives at table {tableNumber}.</Text>
         </View>
         <View style={styles.categoryRow}>
           {(['All', 'Drinks', 'Food'] as const).map((item) => (
@@ -459,14 +484,14 @@ export default function HomeScreen() {
 
   const renderBill = () => (
     <>
-      <TopBar title="RUNNING BILL" subtitle={`Table 12 · ${orders.length} rounds`} onBack={() => show('home')} />
+       <TopBar title="RUNNING BILL" subtitle={`Table ${tableNumber} · ${orders.length} rounds`} onBack={() => show('home')} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingTop: topInset + 8, paddingBottom: bottomInset + 130 }]}>
         <View style={styles.billSummary}>
           <Text style={styles.heroLabel}>CURRENT TOTAL</Text>
           <Text style={styles.billSummaryAmount}>{money(billTotal)}</Text>
           <Text style={styles.billSummaryNote}>Service is included · no surprises</Text>
         </View>
-        <Text style={styles.sectionTitle}>Tonight at table 12</Text>
+        <Text style={styles.sectionTitle}>Tonight at table {tableNumber}</Text>
         {orders.map((order) => <OrderRow key={order.id} order={order} />)}
         <View style={styles.paymentCard}>
           <View style={styles.paymentHeader}><View><Text style={styles.paymentTitle}>Ready to settle?</Text><Text style={styles.paymentSubtitle}>Choose how you’d like to pay.</Text></View><Icon name="lock-closed-outline" size={19} color={colors.light.mutedForeground} /></View>
@@ -488,7 +513,7 @@ export default function HomeScreen() {
       : orders;
     return (
       <>
-        <TopBar title="NIGHTFALL OPS" subtitle={roleLabel[staffMode]} onBack={() => show('home')} />
+        <TopBar title={`${clubShortName} OPS`} subtitle={roleLabel[staffMode]} onBack={() => show('home')} />
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingTop: topInset + 8, paddingBottom: bottomInset + 30 }]}>
           <View style={styles.staffWelcome}><View><Text style={styles.welcomeKicker}>TONIGHT · 9:42 PM</Text><Text style={styles.pageTitle}>Keep the room moving.</Text></View><View style={styles.staffOnline}><View style={styles.liveDot} /><Text style={styles.staffOnlineText}>LIVE</Text></View></View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.roleRow}>
@@ -501,7 +526,7 @@ export default function HomeScreen() {
           </ScrollView>
           {staffMode === 'admin' ? (
             <>
-              <View style={styles.metricsGrid}><View style={styles.metricCard}><Text style={styles.metricLabel}>TONIGHT’S SALES</Text><Text style={styles.metricValue}>KSh 86.4k</Text><Text style={styles.metricDelta}>+18% vs last Fri</Text></View><View style={styles.metricCard}><Text style={styles.metricLabel}>ACTIVE TABLES</Text><Text style={styles.metricValue}>18 / 24</Text><Text style={styles.metricDelta}>75% occupied</Text></View></View>
+              <View style={styles.metricsGrid}><View style={styles.metricCard}><Text style={styles.metricLabel}>TONIGHT’S SALES</Text><Text style={styles.metricValue}>{money(DEMO_SALES_TOTAL)}</Text><Text style={styles.metricDelta}>{DEMO_SALES_DELTA}</Text></View><View style={styles.metricCard}><Text style={styles.metricLabel}>ACTIVE TABLES</Text><Text style={styles.metricValue}>{DEMO_ACTIVE_TABLES} / {DEMO_TOTAL_TABLES}</Text><Text style={styles.metricDelta}>{Math.round((DEMO_ACTIVE_TABLES / DEMO_TOTAL_TABLES) * 100)}% occupied</Text></View></View>
               <Text style={styles.sectionTitle}>Operations snapshot</Text>
               <View style={styles.adminList}><View style={styles.adminListRow}><Icon name="restaurant-outline" size={19} color={colors.light.primary} /><Text style={styles.adminListText}>Menu & categories</Text><Icon name="chevron-forward" size={17} color={colors.light.mutedForeground} /></View><View style={styles.adminListRow}><Icon name="qr-code-outline" size={19} color={colors.light.primary} /><Text style={styles.adminListText}>Table QR codes</Text><Icon name="chevron-forward" size={17} color={colors.light.mutedForeground} /></View><View style={styles.adminListRow}><Icon name="people-outline" size={19} color={colors.light.primary} /><Text style={styles.adminListText}>Staff accounts</Text><Icon name="chevron-forward" size={17} color={colors.light.mutedForeground} /></View></View>
             </>
@@ -541,6 +566,7 @@ const styles = StyleSheet.create({
   topBar: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 4, minHeight: 62, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', backgroundColor: `${colors.light.background}F2` },
   logoMark: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.light.accent, borderWidth: 1, borderColor: colors.light.border },
   topTitleWrap: { flex: 1, marginLeft: 10 },
+  topBarSpacer: { width: 36 },
   eyebrow: { color: colors.light.foreground, fontSize: 14, fontWeight: '700', letterSpacing: 2.1 },
   topSubtitle: { color: colors.light.mutedForeground, fontSize: 11, marginTop: 3, letterSpacing: 0.2 },
   iconButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.light.card, borderWidth: 1, borderColor: colors.light.border },
