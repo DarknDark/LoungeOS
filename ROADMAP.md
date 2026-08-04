@@ -1,413 +1,1543 @@
-# LoungeOS Roadmap
+# LoungeOS Master Implementation Roadmap
 
-## Project Vision
+## 1. Roadmap Status
 
-LoungeOS is a configurable hospitality operating system for clubs, lounges,
-restaurants, and bars. It is being prepared first for Mamu's Lounge, but the
-platform must support multiple businesses without hardcoded club names, menus,
-tables, till numbers, branding, or operational rules.
+This document is the master implementation sequence for LoungeOS after the
+architecture foundation.
 
-LoungeOS has two separate products:
-
-1. **Customer application** — a responsive web experience opened from a table
-   QR code. It requires no download and no customer login. It exposes only
-   ordering, service, music, bill, payment, and table-session actions.
-2. **Staff application** — an authenticated Expo mobile application for
-   administrators, waiters, bartenders, kitchen staff, and DJs. It provides
-   role-based operational workflows and must never expose staff tools to
-   customer users.
-
-The long-term goal is a reliable, real-time operating platform used every
-night by multiple hospitality businesses. Customer actions, preparation
-updates, payments, inventory movements, notifications, business days, and
-reports must share a consistent domain model and auditable history.
-
-## Current Status
-
-- **Version:** 0.2 Architecture Phase
-- **Progress:** 10%
-- **Current phase:** Customer Web App planning
-- **Goal:** Production-ready multi-club hospitality platform
-- **First deployment:** Mamu's Lounge
-
-The current repository contains:
-
-- A functional Expo SDK 57 mobile prototype with a premium dark/gold theme.
-- A local-first `ClubContext` containing guest ordering and preview staff flows.
-- Hardcoded sample menu, table, order, song, bill, and operational data.
-- AsyncStorage persistence for the local prototype.
-- An Express API artifact with logging, CORS, and a health endpoint only.
-- Workspace packages reserved for API contracts, generated API clients, Zod
-  validation, and database access, but not yet connected to LoungeOS domain
-  workflows.
-
-The existing UI is useful as a visual and interaction reference. It is not yet
-the production architecture described in this roadmap.
-
-## Module Checklist
-
-Legend:
-
-- ⬜ Not Started
-- 🟨 In Progress
-- ✅ Complete
-
-| Module | Status |
+| Area | Status |
 | --- | --- |
-| Architecture Refactor | ✅ Complete |
-| Customer Web App | ⬜ Not Started |
-| QR Session Management | ⬜ Not Started |
-| Table Locking | ⬜ Not Started |
-| Running Tabs | ⬜ Not Started |
-| Split Bill | ⬜ Not Started |
-| Payment Tokens | ⬜ Not Started |
-| Service Timeline | ⬜ Not Started |
-| Waiter Dashboard | ⬜ Not Started |
-| Bartender Dashboard | ⬜ Not Started |
-| Kitchen Dashboard | ⬜ Not Started |
-| DJ Dashboard | ⬜ Not Started |
-| Inventory | ⬜ Not Started |
-| Admin Dashboard | ⬜ Not Started |
-| Settings | ⬜ Not Started |
-| Notifications | ⬜ Not Started |
-| Audit Log | ⬜ Not Started |
-| Activity Feed | ⬜ Not Started |
-| Analytics | ⬜ Not Started |
-| Firebase Integration | ⬜ Not Started |
-| M-Pesa Integration | ⬜ Not Started |
-| Reports | ⬜ Not Started |
-| Business Day | ⬜ Not Started |
-| Testing | ⬜ Not Started |
-| Production Readiness | ⬜ Not Started |
+| Module 1 — Architecture Refactor | ✅ Complete |
+| Module 1.5 — Firebase Environment Preparation | ✅ Complete |
+| Module 2 — Customer Table Session Engine | ⬜ Awaiting approval |
+| Modules 3–11 | ⬜ Planned |
 
-Each module is planned, implemented, tested, documented, and verified before
-the next module begins.
+No Module 2 production feature work is authorized by this document. Each module
+must be approved, implemented, tested, documented, and verified before the next
+module begins.
 
-## Architecture Review
+## 2. Product Boundaries
 
-### Reusable foundations
+LoungeOS has two separate products sharing domain contracts and server
+application services:
 
-- The Expo SDK 57 setup, Metro configuration, routing, font loading, safe-area
-  handling, keyboard handling, error boundary, and mobile build pipeline are
-  reusable.
-- The dark premium visual language, color tokens, touch targets, cards, menu
-  imagery, loading behavior, and interaction patterns are useful design
-  foundations.
-- The current menu-card, order-row, action-tile, status-pill, payment-card,
-  and feedback patterns can be extracted into reusable presentation
-  components.
-- The existing TypeScript workspace, API artifact, API-client package,
-  Zod package, database package, and generated-code conventions provide a
-  starting point for a contract-first backend.
-- The current local interactions are useful as acceptance-test scenarios for
-  ordering, cart changes, song requests, waiter calls, bill display, and
-  operational status changes.
+1. **Customer Web App**
+   - Opens from a table QR code.
+   - Requires no download and no customer account.
+   - Uses a temporary, scoped customer session.
+   - Exposes only customer ordering, service, music, bill, payment, and
+     table-session actions.
+2. **Staff Expo Mobile App**
+   - Uses Firebase Authentication.
+   - Enforces club membership, role, and permission checks on the server.
+   - Provides separate role-specific surfaces for administrators, waiters,
+     bartenders, kitchen staff, and DJs.
 
-### Prototype shortcuts to remove or refactor
+The existing mobile prototype remains a visual and interaction reference until
+the relevant production modules replace its local data ownership. No module may
+merge customer navigation and staff navigation.
 
-- Guest and staff experiences are combined in one mobile route. They must
-  become separate customer web and authenticated staff applications.
-- `ClubContext` currently owns domain types, seed data, persistence, mutations,
-  staff role switching, and UI-facing state in one file. These responsibilities
-  must be separated into domain models, repositories, application services,
-  query/mutation hooks, and presentation state.
-- Menu items, prices, images, table number, club identity, DJ identity, sales
-  totals, and operational counts are hardcoded or seeded in UI-facing code.
-- AsyncStorage is being used as the source of truth. It may remain useful for
-  temporary client cache or offline behavior, but authoritative state must move
-  behind a server/Firebase repository.
-- Payment behavior currently marks orders paid locally and does not implement
-  verification, payment tokens, contributor limits, expiry, or M-Pesa
-  integration.
-- Staff role selection is a preview control, not authentication or
-  authorization. It must be replaced by Firebase Authentication and
-  server-enforced role checks.
-- Order states are too coarse for separate bar and kitchen tickets, waiter
-  collection, customer service timeline events, and station-specific routing.
-- Song requests accept free text and have no music search integration, duplicate
-  prevention, queue position, skip reason, or DJ profile.
-- The API currently exposes only health checking. It needs versioned contracts,
-  authenticated procedures, validation, persistence, realtime events, and
-  integration boundaries.
-- There is no audit-safe inventory transaction ledger, business-day lifecycle,
-  notification model, reports model, or historical archive strategy.
+## 3. Architecture Constraints
 
-## Architecture Refactor Plan — Module 1
+- Firestore is the authoritative operational database.
+- Firebase Authentication is the staff identity provider.
+- Firebase Admin initialization reads only from Replit Secrets.
+- There is no PostgreSQL, in-memory, or silent fallback persistence path.
+- Domain code remains provider-neutral.
+- Application services depend on repository and integration interfaces.
+- API routes validate input, authenticate actors, authorize actions, and call
+  application services; they do not contain business rules.
+- Firestore rules are a second authorization boundary, not a replacement for
+  server authorization.
+- Operational source records are distinct from notifications, audit logs,
+  analytics facts, activity-feed entries, and customer timeline projections.
+- Inventory history, payments, audit logs, and business-day history are
+  append-only or historically preserved.
+- Customer sessions are anonymous and temporary.
+- Payment contributor tokens grant payment contribution only; they never grant
+  ordering, menu, dashboard, or general table-session access.
+- No provider credentials, payment secrets, or customer-facing UI may be
+  hardcoded.
+- No module may redesign the existing visual language unless a later product
+  decision explicitly authorizes it.
 
-Module 1 will establish boundaries without implementing customer ordering,
-payments, dashboards, or integrations.
+## 4. Shared Firestore Model
 
-### Planned implementation
-
-1. Define shared multi-club domain types and status enums in a neutral domain
-   package.
-2. Separate domain entities and business rules from UI state and persistence.
-3. Establish repository interfaces for clubs, tables, sessions, menus, orders,
-   payments, staff, notifications, and inventory.
-4. Establish application-service boundaries for session creation, order
-   submission, ticket routing, payment verification, and timeline events.
-5. Convert the API package into a versioned contract boundary with validation
-   and an explicit error format.
-6. Split customer and staff navigation boundaries so the future customer web
-   app cannot reach staff surfaces.
-7. Move branding and business configuration behind a club configuration
-   object, using Mamu's Lounge only as editable default seed/configuration.
-8. Preserve the current visual components as a design reference while removing
-   prototype data ownership from the screen.
-9. Add architecture documentation and test seams before feature modules begin.
-
-### Files and areas expected to change
-
-| Area | Why it changes |
-| --- | --- |
-| `artifacts/club-ordering-mobile/context/ClubContext.tsx` | Decompose the prototype state container into domain/application/client layers. |
-| `artifacts/club-ordering-mobile/app/` | Keep staff navigation isolated and prepare the mobile app for authenticated role routes. |
-| `artifacts/club-ordering-mobile/components/` | Extract reusable presentation components from the monolithic screen. |
-| `artifacts/club-ordering-mobile/constants/` | Retain design tokens but remove business configuration from visual constants. |
-| `artifacts/api-server/src/` | Add versioned boundaries, validation, error handling, and service composition without prematurely implementing all modules. |
-| `lib/api-spec/` | Define the contract-first API surface and regenerate clients after spec changes. |
-| `lib/api-client-react/` | Consume generated contract types/hooks rather than UI-specific mock state. |
-| `lib/api-zod/` | Share request/response validation at the API boundary. |
-| `lib/infrastructure/` | Establish Firebase Admin, Firestore, and Auth provider boundaries. |
-| Root documentation | Record architecture decisions, folder ownership, and module verification rules. |
-
-No payment provider, Firebase project, music API, or other external integration
-will be connected during Module 1 unless it is required to establish an
-interface boundary.
-
-## Firestore Collections
-
-Firestore is the planned realtime persistence model. Collection names and
-relationships are documented here before implementation so data ownership is
-consistent. Historical records are archived by business day and never deleted.
-
-| Collection | Purpose and key relationships |
-| --- | --- |
-| `clubs` | Tenant/business configuration: name, logo, theme, till number, timezone, active business day. Parent for most records through `clubId`. |
-| `tables` | Physical tables, QR configuration, capacity, and operational status. References `clubId`; active session references are controlled by table locking. |
-| `tableSessions` | One active or historical visit at a table. References `clubId`, `tableId`, owner/customer session, opened/closed times, status, totals, and business day. |
-| `customerSessions` | Anonymous customer/browser session metadata and table-session participation. References `clubId` and `tableSessionId`; never contains staff permissions. |
-| `orders` | Customer order rounds and lifecycle metadata. References `clubId`, `tableSessionId`, `customerSessionId`, and business day. |
-| `orderItems` | Normalized items within an order, including price snapshot, quantity, station routing, and inventory links. References `orderId` and `menuItemId`. |
-| `menuItems` | Configurable item catalog: name, description, price, category, image, availability, station, and inventory link. References `clubId`. |
-| `preparationStations` | Configurable bar, kitchen, grill, or other production station. References `clubId`; tickets route here. |
-| `kitchenTickets` | Station-specific preparation tickets for drinks and food. References `clubId`, `orderId`, `orderItemIds`, `preparationStationId`, and assigned staff. |
-| `songRequests` | Search-selected requests and their queue lifecycle. References `clubId`, `tableSessionId`, `customerSessionId`, and business day. |
-| `staff` | Staff profile, club membership, active status, and assigned role references. Authentication identity is stored separately by Firebase Auth. |
-| `roles` | Configurable role definitions and permissions. References `clubId` or platform defaults; supports future roles without changing entity code. |
-| `inventoryItems` | Stock definitions, units, thresholds, suppliers, and menu links. References `clubId`. |
-| `inventoryTransactions` | Append-only sale, restock, waste, and adjustment ledger. References `clubId`, inventory item, source order/ticket, staff actor, and business day. |
-| `payments` | Payment attempts and verification records for M-Pesa or cash. References `clubId`, `tableSessionId`, payer, amount, method, and verification actor. |
-| `paymentTokens` | Single-use split-bill contributor tokens, requested amount/count, expiry, redemption, and payment references. References `clubId`, `tableSessionId`, and payment. |
-| `serviceTimeline` | Append-only customer-visible operational events. References `clubId`, `tableSessionId`, related order/ticket/payment/song record, actor, and timestamp. |
-| `businessDays` | Open/close lifecycle and immutable reporting boundary for a club. References `clubId` and closing staff. |
-| `notifications` | Centralized realtime notifications with recipient, role, priority, message, read state, timestamp, and related record. References `clubId` and business day. |
-
-### Collection relationship rules
-
-- Every tenant-owned document carries a `clubId` and is authorized against the
-  authenticated staff member or anonymous customer session.
-- `tableSessions` is the center of the customer journey. Orders, payments,
-  timeline events, song requests, and customer-session participation point to
-  it.
-- `orders` own `orderItems`; item price and preparation routing are snapshotted
-  at order time so later menu edits do not rewrite history.
-- `preparationStations` determine `kitchenTickets`; a single order can create
-  tickets at multiple stations.
-- `payments` and `paymentTokens` never directly close a table. A verified
-  payment state and authorized waiter/admin action are required.
-- `inventoryTransactions` are append-only. Current stock is derived from the
-  transaction ledger, never edited as a silent side effect.
-- `businessDays` partition reporting and operational history without deleting
-  records.
-- `serviceTimeline` is the customer-facing event projection of operational
-  changes, not a replacement for source records.
-
-## Folder Structure
-
-The target structure keeps product surfaces, domain logic, infrastructure, and
-generated contracts separate.
+All tenant-owned documents carry `clubId`. The standard tenant path is:
 
 ```text
-/
-├── ROADMAP.md
-├── docs/
-│   ├── architecture/
-│   ├── modules/
-│   └── decisions/
-├── artifacts/
-│   ├── customer-web/
-│   │   └── Customer QR ordering application
-│   ├── club-ordering-mobile/
-│   │   └── Authenticated staff Expo application
-│   ├── api-server/
-│   │   └── Versioned API and realtime gateway
-│   └── mockup-sandbox/
-│       └── Design and component exploration surface
-├── lib/
-│   ├── domain/
-│   │   └── Shared entities, value objects, statuses, and business rules
-│   ├── application/
-│   │   └── Use cases and service interfaces
-│   ├── api-spec/
-│   │   └── OpenAPI source and code generation
-│   ├── api-client-react/
-│   │   └── Generated client hooks for frontend applications
-│   ├── api-zod/
-│   │   └── Shared request and response validation
-│   ├── infrastructure/
-│   │   └── Firebase Admin, Firestore, Auth, and future provider adapters
-│   └── integrations/
-│       └── M-Pesa, music search, and future provider adapters
-├── scripts/
-│   └── Workspace automation and validation
-└── attached_assets/
-    └── Product briefs and source references
+clubs/{clubId}/{collection}/{documentId}
 ```
 
-### Folder ownership
+The following collections are shared across modules:
 
-- `artifacts/customer-web` owns customer-only routes and responsive web
-  presentation. It must not import staff dashboard modules.
-- `artifacts/club-ordering-mobile` owns authenticated staff navigation and
-  role-specific staff presentation. It must not become a customer web shell.
-- `lib/domain` contains framework-independent business concepts.
-- `lib/application` coordinates use cases through interfaces and does not know
-  React or Firestore implementation details.
-- `lib/infrastructure` implements provider adapters while depending inward on
-  domain repository contracts.
-- `lib/api-spec`, `lib/api-client-react`, and `lib/api-zod` keep API contracts
-  explicit and generated.
-- `lib/integrations` isolates external providers behind replaceable adapters.
-- `docs` records decisions, module contracts, operational rules, and
-  verification evidence.
+| Collection | Ownership and purpose |
+| --- | --- |
+| `clubs` | Tenant identity, active configuration, and business-day reference |
+| `tables` | Physical tables, QR state, capacity, and operational status |
+| `tableSessions` | One table visit, owner, participants, running bill, and lifecycle |
+| `customerSessions` | Anonymous browser/device sessions scoped to a table session |
+| `menuItems` | Food and drink catalog, availability, pricing, modifiers, and station links |
+| `preparationStations` | Kitchen, bar, pork, nyama choma, and future production stations |
+| `orders` | Customer order rounds and immutable totals/status history |
+| `orderItems` | Normalized order lines with price and routing snapshots |
+| `kitchenTickets` | Station-specific production work derived from order items |
+| `songRequests` | Search-selected requests and DJ queue lifecycle |
+| `staff` | Firebase UID to club membership, active status, and role assignments |
+| `roles` | Configurable roles and permissions |
+| `payments` | Payment attempts, contributions, provider references, and verification |
+| `paymentTokens` | Hashed, scoped, expiring, single-use contributor access |
+| `inventoryItems` | Products, ingredients, units, thresholds, and supplier links |
+| `inventoryTransactions` | Append-only stock ledger |
+| `notifications` | Recipient- and role-scoped realtime operational messages |
+| `serviceTimeline` | Customer-visible chronological session events |
+| `auditLogs` | Permanent accountability records |
+| `activityFeed` | Administrator-facing operational projection |
+| `businessDays` | Daily operational and reporting boundary |
+| `analyticsFacts` | Immutable operational facts for derived reporting |
+| `analyticsAggregates` | Derived dashboard summaries |
+| `settings` | Versioned club configuration |
 
-## API Architecture
+Collection-specific indexes, idempotency records, and retention rules must be
+documented with the module that introduces them.
 
-### Authentication
+## 5. Shared API Conventions
 
-- Staff authentication will use Firebase Authentication.
-- Customer access is anonymous and begins from a signed/validated QR table
-  session.
-- Customer sessions receive only the minimum claims needed for their active
+All production endpoints are versioned under `/api/v1`.
+
+### Actor types
+
+- **Anonymous customer actor:** temporary customer session scoped to one active
   table session.
-- Authentication identity and staff profile data remain separate so staff
-  permissions can change without rewriting provider identity.
+- **Payment contributor actor:** token-bound actor limited to one contribution.
+- **Staff actor:** Firebase ID token resolved to an active club membership,
+  role, and permission set.
+- **System actor:** trusted server-side event or scheduled operation.
 
-### Authorization
+### Response and command conventions
 
-- Authorization is enforced on the server and in Firestore rules, not only in
-  navigation.
-- Every staff request is checked for club membership, active account status,
-  role, and permission.
-- Administrator, waiter, bartender, kitchen, and DJ capabilities are explicit
-  permission sets.
-- Customers may access only the active table-session projection and their
-  allowed actions.
-- Payment verification, table release, menu changes, inventory adjustments,
-  staff management, and business-day operations require explicit permissions.
+- Commands return the authoritative updated resource or an explicit operation
+  result.
+- Queries return only fields allowed for the actor and active scope.
+- Mutations require idempotency keys where retries could duplicate state.
+- Errors use stable codes, safe messages, and no credential/provider secrets.
+- All status changes are validated against the domain lifecycle.
+- Realtime updates are projections of committed authoritative state.
 
-### Realtime updates
+## 6. Module 2 — Customer Table Session Engine
 
-- Firestore listeners provide updates for table status, orders, tickets,
-  payments, song queues, timeline events, and notifications.
-- The API/application layer remains responsible for validating commands and
-  writing authoritative state.
-- Realtime projections must be scoped by `clubId`, role, and table/session
-  access.
-- Timeline and notification writes should be generated from domain events so
-  operational changes are not silently omitted.
+### Purpose
 
-### Notifications
+Create the complete customer entry and table-session lifecycle from a validated
+table QR code. Establish one active session owner per table while allowing
+scoped participation, reconnection, recovery, and multi-device support.
 
-- A centralized notification service creates role-aware notifications for new
-  orders, ready tickets, waiter calls, song requests, payment waiting, low
-  stock, and business-day reminders.
-- Notifications include recipient, role, priority, message, timestamp, read
-  status, and related record.
-- Staff clients subscribe to their authorized notification stream and acknowledge
-  read state through a validated command.
+### Features
 
-### Future integrations
+- Signed or otherwise validated QR table access.
+- Table existence, club scope, active status, and QR validity checks.
+- One active table session owner per table.
+- Anonymous customer-session creation.
+- First successful customer becomes the table-session owner.
+- Additional guests join as contributors to the active table session.
+- Session timeout and explicit expiry.
+- Guest reconnection after browser refresh or temporary disconnect.
+- Multi-device participation within one table session.
+- Session recovery using a scoped recovery credential.
+- Running-tab initialization at session creation.
+- Duplicate QR replay prevention and idempotent session creation.
+- Table locking and safe release prerequisites.
+- Customer-visible session and table state projection.
 
-- Firebase Authentication and Firestore realtime data.
-- M-Pesa payment initiation, callbacks, reconciliation, and verification.
-- Music search provider adapter for song selection and artist metadata.
-- Image/logo storage provider.
-- Optional messaging, receipt, accounting, and analytics providers.
+### Firestore collections
 
-## Future Ideas
+- `clubs`
+- `tables`
+- `tableSessions`
+- `customerSessions`
+- `serviceTimeline`
+- `auditLogs`
+- `analyticsFacts`
 
-These ideas are intentionally reserved and are not part of the current
-implementation sequence:
+Required data controls:
 
-- Reservations and scheduled table bookings.
-- Loyalty, memberships, promotions, and customer profiles.
-- Multi-location reporting and platform-level administration.
-- Supplier purchase orders and advanced procurement.
-- Staff scheduling, payroll exports, and shift management.
-- Delivery, takeaway, and room-service workflows.
-- POS, accounting, and tax-system integrations.
-- Advanced demand forecasting and inventory prediction.
-- Customer feedback, reviews, and CRM automation.
-- Offline-first staff workflows with conflict resolution.
+- Transactional table lock or equivalent atomic active-session claim.
+- QR nonce/version or signed context validation.
+- Idempotency record for repeated QR submissions.
+- Expiration timestamps for customer sessions.
 
-## Implementation Order
+### API endpoints
 
-1. Architecture Refactor
-2. Customer Web App
-3. QR Session Management
-4. Table Locking
-5. Running Tabs
-6. Split Bill
-7. Payment Tokens
-8. Service Timeline
-9. Waiter Dashboard
-10. Bartender Dashboard
-11. Kitchen Dashboard
-12. DJ Dashboard
-13. Inventory
-14. Admin Dashboard
-15. Settings
-16. Notifications
-17. Audit Log
-18. Activity Feed
-19. Analytics
-20. Firebase Integration
-21. M-Pesa Integration
-22. Reports
-23. Business Day
-24. Final Testing & Production Readiness
+Customer:
 
-Each step stops after verification and awaits approval before the next step
-begins.
+- `POST /api/v1/customer/qr/validate`
+- `POST /api/v1/customer/table-sessions`
+- `POST /api/v1/customer/table-sessions/:sessionId/join`
+- `GET /api/v1/customer/table-sessions/:sessionId`
+- `POST /api/v1/customer/customer-sessions/reconnect`
+- `POST /api/v1/customer/customer-sessions/:id/heartbeat`
+- `POST /api/v1/customer/customer-sessions/:id/leave`
 
-## Module 1 Completion
+Staff/system:
 
-Architecture Refactor is complete at the foundation level:
+- `GET /api/v1/staff/tables`
+- `GET /api/v1/staff/table-sessions/:sessionId`
+- `POST /api/v1/staff/table-sessions/:sessionId/release`
 
-- `ARCHITECTURE.md` documents the system layers, domain entities, Firestore
-  collections, repositories, services, authentication, projections, settings,
-  analytics, activity feed, coding standards, and integration boundaries.
-- Shared provider-neutral domain entities, settings, collection names, events,
-  and repository ports live in `lib/domain`.
-- Application service contracts and operational projection coordination live in
-  `lib/application`.
-- The mobile prototype now consumes centralized club settings and isolated demo
-  fixtures rather than owning all business configuration in one context file.
-- Customer and staff application boundaries are documented and reserved.
+### Mobile screens
 
-The following are intentionally deferred to their ordered modules:
+Customer Web App:
 
-- Real customer web routes and QR session behavior.
-- Firebase Authentication and server authorization enforcement.
-- Firestore adapter implementations and realtime listeners.
-- Operational dashboards, payments, M-Pesa, inventory, reports, and business
-  day workflows.
+- QR entry
+- Table validation/loading
+- Session creation confirmation
+- Join active table session
+- Session recovery after refresh
+- Invalid/expired QR
+- Session expired
+- Active table-session shell with running-tab summary
 
-### Module 1 verification
+Staff Expo App:
 
-- Full workspace TypeScript check: ✅
-- Expo SDK compatibility check: ✅
-- Android/iOS Expo bundle build: ✅
-- Android Expo Go preview: ✅
+- Staff table list
+- Table-session detail
+- Session expiry/release confirmation
+
+### Staff dashboards
+
+- Initial waiter table/session visibility only.
+- No full Smart Waiter Mode yet; that belongs to Module 11.
+
+### Notification events
+
+- `table-session-created`
+- `customer-session-joined`
+- `customer-session-reconnected`
+- `table-session-expiring`
+- `table-session-expired`
+- `table-session-owner-released`
+
+### Security requirements
+
+- QR context must be validated server-side.
+- QR replay must not create a second active owner.
+- Customer sessions must be scoped to one club and one table session.
+- Anonymous customers cannot access staff routes or other tables.
+- Recovery credentials must be scoped, expiring, and non-guessable.
+- Only the owner may control table-session ownership actions.
+- Firestore reads and listeners must be limited to the authorized session.
+- Every mutation must use idempotency protection where retries are possible.
+
+### Dependencies
+
+- Module 1 domain entities, repository ports, and application-service boundary.
+- Module 1.5 Firebase infrastructure and Admin initialization.
+- Firebase project and Secrets for live repository verification.
+- Firestore transaction support.
+- Customer Web App shell and API contract generation.
+- No payment provider required.
+
+### Acceptance criteria
+
+- A valid table QR creates one active table session.
+- One table can have only one active session owner, even under concurrent scans.
+- A repeated QR submission is idempotent or safely rejected.
+- A second guest joins the existing session without becoming a second owner.
+- Refresh and reconnect recover the authorized customer session.
+- Expired sessions cannot read or mutate the table session.
+- A customer cannot access another table, club, staff route, or staff data.
+- A new table session starts with an empty, correctly scoped running tab.
+
+### Estimated implementation order
+
+1 of 10 remaining feature modules; implementation prerequisite for Modules 3–7
+and 11.
+
+## 7. Module 3 — Ordering Engine
+
+### Purpose
+
+Build the customer ordering system on top of an active table session, including
+catalog browsing, modifiers, multiple rounds, pricing calculations, and
+department routing.
+
+### Features
+
+- Food categories and drink categories.
+- Menu search and availability filtering.
+- Product modifiers and modifier pricing.
+- Quantity changes.
+- Special notes with safe length limits.
+- Cart and pending-round review.
+- Multiple order rounds per table session.
+- Edit pending items before acceptance.
+- Cancel pending items within the allowed lifecycle window.
+- Automatic subtotal, tax, service-charge, discount, and total calculations.
+- Currency and pricing rules from club settings.
+- Immutable price/modifier snapshots at submission.
+- Route each order item to its configured preparation station.
+- Order idempotency and duplicate-submit prevention.
+
+### Firestore collections
+
+- `clubs`
+- `settings`
+- `menuItems`
+- `preparationStations`
+- `tableSessions`
+- `customerSessions`
+- `orders`
+- `orderItems`
+- `kitchenTickets`
+- `inventoryItems`
+- `auditLogs`
+- `analyticsFacts`
+- `serviceTimeline`
+- `notifications`
+
+### API endpoints
+
+Customer:
+
+- `GET /api/v1/customer/menu`
+- `GET /api/v1/customer/menu/categories`
+- `GET /api/v1/customer/menu/:menuItemId`
+- `POST /api/v1/customer/table-sessions/:sessionId/orders`
+- `GET /api/v1/customer/table-sessions/:sessionId/orders`
+- `PATCH /api/v1/customer/orders/:orderId`
+- `POST /api/v1/customer/orders/:orderId/cancel`
+- `GET /api/v1/customer/table-sessions/:sessionId/tab`
+
+Staff:
+
+- `GET /api/v1/staff/orders`
+- `GET /api/v1/staff/orders/:orderId`
+- `POST /api/v1/staff/orders/:orderId/accept`
+- `POST /api/v1/staff/orders/:orderId/cancel`
+
+### Mobile screens
+
+Customer Web App:
+
+- Menu home
+- Food category
+- Drink category
+- Menu search
+- Product detail and modifiers
+- Cart/round review
+- Order submitted
+- Pending order edit
+- Running tab
+- Order history/timeline
+
+Staff Expo App:
+
+- New orders list
+- Order detail
+- Order status action sheet
+- Table running-tab view
+
+### Staff dashboards
+
+- Waiter order overview.
+- Station work is displayed through the Kitchen & Production dashboards in
+  Module 4, not duplicated here.
+
+### Notification events
+
+- `order-submitted`
+- `order-accepted`
+- `order-updated`
+- `order-cancelled`
+- `order-total-changed`
+- `order-routed-to-station`
+
+### Security requirements
+
+- Only active customer-session participants may submit orders.
+- Payment contributors cannot browse the menu or submit orders.
+- Menu price, availability, modifier, and station data are resolved server-side.
+- Client totals are never authoritative.
+- Pending-order edit/cancel windows are enforced server-side.
+- Staff order access is club- and permission-scoped.
+- Notes and quantities are validated to prevent abuse.
+- Duplicate order submissions must not create duplicate charges or tickets.
+
+### Dependencies
+
+- Module 2 active table sessions.
+- Menu, station, settings, and repository adapters.
+- Shared pricing/tax/service-charge policy.
+- Module 4 ticket routing contract.
+- Inventory recipe links from Module 8.
+
+### Acceptance criteria
+
+- A customer can browse searchable food and drink categories.
+- Modifiers, quantities, notes, taxes, service charges, discounts, and totals
+  calculate correctly from server-side settings.
+- Submitted rounds preserve price and routing snapshots.
+- Pending orders can be edited or cancelled only within the permitted lifecycle.
+- Multiple rounds remain separately traceable to one table session.
+- Each order item is routed to the correct production department.
+- Duplicate submissions are rejected or returned idempotently.
+
+### Estimated implementation order
+
+2 of 10; begins only after Module 2 session ownership and recovery are
+verified.
+
+## 8. Module 4 — Kitchen & Production Routing Engine
+
+### Purpose
+
+Automatically turn submitted order items into secure station work queues and
+keep customers, waiters, and production staff synchronized through lifecycle
+updates.
+
+### Features
+
+- Automatic routing to Kitchen, Bar, Pork Station, or Nyama Choma Station.
+- One order producing multiple station tickets.
+- Station-specific queue ordering.
+- Ticket statuses: `pending`, `accepted`, `preparing`, `ready`,
+  `collected`.
+- Staff assignment where configured.
+- Waiter collection/hand-off tracking.
+- Customer timeline updates for meaningful transitions.
+- Overdue-ticket detection based on configured thresholds.
+- Realtime station queue updates.
+- Idempotent ticket creation from an order.
+
+### Firestore collections
+
+- `orders`
+- `orderItems`
+- `preparationStations`
+- `kitchenTickets`
+- `staff`
+- `roles`
+- `tableSessions`
+- `serviceTimeline`
+- `notifications`
+- `auditLogs`
+- `analyticsFacts`
+
+### API endpoints
+
+Customer:
+
+- `GET /api/v1/customer/table-sessions/:sessionId/production-status`
+
+Station staff:
+
+- `GET /api/v1/staff/stations`
+- `GET /api/v1/staff/stations/:stationId/tickets`
+- `GET /api/v1/staff/kitchen-tickets/:ticketId`
+- `POST /api/v1/staff/kitchen-tickets/:ticketId/accept`
+- `POST /api/v1/staff/kitchen-tickets/:ticketId/start`
+- `POST /api/v1/staff/kitchen-tickets/:ticketId/ready`
+- `POST /api/v1/staff/kitchen-tickets/:ticketId/collect`
+
+Waiter/manager:
+
+- `POST /api/v1/staff/kitchen-tickets/:ticketId/reassign`
+- `POST /api/v1/staff/kitchen-tickets/:ticketId/escalate`
+
+### Mobile screens
+
+Customer Web App:
+
+- Order production status
+- Item ready/collected timeline
+- Delayed-order status
+
+Staff Expo App:
+
+- Station queue
+- Ticket detail
+- Ticket status controls
+- Assigned/overdue tickets
+
+### Staff dashboards
+
+- Kitchen dashboard.
+- Bar dashboard.
+- Pork Station dashboard.
+- Nyama Choma Station dashboard.
+- Waiter production-status view.
+
+Each station sees only tickets routed to that station, unless an explicit
+manager permission grants broader visibility.
+
+### Notification events
+
+- `ticket-created`
+- `ticket-accepted`
+- `ticket-preparing`
+- `ticket-ready`
+- `ticket-collected`
+- `ticket-overdue`
+- `ticket-reassigned`
+- `production-escalated`
+
+### Security requirements
+
+- Station staff may read and mutate only their assigned station tickets.
+- Ticket transitions must follow the allowed lifecycle.
+- Ticket status cannot be changed from the client without authorization.
+- Staff cannot change an order’s financial totals through ticket actions.
+- Ticket creation must be idempotent per order item and station.
+- Customer projections reveal only their own active table session.
+- Every reassignment and escalation is audited.
+
+### Dependencies
+
+- Module 3 order and item routing snapshots.
+- Staff roles and permissions.
+- Firestore realtime listeners.
+- Notification and service-timeline projection contracts.
+- Threshold configuration from settings.
+
+### Acceptance criteria
+
+- Every submitted item appears only on the responsible department dashboard.
+- A single order can produce multiple independent station tickets.
+- Station staff can progress only authorized tickets through valid statuses.
+- Customer timeline and operational notifications update after each meaningful
+  transition.
+- Ticket creation is not duplicated when order processing is retried.
+- Overdue work is visible to the correct waiter or manager.
+
+### Estimated implementation order
+
+3 of 10; depends on Module 3 and establishes production state for Modules 7, 8,
+and 11.
+
+## 9. Module 5 — Split Bill Engine
+
+### Purpose
+
+Implement the controlled split-payment workflow in which one customer owns the
+table session, contributors receive narrowly scoped payment access, and the
+table closes only after verified settlement.
+
+### Features
+
+- Owner requests a number of additional contributors.
+- Secure, hashed, expiring payment tokens.
+- QR temporarily admits only the requested contributor count.
+- Contributor-only payment view.
+- Contribution amount entry and validation.
+- Phone number capture.
+- Table-number confirmation.
+- Till-number confirmation from club settings.
+- M-Pesa payment initiation boundary.
+- Provider callback/reconciliation boundary.
+- Cash contribution recording where authorized.
+- Owner dashboard showing paid, pending, and outstanding balance.
+- Waiter final settlement verification.
+- Token single-use, expiry, redemption, and session scoping.
+- Session close only after zero outstanding balance and authorized settlement.
+
+### Firestore collections
+
+- `tableSessions`
+- `customerSessions`
+- `payments`
+- `paymentTokens`
+- `settings`
+- `tables`
+- `staff`
+- `notifications`
+- `serviceTimeline`
+- `auditLogs`
+- `analyticsFacts`
+
+### API endpoints
+
+Owner:
+
+- `POST /api/v1/customer/table-sessions/:sessionId/payment-plan`
+- `GET /api/v1/customer/table-sessions/:sessionId/payment-summary`
+- `POST /api/v1/customer/table-sessions/:sessionId/payment-tokens`
+- `GET /api/v1/customer/table-sessions/:sessionId/payments`
+
+Contributor:
+
+- `POST /api/v1/customer/payment-tokens/validate`
+- `GET /api/v1/customer/payment-tokens/:tokenId`
+- `POST /api/v1/customer/payment-tokens/:tokenId/contributions`
+
+Provider:
+
+- `POST /api/v1/payments/mpesa/callback`
+- `POST /api/v1/payments/mpesa/reconciliation`
+
+Waiter/manager:
+
+- `GET /api/v1/staff/table-sessions/:sessionId/payment-summary`
+- `POST /api/v1/staff/payments/:paymentId/verify`
+- `POST /api/v1/staff/table-sessions/:sessionId/settle`
+- `POST /api/v1/staff/table-sessions/:sessionId/close`
+
+### Mobile screens
+
+Customer Web App:
+
+- Owner payment-plan setup
+- Contributor-count confirmation
+- Payment summary
+- Contributor token entry/QR flow
+- Contributor-only contribution view
+- Amount and phone-number form
+- Table/till confirmation
+- Payment pending/success/failure
+- Owner settlement status
+- Session-closed confirmation
+
+Staff Expo App:
+
+- Payment verification queue
+- Payment detail
+- Settlement confirmation
+- Outstanding-balance view
+
+### Staff dashboards
+
+- Waiter payment-verification dashboard.
+- Administrator payment/reconciliation view.
+
+### Notification events
+
+- `payment-plan-created`
+- `payment-token-created`
+- `contributor-joined-payment`
+- `payment-prompt-sent`
+- `payment-received`
+- `contribution-received`
+- `payment-failed`
+- `payment-token-expired`
+- `balance-updated`
+- `settlement-ready`
+- `settlement-verified`
+- `table-session-closed`
+
+### Security requirements
+
+- Contributors cannot access the lounge session, menu, order history, or
+  dashboard.
+- Tokens are stored only as hashes and are scoped to one table session.
+- Tokens are single-use and expire after payment or timeout.
+- The requested contributor count is enforced atomically.
+- Payment amount and till number are resolved/validated server-side.
+- Provider callbacks are authenticated, idempotent, and reconciled.
+- Only authorized waiters/managers can verify or settle payments.
+- A payment never directly closes a session.
+- Sensitive phone numbers and provider payloads are minimized and protected.
+
+### Dependencies
+
+- Module 2 table sessions and ownership.
+- Module 3 running-tab totals.
+- Firebase infrastructure and secure Secrets.
+- M-Pesa integration authorization and provider contract.
+- Notification and realtime projection engine.
+- Waiter authorization.
+
+### Acceptance criteria
+
+- The owner can request a fixed number of contributors.
+- Exactly that number of valid contributor tokens can be redeemed.
+- A contributor sees only contribution amount, phone, table, till, and payment
+  controls.
+- A contributor cannot order or access any customer/staff dashboard.
+- Owner balances update immediately after each verified contribution.
+- Expired, reused, wrong-session, and excess tokens are rejected.
+- A waiter can verify final settlement.
+- The table session closes only when the outstanding balance is zero and the
+  settlement action is authorized.
+
+### Estimated implementation order
+
+4 of 10; depends on Modules 2 and 3, and gates secure payment closure.
+
+## 10. Module 6 — DJ Request Engine
+
+### Purpose
+
+Provide a searchable, duplicate-safe song-request queue with DJ-controlled
+playback outcomes and customer-visible realtime status.
+
+### Features
+
+- Song search.
+- Artist search.
+- Search-selected metadata snapshots.
+- Duplicate request detection.
+- Queue position and estimated wait.
+- Playing, skipped, and completed statuses.
+- Skip reasons: Low BPM, High BPM, Genre mismatch, Already played, Not found,
+  and Other.
+- Custom skip response when reason is Other.
+- Re-request support after completed or skipped request according to policy.
+- Request history.
+- DJ profile with social, mix, and streaming links.
+
+### Firestore collections
+
+- `songRequests`
+- `tableSessions`
+- `customerSessions`
+- `staff`
+- `roles`
+- `settings`
+- `notifications`
+- `serviceTimeline`
+- `auditLogs`
+- `analyticsFacts`
+
+External music search results are accessed through an integration port; provider
+credentials and raw provider payloads do not become domain source records.
+
+### API endpoints
+
+Customer:
+
+- `GET /api/v1/customer/music/search`
+- `GET /api/v1/customer/music/artists`
+- `POST /api/v1/customer/table-sessions/:sessionId/song-requests`
+- `GET /api/v1/customer/table-sessions/:sessionId/song-requests`
+- `POST /api/v1/customer/song-requests/:requestId/re-request`
+- `GET /api/v1/customer/dj-profile`
+
+DJ:
+
+- `GET /api/v1/staff/dj/queue`
+- `POST /api/v1/staff/song-requests/:requestId/playing`
+- `POST /api/v1/staff/song-requests/:requestId/skip`
+- `POST /api/v1/staff/song-requests/:requestId/complete`
+- `GET /api/v1/staff/dj/profile`
+- `PATCH /api/v1/staff/dj/profile`
+
+### Mobile screens
+
+Customer Web App:
+
+- Music search
+- Artist/results view
+- Song detail/request confirmation
+- Request queue position
+- Request history
+- Playing/skipped/completed status
+- DJ profile
+
+Staff Expo App:
+
+- DJ queue
+- Song request detail
+- Playing action
+- Skip-reason action sheet
+- Custom skip response
+- DJ profile editor
+
+### Staff dashboards
+
+- DJ queue dashboard.
+- DJ profile management.
+
+### Notification events
+
+- `song-requested`
+- `song-queued`
+- `song-playing`
+- `song-skipped`
+- `song-completed`
+- `song-re-requested`
+- `song-queue-position-changed`
+
+### Security requirements
+
+- Customers may submit requests only for their active table session.
+- Duplicate keys are generated and checked server-side.
+- Only authorized DJ staff can change queue status or profile data.
+- Skip responses are validated and length-limited.
+- Customer projections reveal only allowed request metadata.
+- Provider search responses are sanitized before returning to clients.
+
+### Dependencies
+
+- Module 2 customer sessions.
+- Firebase persistence and authorization.
+- Music search integration port.
+- Realtime notification and timeline projections.
+- Business-day reference for request history and reporting.
+
+### Acceptance criteria
+
+- Customers can search by song and artist and submit a selected request.
+- Duplicate songs cannot enter the active queue.
+- DJ can mark a request Playing, Skip, or Complete.
+- Skip requires one defined reason; Other supports a custom response.
+- Customers receive realtime queue and outcome updates.
+- Re-request behavior follows the configured duplicate policy.
+- DJ profile links are editable only by authorized DJ/admin staff.
+
+### Estimated implementation order
+
+5 of 10; depends on Module 2 and the realtime notification foundation.
+
+## 11. Module 7 — Realtime Notification Engine
+
+### Purpose
+
+Create one event-driven notification pipeline for customer, station, waiter, DJ,
+administrator, audit, analytics, activity-feed, and service-timeline
+projections without duplicating authoritative operational state.
+
+### Features
+
+- Domain-event publication after committed state changes.
+- Notification routing by recipient, role, station, club, and table session.
+- Customer notifications.
+- Kitchen, bar, pork, and nyama station notifications.
+- Waiter notifications.
+- DJ notifications.
+- Administrator notifications.
+- Priority levels and read state.
+- Realtime authorized listeners.
+- Idempotent projection creation.
+- Notification acknowledgement.
+- Event correlation and source-record links.
+
+### Firestore collections
+
+- `notifications`
+- `serviceTimeline`
+- `activityFeed`
+- `auditLogs`
+- `analyticsFacts`
+- Source collections from Modules 2–6.
+
+### API endpoints
+
+- `GET /api/v1/customer/table-sessions/:sessionId/notifications`
+- `GET /api/v1/staff/notifications`
+- `POST /api/v1/notifications/:notificationId/read`
+- `POST /api/v1/notifications/read-all`
+- `GET /api/v1/staff/activity-feed`
+- `GET /api/v1/customer/table-sessions/:sessionId/timeline`
+
+Internal/system:
+
+- `POST /api/v1/internal/events/dispatch`
+
+The internal endpoint must not be public; normal production flow uses an
+application event bus or trusted worker boundary.
+
+### Mobile screens
+
+Customer Web App:
+
+- Session timeline
+- Notification center
+- Inline order, payment, waiter, and music updates
+
+Staff Expo App:
+
+- Notification center
+- Unread badge/state
+- Activity feed entry detail
+- Station and role-specific alert surfaces
+
+### Staff dashboards
+
+- Shared role-scoped notification center.
+- Administrator activity feed.
+- Station-specific alert panels.
+
+### Notification events
+
+- `order-received`
+- `order-accepted`
+- `order-preparing`
+- `order-ready`
+- `order-collected`
+- `payment-received`
+- `contribution-received`
+- `song-queued`
+- `song-playing`
+- `song-skipped`
+- `waiter-called`
+- `inventory-low`
+- `business-day-closed`
+- `ticket-overdue`
+- `table-session-expiring`
+
+### Security requirements
+
+- Notifications must be generated only from committed trusted events.
+- Every projection is scoped to club and recipient/session authorization.
+- Customers cannot subscribe to staff or other-table notifications.
+- Station recipients receive only relevant station work.
+- Projection processing is idempotent by event ID and projection type.
+- Notification payloads exclude credentials and unnecessary personal data.
+- Read acknowledgements cannot change source operational state.
+
+### Dependencies
+
+- Modules 2–6 event contracts.
+- Firebase Firestore realtime support.
+- Authorization service and actor scopes.
+- Audit/activity/timeline repository ports.
+- A durable event-dispatch strategy.
+
+### Acceptance criteria
+
+- Every supported workflow produces the correct recipient-scoped notification.
+- Replaying an event does not create duplicate notifications or timeline entries.
+- Customer, station, waiter, DJ, and admin streams are isolated.
+- Realtime listeners receive committed changes without becoming a source of truth.
+- Notification read state is persisted and does not alter operational records.
+
+### Estimated implementation order
+
+6 of 10; should be implemented after core event-producing workflows exist and
+before the final operational dashboards are considered complete.
+
+## 12. Module 8 — Inventory Engine
+
+### Purpose
+
+Track products, ingredients, recipes, purchasing, transfers, waste, damage, and
+stock alerts through an append-only inventory ledger connected to completed
+orders.
+
+### Features
+
+- Product definitions.
+- Ingredient definitions.
+- Recipes and menu-item ingredient quantities.
+- Automatic stock deduction from completed orders.
+- Purchases and supplier records.
+- Transfers between locations/stations where enabled.
+- Waste recording.
+- Damaged-stock recording.
+- Manual adjustments with authorization and reasons.
+- Low-stock alerts.
+- Out-of-stock alerts.
+- Derived stock balance from transactions.
+- Inventory valuation and business-day summary inputs.
+
+### Firestore collections
+
+- `inventoryItems`
+- `inventoryTransactions`
+- `menuItems`
+- `orders`
+- `orderItems`
+- `preparationStations`
+- `staff`
+- `roles`
+- `notifications`
+- `auditLogs`
+- `analyticsFacts`
+- `businessDays`
+
+Additional collections if procurement is enabled:
+
+- `suppliers`
+- `purchaseOrders`
+- `inventoryTransfers`
+- `inventoryRecipes`
+
+### API endpoints
+
+Staff:
+
+- `GET /api/v1/staff/inventory/items`
+- `GET /api/v1/staff/inventory/items/:itemId`
+- `POST /api/v1/staff/inventory/items`
+- `PATCH /api/v1/staff/inventory/items/:itemId`
+- `GET /api/v1/staff/inventory/items/:itemId/ledger`
+- `POST /api/v1/staff/inventory/restocks`
+- `POST /api/v1/staff/inventory/transfers`
+- `POST /api/v1/staff/inventory/waste`
+- `POST /api/v1/staff/inventory/damaged`
+- `POST /api/v1/staff/inventory/adjustments`
+- `GET /api/v1/staff/inventory/alerts`
+- `GET /api/v1/staff/inventory/suppliers`
+
+Admin:
+
+- `POST /api/v1/staff/inventory/recipes`
+- `PATCH /api/v1/staff/inventory/recipes/:recipeId`
+
+Internal/system:
+
+- `POST /api/v1/internal/orders/:orderId/inventory-deduction`
+
+### Mobile screens
+
+Staff Expo App:
+
+- Inventory overview
+- Item detail and ledger
+- Restock form
+- Transfer form
+- Waste/damage form
+- Low-stock and out-of-stock alerts
+- Recipe editor for authorized staff
+- Supplier list
+
+Customer Web App:
+
+- Only availability/out-of-stock presentation from the customer menu; no
+  inventory controls or inventory quantities.
+
+### Staff dashboards
+
+- Administrator inventory dashboard.
+- Station stock/availability view.
+- Supplier and procurement view where enabled.
+
+### Notification events
+
+- `inventory-deducted`
+- `inventory-restocked`
+- `inventory-transferred`
+- `inventory-wasted`
+- `inventory-damaged`
+- `inventory-adjusted`
+- `inventory-low`
+- `inventory-out-of-stock`
+- `menu-item-unavailable`
+
+### Security requirements
+
+- Only authorized staff can change inventory definitions or ledger entries.
+- Every manual movement requires actor, reason, quantity, unit, and source.
+- Ledger entries are append-only; corrections are compensating entries.
+- Completed-order deduction is idempotent by order and recipe version.
+- Inventory quantities are never accepted from the customer client.
+- Supplier and cost information is staff/admin scoped.
+- Cross-station or cross-club transfers require explicit permission.
+
+### Dependencies
+
+- Module 3 menu and order snapshots.
+- Module 4 completed production/order lifecycle.
+- Module 7 notifications.
+- Settings and business-day context.
+- Role/permission enforcement.
+
+### Acceptance criteria
+
+- Every completed order deducts the correct ingredients exactly once.
+- Restocks, transfers, waste, damage, and adjustments append auditable entries.
+- Current balances derive from the ledger.
+- Low-stock and out-of-stock conditions generate appropriate notifications.
+- Customers see unavailable products accurately without seeing inventory details.
+- Authorized administrators can reconcile item history to source transactions.
+
+### Estimated implementation order
+
+7 of 10; depends on ordering, production completion, notifications, and
+business-day references.
+
+## 13. Module 9 — Business Day Engine
+
+### Purpose
+
+Define the daily operating boundary for sales, payments, inventory, expenses,
+staff shifts, reconciliation, closing, and export without deleting historical
+records.
+
+### Features
+
+- Open business day.
+- Prevent multiple active business days per club.
+- Associate new operations with the active business day.
+- Cash reconciliation.
+- M-Pesa reconciliation.
+- Sales summary.
+- Expense capture.
+- Inventory summary.
+- Shift reports.
+- Exception and discrepancy notes.
+- Daily export.
+- Close business day with one authorized action.
+- Preserve all source records after close.
+
+### Firestore collections
+
+- `businessDays`
+- `clubs`
+- `settings`
+- `orders`
+- `payments`
+- `inventoryTransactions`
+- `inventoryItems`
+- `staff`
+- `auditLogs`
+- `analyticsFacts`
+- `activityFeed`
+- `serviceTimeline`
+- `notifications`
+
+Additional collection:
+
+- `expenses`
+- `shiftReports`
+- `dailyExports`
+
+### API endpoints
+
+- `GET /api/v1/staff/business-days/active`
+- `POST /api/v1/staff/business-days/open`
+- `GET /api/v1/staff/business-days/:businessDayId/summary`
+- `POST /api/v1/staff/business-days/:businessDayId/cash-reconciliation`
+- `POST /api/v1/staff/business-days/:businessDayId/mpesa-reconciliation`
+- `POST /api/v1/staff/business-days/:businessDayId/expenses`
+- `GET /api/v1/staff/business-days/:businessDayId/inventory-summary`
+- `GET /api/v1/staff/business-days/:businessDayId/shift-reports`
+- `POST /api/v1/staff/business-days/:businessDayId/export`
+- `POST /api/v1/staff/business-days/:businessDayId/close`
+
+### Mobile screens
+
+Staff Expo App:
+
+- Active business-day status
+- Open-day form
+- Day summary
+- Cash reconciliation
+- M-Pesa reconciliation
+- Expenses
+- Inventory summary
+- Shift reports
+- Export and close confirmation
+
+Customer Web App:
+
+- No business-day controls.
+- Customer-visible availability may show a safe closed/not-serving state.
+
+### Staff dashboards
+
+- Administrator business-day control center.
+- Reconciliation dashboard.
+- Shift and exception review.
+
+### Notification events
+
+- `business-day-opened`
+- `business-day-closing-warning`
+- `cash-reconciliation-required`
+- `mpesa-reconciliation-required`
+- `business-day-discrepancy`
+- `business-day-closed`
+- `daily-export-ready`
+
+### Security requirements
+
+- Only authorized administrators can open or close a business day.
+- Only one active business day may exist per club.
+- Closing is idempotent and protected against concurrent requests.
+- Closed records cannot be silently edited; corrections are audited.
+- Reconciliation evidence is access-controlled.
+- Exports exclude secrets and follow data-minimization rules.
+- Closing must not delete or rewrite operational history.
+
+### Dependencies
+
+- Modules 3–8 operational records.
+- Payment provider reconciliation from Module 5.
+- Inventory ledger from Module 8.
+- Staff and permission enforcement.
+- Analytics facts and activity-feed projections.
+
+### Acceptance criteria
+
+- An authorized administrator opens a business day with one action.
+- New operational records associate with the correct active day.
+- Cash, M-Pesa, sales, expense, inventory, and shift summaries reconcile to
+  source records.
+- Closing is one authorized action and cannot create duplicate close records.
+- Closed history remains queryable and immutable except through audited
+  correction entries.
+- Daily export is generated without exposing credentials or unrelated tenants.
+
+### Estimated implementation order
+
+8 of 10; depends on all operational write paths and precedes final analytics
+validation.
+
+## 14. Module 10 — Analytics Engine
+
+### Purpose
+
+Generate operational statistics and dashboards from immutable facts without
+making analytics the source of truth for orders, payments, inventory, or staff
+authorization.
+
+### Features
+
+- Revenue dashboards.
+- Order volume and status dashboards.
+- Popular drinks.
+- Popular food.
+- Popular songs.
+- DJ statistics.
+- Kitchen performance.
+- Bar performance.
+- Staff performance.
+- Customer trends using permitted anonymous aggregates.
+- Average preparation time.
+- Average payment time.
+- Business-day and date-range filters.
+- Club and role-scoped dashboard access.
+- Derived aggregate refresh and backfill strategy.
+
+### Firestore collections
+
+- `analyticsFacts`
+- `analyticsAggregates`
+- `orders`
+- `orderItems`
+- `payments`
+- `songRequests`
+- `kitchenTickets`
+- `inventoryTransactions`
+- `staff`
+- `businessDays`
+- `serviceTimeline`
+- `auditLogs`
+
+### API endpoints
+
+Administrator/manager:
+
+- `GET /api/v1/staff/analytics/revenue`
+- `GET /api/v1/staff/analytics/orders`
+- `GET /api/v1/staff/analytics/products`
+- `GET /api/v1/staff/analytics/songs`
+- `GET /api/v1/staff/analytics/dj`
+- `GET /api/v1/staff/analytics/kitchen`
+- `GET /api/v1/staff/analytics/bar`
+- `GET /api/v1/staff/analytics/staff`
+- `GET /api/v1/staff/analytics/customers`
+- `GET /api/v1/staff/analytics/preparation-times`
+- `GET /api/v1/staff/analytics/payment-times`
+- `GET /api/v1/staff/analytics/export`
+
+System:
+
+- `POST /api/v1/internal/analytics/facts`
+- `POST /api/v1/internal/analytics/aggregates/rebuild`
+
+### Mobile screens
+
+Staff Expo App:
+
+- Analytics overview
+- Revenue and sales
+- Product performance
+- Music/DJ performance
+- Kitchen/bar performance
+- Staff performance
+- Customer trend summary
+- Export controls for authorized administrators
+
+Customer Web App:
+
+- No internal analytics screens.
+
+### Staff dashboards
+
+- Administrator analytics dashboard.
+- Manager operational-performance dashboard.
+- Role-limited station and staff metrics.
+
+### Notification events
+
+- `analytics-refresh-completed`
+- `analytics-refresh-failed`
+- `report-ready`
+- `performance-threshold-reached`
+
+Analytics notifications are operationally useful but are not required for
+source data correctness.
+
+### Security requirements
+
+- Analytics reads are scoped by club, role, and permitted metric.
+- Customer trends are aggregated and do not expose individual customer
+  identities.
+- Raw payment, phone, credential, and sensitive staff data is excluded from
+  dashboard payloads unless explicitly authorized.
+- Analytics cannot mutate operational source records.
+- Fact creation is idempotent by source event.
+- Aggregate rebuilds are auditable and safe to retry.
+
+### Dependencies
+
+- Modules 3–9 source records and business-day boundaries.
+- Module 7 event projection pipeline.
+- Stable analytics fact schema.
+- Administrator and manager permissions.
+
+### Acceptance criteria
+
+- Dashboard metrics are generated from operational facts and trace back to
+  source records.
+- Revenue, orders, products, songs, DJ, kitchen, bar, staff, customer trends,
+  preparation time, and payment time are available at the authorized scope.
+- Reprocessing facts does not double-count.
+- Analytics failures do not block valid orders, payments, inventory movements,
+  or table sessions.
+- Exports respect tenant and role boundaries.
+
+### Estimated implementation order
+
+9 of 10; depends on all preceding operational modules and the business-day
+boundary.
+
+## 15. Module 11 — Smart Waiter Mode
+
+### Purpose
+
+Give waiters a live floor-management dashboard that identifies which tables
+need attention without waiting for customers to call.
+
+### Features
+
+- Live card for every active table.
+- Green status: everything normal.
+- Yellow status: customer has exceeded the configured service threshold.
+- Red status: immediate attention required.
+- Reasons:
+  - Customer called waiter.
+  - Food delayed.
+  - Drinks delayed.
+  - Payment requested.
+  - Split payment incomplete.
+  - Kitchen overdue.
+  - Bar overdue.
+  - Customer idle too long.
+- Table number.
+- Guest count.
+- Running tab.
+- Food status.
+- Drink status.
+- Kitchen status.
+- Bar status.
+- Song-request status.
+- Payment status.
+- Time since last service.
+- Current priority level.
+- Open table details.
+- Mark table visited.
+- Send updates to customer.
+- Notify kitchen.
+- Notify bar.
+- Escalate to manager.
+- Configurable thresholds from club settings.
+- Realtime priority recalculation from committed operational events.
+
+### Firestore collections
+
+- `tables`
+- `tableSessions`
+- `customerSessions`
+- `orders`
+- `orderItems`
+- `kitchenTickets`
+- `payments`
+- `paymentTokens`
+- `songRequests`
+- `notifications`
+- `serviceTimeline`
+- `staff`
+- `roles`
+- `settings`
+- `activityFeed`
+- `auditLogs`
+- `analyticsFacts`
+
+Optional denormalized read model:
+
+- `waiterFloorSnapshots`
+
+If introduced, it remains a projection and never replaces table sessions,
+orders, tickets, or payments as the source of truth.
+
+### API endpoints
+
+Waiter:
+
+- `GET /api/v1/staff/waiter/floor`
+- `GET /api/v1/staff/waiter/tables/:tableId`
+- `POST /api/v1/staff/waiter/tables/:tableId/visited`
+- `POST /api/v1/staff/waiter/tables/:tableId/customer-update`
+- `POST /api/v1/staff/waiter/tables/:tableId/notify-kitchen`
+- `POST /api/v1/staff/waiter/tables/:tableId/notify-bar`
+- `POST /api/v1/staff/waiter/tables/:tableId/escalate`
+
+Manager:
+
+- `GET /api/v1/staff/waiter/escalations`
+- `POST /api/v1/staff/waiter/escalations/:escalationId/resolve`
+
+### Mobile screens
+
+Staff Expo App:
+
+- Smart Waiter Mode floor board
+- Live table card
+- Table detail
+- Visit confirmation
+- Customer update composer
+- Kitchen/bar notification action
+- Manager escalation flow
+- Escalation history
+
+Customer Web App:
+
+- Safe waiter-update message/timeline state.
+- No internal priority colors or operational reasons unless product policy
+  explicitly allows a customer-safe equivalent.
+
+### Staff dashboards
+
+- Smart Waiter live floor dashboard.
+- Table detail and service timeline.
+- Escalation queue.
+- Manager escalation review.
+
+### Notification events
+
+- `waiter-attention-yellow`
+- `waiter-attention-red`
+- `customer-waiter-called`
+- `food-delay-detected`
+- `drink-delay-detected`
+- `payment-requested`
+- `split-payment-incomplete`
+- `kitchen-overdue`
+- `bar-overdue`
+- `customer-idle`
+- `table-visited`
+- `customer-update-sent`
+- `manager-escalated`
+- `escalation-resolved`
+
+### Security requirements
+
+- Only authorized waiters can view the active floor for their club.
+- Managers/admins can view and resolve escalations according to permissions.
+- Customer data is minimized to what is needed for service.
+- Priority calculations use server timestamps and settings, not client clocks.
+- Waiter actions are audited and idempotent.
+- Customer updates cannot expose internal staff notes or other tables.
+- A floor snapshot, if used, must respect source-record authorization and
+  eventual-consistency indicators.
+
+### Dependencies
+
+- Modules 2–9 operational state and events.
+- Module 7 realtime notification pipeline.
+- Module 9 business-day and settings boundaries.
+- Waiter and manager authorization.
+- Service threshold configuration.
+
+### Acceptance criteria
+
+- A waiter can immediately see every active table as a live card.
+- Cards show table number, guests, tab, food/drink/kitchen/bar/song/payment
+  states, last-service time, and priority.
+- Status changes to green/yellow/red follow configured thresholds and active
+  operational reasons.
+- Waiter actions update the correct source/projection records and notify the
+  correct team.
+- Manager escalation is visible and resolvable.
+- A waiter cannot see another club’s floor or modify unauthorized records.
+- Realtime updates do not require customers to call before a table becomes
+  visible as needing attention.
+
+### Estimated implementation order
+
+10 of 10; final operational module after the event, notification, business-day,
+and analytics foundations are stable.
+
+## 16. Cross-Module Verification Gates
+
+Every module must pass these gates before approval:
+
+1. Domain lifecycle and invariant tests.
+2. Application-service tests with injected repository fakes or contract
+   fixtures; no mock database is treated as production persistence.
+3. Firestore adapter tests against the Firebase emulator or authorized Firebase
+   project where required.
+4. API contract validation and generated-client synchronization.
+5. Authentication, tenant isolation, role, and permission tests.
+6. Idempotency and retry tests for every externally retriable command.
+7. Realtime projection and duplicate-event tests.
+8. Mobile/customer route boundary tests.
+9. Full TypeScript check and production build.
+10. Updated module documentation, collection indexes, event list, and
+    acceptance evidence.
+
+## 17. Dependency Sequence
+
+```text
+Module 1 + 1.5
+        |
+        v
+Module 2: Customer sessions
+        |
+        v
+Module 3: Ordering
+        |
+        v
+Module 4: Production routing
+        |\
+        | \
+        |  v
+        | Module 8: Inventory
+        v
+Module 5: Split bill
+        |
+        v
+Module 6: DJ requests
+        |
+        v
+Module 7: Realtime notifications
+        |
+        v
+Module 9: Business day
+        |
+        v
+Module 10: Analytics
+        |
+        v
+Module 11: Smart Waiter Mode
+```
+
+The practical implementation may build shared event and authorization
+infrastructure in parallel with an approved module, but no customer-facing or
+staff-facing feature may bypass the module gates above.
+
+## 18. Approval Boundary
+
+This roadmap is documentation only. It does not authorize:
+
+- Module 2 implementation.
+- Customer Web App feature implementation.
+- Staff dashboard implementation.
+- Live Firebase project connection.
+- M-Pesa or music-provider connection.
+- UI redesign.
+- Placeholder services, mock databases, or local substitutes for Firestore.
+
+Implementation stops here and waits for explicit approval of Module 2.

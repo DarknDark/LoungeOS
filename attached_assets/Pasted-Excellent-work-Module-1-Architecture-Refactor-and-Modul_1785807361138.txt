@@ -1,0 +1,459 @@
+Excellent work.
+
+Module 1 (Architecture Refactor) and Module 1.5 (Firebase Environment Preparation) are now COMPLETE.
+
+Do NOT modify the architecture unless it blocks implementation.
+
+Do NOT redesign the UI.
+
+Do NOT build placeholder implementations.
+
+Do NOT build mock databases.
+
+Everything from now onward must use the LoungeOS architecture that now exists.
+
+==================================================================
+NEXT STEP
+==================================================================
+
+Create the complete implementation roadmap for LoungeOS before writing Module 2.
+
+This roadmap will become the master implementation document for the remainder of the project.
+
+Do NOT implement any feature yet.
+
+I only want the roadmap.
+
+==================================================================
+ROADMAP REQUIREMENTS
+==================================================================
+
+Break the remaining system into implementation modules.
+
+For EACH module include:
+
+• Purpose
+• Features
+• Firestore collections
+• API endpoints
+• Mobile screens
+• Staff dashboards
+• Notification events
+• Security requirements
+• Dependencies
+• Acceptance criteria
+• Estimated implementation order
+
+==================================================================
+IMPLEMENTATION ORDER
+==================================================================
+
+MODULE 2
+Customer Table Session Engine
+
+Build the entire customer session lifecycle.
+
+Include:
+
+• QR table access
+• Table validation
+• Session creation
+• Session ownership
+• Session timeout
+• Session locking
+• Guest reconnection
+• Multi-device support
+• Session recovery after refresh
+• Running tab initialization
+
+Acceptance:
+One table can only have one active session owner.
+
+==================================================================
+
+MODULE 3
+Ordering Engine
+
+Build the ordering system.
+
+Include:
+
+• Food categories
+• Drink categories
+• Menu search
+• Product modifiers
+• Quantity
+• Special notes
+• Running tab
+• Multiple rounds
+• Edit pending items
+• Cancel pending items
+• Automatic totals
+• Taxes
+• Service charge support
+• Discount support
+
+Acceptance:
+Orders are created correctly and routed to the correct department.
+
+==================================================================
+
+MODULE 4
+Kitchen & Production Routing Engine
+
+Automatically route every order item.
+
+Departments:
+
+• Kitchen
+• Bar
+• Pork Station
+• Nyama Choma Station
+
+Each department gets its own secure dashboard.
+
+Statuses:
+
+Pending
+Accepted
+Preparing
+Ready
+Collected
+
+Customer timeline updates automatically.
+
+Notifications sent automatically.
+
+Acceptance:
+Items appear only on the dashboard responsible for producing them.
+
+==================================================================
+
+MODULE 5
+Split Bill Engine
+
+Implement the payment workflow exactly as designed.
+
+Rules:
+
+One customer owns the session.
+
+At payment:
+
+Display:
+
+"How many additional contributors will help pay?"
+
+The owner enters the number.
+
+Generate secure payment tokens.
+
+The table QR temporarily allows ONLY that number of contributors.
+
+Each contributor scans the QR.
+
+They DO NOT enter the LoungeOS dashboard.
+
+Instead they see ONLY:
+
+• Contribution amount
+• Phone number
+• Confirm table number
+• Confirm Till Number
+• Pay
+
+Each payment updates the owner's dashboard instantly.
+
+The owner sees:
+
+Paid
+Pending
+Outstanding Balance
+
+Waiter confirms final settlement.
+
+Session closes only after the remaining balance reaches zero.
+
+Tokens expire after payment or timeout.
+
+Acceptance:
+No contributor can access the lounge session or order food.
+
+==================================================================
+
+MODULE 6
+DJ Request Engine
+
+Implement:
+
+• Song search
+• Artist search
+• Duplicate request detection
+• Queue position
+• Estimated wait
+• Playing status
+• Skipped status
+• Skip reasons
+• Custom skip response
+• Re-request support
+• Request history
+
+DJ Dashboard:
+
+Buttons:
+
+Playing
+
+Skip
+
+Complete
+
+If skipped:
+
+Choose:
+
+Low BPM
+
+High BPM
+
+Genre mismatch
+
+Already played
+
+Not found
+
+Other
+
+Other allows custom response.
+
+Customers receive realtime updates.
+
+DJ profile includes:
+
+• Social links
+• Mix links
+• Streaming links
+
+Acceptance:
+Duplicate songs cannot enter the queue.
+
+==================================================================
+
+MODULE 7
+Realtime Notification Engine
+
+Notifications for:
+
+Customer
+
+Kitchen
+
+Bar
+
+Pork Station
+
+Nyama Station
+
+Waiter
+
+DJ
+
+Admin
+
+Notifications include:
+
+Order received
+
+Accepted
+
+Preparing
+
+Ready
+
+Collected
+
+Payment received
+
+Contribution received
+
+Song queued
+
+Song playing
+
+Song skipped
+
+Waiter called
+
+Inventory low
+
+Business day closed
+
+Acceptance:
+Every workflow produces realtime notifications.
+
+==================================================================
+
+MODULE 8
+Inventory Engine
+
+Implement:
+
+Products
+
+Ingredients
+
+Recipes
+
+Automatic stock deduction
+
+Purchases
+
+Suppliers
+
+Transfers
+
+Waste
+
+Damaged stock
+
+Low stock alerts
+
+Out of stock alerts
+
+Acceptance:
+Every completed order deducts inventory automatically.
+
+==================================================================
+
+MODULE 9
+Business Day Engine
+
+Implement:
+
+Open Business Day
+
+Close Business Day
+
+Cash reconciliation
+
+M-Pesa reconciliation
+
+Sales summary
+
+Expenses
+
+Inventory summary
+
+Shift reports
+
+Daily export
+
+Acceptance:
+Admin can close the business day with one action.
+
+==================================================================
+
+MODULE 10
+Analytics Engine
+
+Build dashboards for:
+
+Revenue
+
+Orders
+
+Popular drinks
+
+Popular food
+
+Popular songs
+
+DJ statistics
+
+Kitchen performance
+
+Bar performance
+
+Staff performance
+
+Customer trends
+
+Average preparation time
+
+Average payment time
+
+Acceptance:
+Statistics are generated from operational data.
+
+==================================================================
+ADDITIONAL FEATURE
+==================================================================
+
+Add a new module called:
+
+MODULE 11
+Smart Waiter Mode
+
+This feature gives waiters a live floor-management dashboard.
+
+Every table has a live status color:
+
+🟢 Green
+Everything is normal.
+
+🟡 Yellow
+Customer has waited longer than the configured service threshold.
+
+🔴 Red
+Immediate attention required.
+
+Reasons include:
+
+• Customer called waiter
+• Food delayed
+• Drinks delayed
+• Payment requested
+• Split payment incomplete
+• Kitchen overdue
+• Bar overdue
+• Customer idle for too long
+
+The waiter dashboard must display every table as a live card.
+
+Each card shows:
+
+• Table number
+• Number of guests
+• Running tab
+• Food status
+• Drink status
+• Kitchen status
+• Bar status
+• Song request status
+• Payment status
+• Time since last service
+• Current priority level
+
+Allow waiters to:
+
+• Open table details
+• Mark table visited
+• Send updates to customer
+• Notify kitchen
+• Notify bar
+• Escalate to manager
+
+Acceptance:
+Waiters should immediately know which tables require attention without waiting for customers to call them.
+
+==================================================================
+
+After generating this roadmap:
+
+STOP.
+
+Do NOT implement Module 2.
+
+Wait for approval before writing production code.
+
+This roadmap will be reviewed and approved before implementation begins.
