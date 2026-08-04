@@ -689,8 +689,16 @@ export class FirestoreOrderRepository implements OrderRepository {
       order.clubId,
       FIRESTORE_COLLECTIONS.orders,
     ).doc(order.id);
+    const orderItemsCollection = scopedCollection(
+      this.firestore,
+      order.clubId,
+      FIRESTORE_COLLECTIONS.orderItems,
+    );
     await this.firestore.runTransaction(async (transaction) => {
       const snapshot = await transaction.get(orderReference);
+      const existingItemsSnapshot = await transaction.get(
+        orderItemsCollection.where('orderId', '==', order.id),
+      );
       const current = snapshot.data() as Order | undefined;
       if ((current?.version ?? 0) !== expectedVersion) {
         throw new Error('STALE_VERSION');
@@ -700,13 +708,15 @@ export class FirestoreOrderRepository implements OrderRepository {
         { ...order, version: expectedVersion + 1 },
         { merge: true },
       );
+      const currentItemIds = new Set(items.map((item) => item.id));
+      for (const existingItem of existingItemsSnapshot.docs) {
+        if (!currentItemIds.has(existingItem.id)) {
+          transaction.delete(existingItem.ref);
+        }
+      }
       for (const item of items) {
         transaction.set(
-          scopedCollection(
-            this.firestore,
-            order.clubId,
-            FIRESTORE_COLLECTIONS.orderItems,
-          ).doc(item.id),
+          orderItemsCollection.doc(item.id),
           item,
           { merge: true },
         );
