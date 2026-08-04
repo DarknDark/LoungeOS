@@ -1,0 +1,182 @@
+The current implementation appears complete through Module 3. Before starting any new module, perform a full production verification and stabilization pass.
+
+Priority 1 – Verify every existing feature
+
+Do not build Module 4.
+
+Instead verify every implemented feature end-to-end.
+
+Test:
+
+Customer session creation
+QR validation
+Session recovery
+Heartbeats
+Session expiry
+Menu retrieval
+Draft order creation
+Draft editing
+Draft submission
+Order cancellation
+Inventory reservation
+Inventory release
+Running bill updates
+Notifications
+Timeline entries
+Audit logs
+Offline queue
+Retry logic
+Idempotency
+Optimistic locking
+Permission enforcement
+Customer authorization
+Staff authorization
+
+Fix every bug discovered.
+
+Do not assume features work because unit tests pass.
+
+Priority 2 – Remove technical debt
+
+Search the entire workspace for:
+
+TODO
+
+FIXME
+
+HACK
+
+TEMP
+
+XXX
+
+PLACEHOLDER
+
+MOCK
+
+DEMO
+
+FAKE
+
+STUB
+
+Remove or properly implement every remaining item.
+
+Priority 3 – Clean architecture review
+
+Review every layer.
+
+Ensure:
+
+no duplicated business logic
+no duplicated validation
+no duplicated pricing calculations
+no duplicated permission checks
+no duplicate repositories
+no dead code
+no unused exports
+no circular imports
+no abandoned files
+
+Refactor only where necessary.
+
+Priority 4 – Mobile verification
+
+Verify every existing screen still works.
+
+Do not redesign the UI.
+
+Check:
+
+loading states
+error states
+empty states
+offline mode
+reconnect
+Android
+Web preview
+
+No crashes.
+
+Priority 5 – API verification
+
+Verify every endpoint matches OpenAPI exactly.
+
+Confirm:
+
+request validation
+response validation
+error codes
+authentication
+authorization
+pagination
+optimistic locking
+idempotency
+
+Regenerate clients only if required.
+
+Priority 6 – Firebase readiness
+
+Do not fake Firebase.
+
+Instead verify that when the following Secrets are added:
+
+FIREBASE_PROJECT_ID
+FIREBASE_CLIENT_EMAIL
+FIREBASE_PRIVATE_KEY
+
+the application will immediately use the real Firebase project without any code changes.
+
+If anything prevents that, fix it.
+
+Priority 7 – Performance review
+
+Review for:
+
+unnecessary Firestore reads
+duplicate queries
+missing indexes
+N+1 queries
+expensive loops
+unnecessary rerenders
+large payloads
+duplicate API requests
+
+Optimize where appropriate.
+
+Priority 8 – Security review
+
+Review:
+
+authorization
+authentication
+token storage
+token expiration
+input validation
+rate limiting
+sensitive logging
+audit logs
+Firestore rules
+secret handling
+
+Fix any weakness.
+
+Priority 9 – Documentation
+
+Update documentation only where implementation changed.
+
+Do not create duplicate documentation.
+
+Priority 10 – Final report
+
+When complete provide:
+
+bugs fixed
+files modified
+architecture improvements
+performance improvements
+security improvements
+remaining blockers
+production readiness assessment
+
+Only after this stabilization pass is complete should we discuss Module 4.

@@ -74,6 +74,9 @@ onlyBuiltDependencies:
   - unrs-resolver
 
 overrides:
+  # Security patches for transitive packages used by the Expo/API toolchain.
+  fast-uri: 3.1.5
+  brace-expansion: 5.0.9
   # replit uses linux-x64 only, we can exclude all other platforms
   "esbuild>@esbuild/darwin-arm64": "-"
   "esbuild>@esbuild/darwin-x64": "-"
