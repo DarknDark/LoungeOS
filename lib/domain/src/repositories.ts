@@ -22,6 +22,7 @@ import type {
   Table,
   TableSession,
 } from './entities';
+import type { OfflineQueue, RealtimeRepository } from './infrastructure';
 import type { ClubId, ClubSettings, ISODateString } from './settings';
 
 export type PageQuery = {
@@ -42,6 +43,10 @@ export type TableRepository = {
   getById(clubId: ClubId, tableId: string): Promise<Table | null>;
   list(clubId: ClubId, query?: PageQuery): Promise<Page<Table>>;
   save(table: Table): Promise<void>;
+  saveIfVersion?: (
+    table: Table,
+    expectedVersion: number,
+  ) => Promise<void>;
 };
 
 export type TableSessionRepository = {
@@ -54,6 +59,10 @@ export type TableSessionRepository = {
     customerSession: CustomerSession;
     now: ISODateString;
   }): Promise<void>;
+  saveIfVersion?: (
+    session: TableSession,
+    expectedVersion: number,
+  ) => Promise<void>;
   createParticipantSession(input: {
     session: TableSession;
     customerSession: CustomerSession;
@@ -133,6 +142,16 @@ export type NotificationRepository = {
   save(notification: Notification): Promise<void>;
   listForRecipient(clubId: ClubId, recipientId: string, query?: PageQuery): Promise<Page<Notification>>;
   markRead(clubId: ClubId, notificationId: string, readAt: ISODateString): Promise<void>;
+  markDelivered?: (
+    clubId: ClubId,
+    notificationId: string,
+    deliveredAt: ISODateString,
+  ) => Promise<void>;
+  archive?: (
+    clubId: ClubId,
+    notificationId: string,
+    archivedAt: ISODateString,
+  ) => Promise<void>;
 };
 
 export type AuditRepository = {
@@ -143,6 +162,10 @@ export type AuditRepository = {
 export type SettingsRepository = {
   get(clubId: ClubId): Promise<ClubSettings>;
   save(settings: ClubSettings): Promise<void>;
+  saveIfVersion?: (
+    settings: ClubSettings,
+    expectedVersion: number,
+  ) => Promise<void>;
 };
 
 export type AnalyticsRepository = {
@@ -187,4 +210,6 @@ export type RepositoryRegistry = {
   activityFeed: ActivityFeedRepository;
   serviceTimeline: ServiceTimelineRepository;
   businessDays: BusinessDayRepository;
+  realtime?: RealtimeRepository;
+  offlineQueue?: OfflineQueue;
 };

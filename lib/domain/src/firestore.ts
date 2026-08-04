@@ -25,6 +25,7 @@ export const FIRESTORE_COLLECTIONS = {
   analyticsFacts: 'analyticsFacts',
   analyticsAggregates: 'analyticsAggregates',
   activityFeed: 'activityFeed',
+  offlineQueue: 'offlineQueue',
 } as const;
 
 export type FirestoreCollection = (typeof FIRESTORE_COLLECTIONS)[keyof typeof FIRESTORE_COLLECTIONS];

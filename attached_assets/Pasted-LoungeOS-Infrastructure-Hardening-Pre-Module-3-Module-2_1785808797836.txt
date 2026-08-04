@@ -1,0 +1,313 @@
+LoungeOS – Infrastructure Hardening (Pre-Module 3)
+
+Module 2 has been completed successfully and verified.
+
+Do NOT begin Module 3 (Ordering Engine) yet.
+
+Do NOT redesign the mobile UI.
+
+Do NOT change any existing customer or staff screens.
+
+The objective of this phase is to finish the production infrastructure so every future module is built on a stable foundation.
+
+1. Global Audit Logging
+
+Implement a reusable audit logging system.
+
+Create:
+
+AuditService
+AuditRepository
+
+Firestore collection:
+
+clubs/{clubId}/auditLogs
+
+Every important action must automatically create an audit record.
+
+Examples:
+
+Session started
+Guest joined
+Session recovered
+Session closed
+Order created
+Order cancelled
+Payment completed
+Waiter accepted request
+Inventory updated
+Business day opened
+Business day closed
+Configuration changed
+DJ request accepted
+
+Each audit record should contain:
+
+actorId
+actorType
+action
+resourceType
+resourceId
+timestamp
+metadata
+2. Universal Notification Engine
+
+Create one reusable notification engine.
+
+Create:
+
+NotificationService
+NotificationRepository
+
+Support notification categories:
+
+Waiter
+Kitchen
+Bar
+DJ
+Payment
+Inventory
+Session
+Business Day
+Administration
+
+Supported operations:
+
+createNotification()
+markRead()
+markDelivered()
+archiveNotification()
+
+Future modules must reuse this service.
+
+3. Activity Timeline Engine
+
+Create a reusable timeline service.
+
+Firestore:
+
+clubs/{clubId}/serviceTimeline
+
+Timeline events include:
+
+Session started
+Guest joined
+Order created
+Food prepared
+Drink served
+Payment received
+Song requested
+Session closed
+
+Create:
+
+TimelineRepository
+TimelineService
+4. Internal Event Bus
+
+Implement a provider-neutral internal event bus.
+
+Example events:
+
+SessionStarted
+GuestJoined
+OrderCreated
+OrderPrepared
+PaymentCompleted
+InventoryUpdated
+DJRequestCreated
+BusinessClosed
+
+Modules should publish events instead of calling each other directly.
+
+5. Background Worker Framework
+
+Create reusable scheduling infrastructure.
+
+Do not implement jobs yet.
+
+Prepare support for:
+
+Session expiration
+Notification retries
+Inventory monitoring
+Analytics aggregation
+Receipt cleanup
+Business-day reminders
+6. Metrics Framework
+
+Create reusable metrics collectors.
+
+Future modules should publish metrics only.
+
+Examples:
+
+Orders today
+Revenue
+Occupied tables
+Wait times
+Popular menu items
+Staff response time
+Kitchen preparation time
+
+No dashboards yet.
+
+7. Soft Delete Framework
+
+Support logical deletion using:
+
+deletedAt
+deletedBy
+deletedReason
+
+Repositories must ignore deleted records by default.
+
+8. Optimistic Locking
+
+Protect Firestore writes using:
+
+version
+updatedAt
+
+Reject stale concurrent updates.
+
+9. Realtime Subscription Layer
+
+Create reusable realtime listeners.
+
+Expose APIs such as:
+
+subscribeToSessions()
+subscribeToOrders()
+subscribeToNotifications()
+subscribeToInventory()
+subscribeToDJQueue()
+
+No UI implementation.
+
+10. Offline Queue Foundation
+
+Create synchronization infrastructure.
+
+Support queued:
+
+create
+update
+delete
+retry
+conflict detection
+
+No offline UI.
+
+11. Standard Error Codes
+
+Replace generic errors with reusable LoungeOS error codes.
+
+Examples:
+
+TABLE_ALREADY_OCCUPIED
+SESSION_EXPIRED
+INVALID_QR
+PAYMENT_REQUIRED
+ORDER_NOT_FOUND
+ITEM_OUT_OF_STOCK
+NOT_AUTHORIZED
+BUSINESS_DAY_CLOSED
+12. Configuration Validation
+
+Validate Club Configuration during application startup.
+
+Missing required configuration must fail fast with descriptive errors.
+
+13. Performance Monitoring
+
+Measure:
+
+Firestore query duration
+Repository execution time
+Service execution time
+API latency
+
+Never log secret values or customer-sensitive information.
+
+14. Testing
+
+Create unit tests for every infrastructure service.
+
+Add integration tests where appropriate.
+
+Do not introduce mock runtime persistence or fallback databases.
+
+Additional Recommendation (Implement During This Phase)
+
+While implementing the infrastructure, also create the project's technical documentation so future development remains consistent.
+
+Generate the following automatically:
+
+Architecture Documentation
+Mermaid architecture diagram
+Layer dependency diagram
+Workspace dependency diagram
+Service interaction diagram
+Firestore Documentation
+Complete collection hierarchy
+Document schemas
+Index documentation
+Security rule documentation
+API Documentation
+Endpoint catalogue
+Authentication requirements
+Request/response examples
+Error code reference
+Sequence Diagrams
+
+Create Mermaid sequence diagrams for:
+
+Customer scans QR and opens a session
+Guest joins an existing table session
+Session recovery flow
+Notification flow
+Staff authentication flow
+Payment lifecycle
+Order lifecycle
+Entity Relationship Documentation
+
+Document all Firestore entities and relationships.
+
+Developer Documentation
+
+Create a /docs structure containing:
+
+docs/
+    architecture/
+    api/
+    firestore/
+    diagrams/
+    modules/
+    security/
+    testing/
+
+These documents must stay synchronized with the implementation and become the reference for all future modules.
+
+Verification
+
+After completion:
+
+Run full workspace typecheck.
+Run all unit and integration tests.
+Build the API.
+Restart the API workflow.
+Verify Expo still runs correctly.
+Confirm no UI changes were made.
+Confirm no Module 3 code was implemented.
+
+Finally, provide a completion report including:
+
+All files created
+All files modified
+Test results
+Build results
+Verification results
+Remaining blockers before starting Module 3
+
+Do not proceed to Module 3 until this infrastructure phase is fully complete and verified.

@@ -1,5 +1,6 @@
 import type {
   CustomerSession,
+  DomainEvent,
   Notification,
   Table,
   TableSession,
@@ -7,7 +8,10 @@ import type {
 import {
   assertTableSessionTransition,
   type ClubSettings,
+  type AuditLog,
+  type EventPublisher,
   type RepositoryRegistry,
+  validateClubSettings,
 } from '@workspace/domain';
 import type {
   RequestActor,
@@ -30,6 +34,7 @@ export type TableSessionServiceDependencies = {
   >;
   ids: { next(): string };
   tokens: { next(): string; hash(value: string): string };
+  events?: EventPublisher;
 };
 
 export class TableSessionError extends Error {
@@ -73,10 +78,18 @@ function isExpiringSoon(now: string, expiresAt: string): boolean {
 }
 
 function validateSettings(settings: ClubSettings): void {
+  try {
+    validateClubSettings(settings);
+  } catch {
+    throw new TableSessionError(
+      'Club configuration is invalid.',
+      'CONFIGURATION_INVALID',
+    );
+  }
   if (
     settings.business.sessionTimeoutMinutes <= 0 ||
     settings.business.maximumTableTimeMinutes <= 0 ||
-    settings.business.maximumContributors < 0
+    settings.business.maximumContributors < 1
   ) {
     throw new TableSessionError(
       'Club session settings contain invalid timeout or contributor limits.',
@@ -97,6 +110,7 @@ function notification(
     clubId: session.clubId,
     recipientId,
     priority: 'normal',
+    category: 'session',
     message,
     relatedRecord: { type: 'tableSession', id: session.id },
     createdAt: now,
@@ -111,6 +125,37 @@ export function createTableSessionService(
     ids,
     tokens,
   } = dependencies;
+
+  async function recordAudit(
+    actor: RequestActor,
+    action: string,
+    resourceType: string,
+    resourceId: string,
+    timestamp: string,
+    metadata: Record<string, unknown> = {},
+  ): Promise<void> {
+    const actorId = actor.id ?? actor.staffId ?? actor.customerSessionId;
+    const record: AuditLog = {
+      id: ids.next(),
+      clubId: actor.clubId,
+      ...(actorId ? { actorId } : {}),
+      actorType: actor.kind,
+      action,
+      resourceType,
+      resourceId,
+      timestamp,
+      metadata,
+      createdAt: timestamp,
+    };
+    await repos.audit.append(record);
+  }
+
+  async function publishEvent(
+    event: Omit<DomainEvent, 'id'>,
+  ): Promise<void> {
+    if (!dependencies.events) return;
+    await dependencies.events.publish({ ...event, id: ids.next() });
+  }
 
   async function settingsFor(clubId: string): Promise<ClubSettings> {
     const settings = await repos.settings.get(clubId);
@@ -207,6 +252,22 @@ export function createTableSessionService(
           message: 'Your table session expired.',
           sourceRecord: { type: 'tableSession', id: session.id },
           occurredAt: now,
+        });
+        await recordAudit(
+          actor,
+          'session-expired',
+          'tableSession',
+          session.id,
+          now,
+          { tableId: session.tableId, customerSessionId: customer.id },
+        );
+        await publishEvent({
+          clubId: session.clubId,
+          occurredAt: now,
+          actorId: actor.customerSessionId,
+          sourceRecord: { type: 'tableSession', id: session.id },
+          type: 'SessionExpired',
+          data: { tableId: session.tableId, customerSessionId: customer.id },
         });
       }
       throw new TableSessionError('The table session has expired.', 'SESSION_EXPIRED');
@@ -337,6 +398,22 @@ export function createTableSessionService(
         sourceRecord: { type: 'tableSession', id: session.id },
         occurredAt: input.now,
       });
+      await recordAudit(
+        input.actor,
+        'session-started',
+        'tableSession',
+        session.id,
+        input.now,
+        { tableId: session.tableId, customerSessionId: customer.id },
+      );
+      await publishEvent({
+        clubId: session.clubId,
+        occurredAt: input.now,
+        actorId: input.actor.customerSessionId,
+        sourceRecord: { type: 'tableSession', id: session.id },
+        type: 'SessionStarted',
+        data: { tableId: session.tableId, customerSessionId: customer.id },
+      });
       return access(session, customer, recoveryToken);
     },
 
@@ -432,6 +509,22 @@ export function createTableSessionService(
           input.now,
         ),
       );
+      await recordAudit(
+        input.actor,
+        'guest-joined',
+        'tableSession',
+        session.id,
+        input.now,
+        { customerSessionId: customer.id, deviceId: input.deviceId },
+      );
+      await publishEvent({
+        clubId: session.clubId,
+        occurredAt: input.now,
+        actorId: input.actor.customerSessionId,
+        sourceRecord: { type: 'tableSession', id: session.id },
+        type: 'GuestJoined',
+        data: { customerSessionId: customer.id, deviceId: input.deviceId },
+      });
       return access(session, customer, recoveryToken);
     },
 
@@ -482,6 +575,22 @@ export function createTableSessionService(
           input.now,
         ),
       );
+      await recordAudit(
+        input.actor,
+        'session-recovered',
+        'tableSession',
+        active.id,
+        input.now,
+        { customerSessionId: restored.id, deviceId: restored.deviceId },
+      );
+      await publishEvent({
+        clubId: active.clubId,
+        occurredAt: input.now,
+        actorId: input.actor.customerSessionId,
+        sourceRecord: { type: 'tableSession', id: active.id },
+        type: 'SessionRecovered',
+        data: { customerSessionId: restored.id, deviceId: restored.deviceId },
+      });
       return access(active, restored, input.recoveryToken);
     },
 
@@ -571,6 +680,22 @@ export function createTableSessionService(
         message: 'Your table session has closed.',
         sourceRecord: { type: 'tableSession', id: session.id },
         occurredAt: input.now,
+      });
+      await recordAudit(
+        input.actor,
+        'session-closed',
+        'tableSession',
+        session.id,
+        input.now,
+        { tableId: session.tableId },
+      );
+      await publishEvent({
+        clubId: session.clubId,
+        occurredAt: input.now,
+        actorId: input.actor.id ?? input.actor.staffId,
+        sourceRecord: { type: 'tableSession', id: session.id },
+        type: 'SessionClosed',
+        data: { tableId: session.tableId },
       });
     },
   };

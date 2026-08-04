@@ -1,0 +1,31 @@
+export const LOUNGE_ERROR_CODES = {
+  TABLE_ALREADY_OCCUPIED: 'TABLE_ALREADY_OCCUPIED',
+  SESSION_EXPIRED: 'SESSION_EXPIRED',
+  INVALID_QR: 'INVALID_QR',
+  PAYMENT_REQUIRED: 'PAYMENT_REQUIRED',
+  ORDER_NOT_FOUND: 'ORDER_NOT_FOUND',
+  ITEM_OUT_OF_STOCK: 'ITEM_OUT_OF_STOCK',
+  NOT_AUTHORIZED: 'NOT_AUTHORIZED',
+  BUSINESS_DAY_CLOSED: 'BUSINESS_DAY_CLOSED',
+  RESOURCE_NOT_FOUND: 'RESOURCE_NOT_FOUND',
+  CONFLICT: 'CONFLICT',
+  STALE_VERSION: 'STALE_VERSION',
+  CONFIGURATION_INVALID: 'CONFIGURATION_INVALID',
+  FIREBASE_NOT_CONFIGURED: 'FIREBASE_NOT_CONFIGURED',
+  CONTRIBUTOR_LIMIT: 'CONTRIBUTOR_LIMIT',
+  SESSION_NOT_ACTIVE: 'SESSION_NOT_ACTIVE',
+} as const;
+
+export type LoungeErrorCode =
+  (typeof LOUNGE_ERROR_CODES)[keyof typeof LOUNGE_ERROR_CODES];
+
+export class LoungeError extends Error {
+  constructor(
+    readonly code: LoungeErrorCode,
+    message: string,
+    readonly details?: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = 'LoungeError';
+  }
+}

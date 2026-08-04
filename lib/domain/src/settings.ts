@@ -136,8 +136,43 @@ export type ClubSettings = {
     defaultStationName: string;
     ticketPriority: 'normal' | 'high';
   };
+  version?: number;
   updatedAt?: ISODateString;
 };
+
+export function validateClubSettings(settings: ClubSettings): void {
+  const errors: string[] = [];
+  if (!settings.clubId.trim()) errors.push('clubId is required');
+  if (!settings.general.name.trim()) errors.push('general.name is required');
+  if (!settings.general.currency.code.trim()) {
+    errors.push('general.currency.code is required');
+  }
+  if (!settings.general.timezone.trim()) errors.push('general.timezone is required');
+  if (!settings.business.openingTime.match(/^\d{2}:\d{2}$/)) {
+    errors.push('business.openingTime must use HH:mm');
+  }
+  if (!settings.business.closingTime.match(/^\d{2}:\d{2}$/)) {
+    errors.push('business.closingTime must use HH:mm');
+  }
+  if (settings.business.sessionTimeoutMinutes <= 0) {
+    errors.push('business.sessionTimeoutMinutes must be positive');
+  }
+  if (settings.business.maximumTableTimeMinutes <= 0) {
+    errors.push('business.maximumTableTimeMinutes must be positive');
+  }
+  if (settings.business.maximumContributors < 1) {
+    errors.push('business.maximumContributors must be at least 1');
+  }
+  if (settings.payments.supportedMethods.length === 0) {
+    errors.push('payments.supportedMethods must contain at least one method');
+  }
+  if (!settings.themes[settings.themes.mode === 'custom' ? 'custom' : settings.themes.mode]) {
+    errors.push(`themes.${settings.themes.mode} palette is required`);
+  }
+  if (errors.length > 0) {
+    throw new Error(`CONFIGURATION_INVALID: ${errors.join('; ')}`);
+  }
+}
 
 /**
  * Editable seed configuration for the first deployment.
@@ -173,6 +208,14 @@ export const DEFAULT_CLUB_SETTINGS: ClubSettings = {
   },
   themes: {
     mode: 'dark',
+    dark: {
+      background: '#0c0b0d',
+      foreground: '#f4efe6',
+      primary: '#e2aa3f',
+      primaryForeground: '#1b1409',
+      card: '#171417',
+      border: '#30282c',
+    },
     custom: {
       background: '#0c0b0d',
       foreground: '#f4efe6',

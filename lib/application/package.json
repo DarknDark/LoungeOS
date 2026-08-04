@@ -11,7 +11,7 @@
     "@workspace/domain": "workspace:*"
   },
   "scripts": {
-    "test": "tsx --test tests/table-sessions.test.ts"
+    "test": "tsx --test tests/*.test.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",

@@ -30,9 +30,18 @@ import type {
   TableSessionRepository,
   RoleRepository,
   AuditRepository,
+  RealtimeChange,
+  RealtimeRepository,
+  RealtimeSubscription,
+  OfflineQueue,
+  SyncQueueItem,
 } from '@workspace/domain';
 
 type DocumentData = Record<string, unknown>;
+
+function isDeleted(data: DocumentData | undefined): boolean {
+  return Boolean(data?.deletedAt);
+}
 
 function documentWithId<T extends object>(
   id: string,
@@ -53,7 +62,7 @@ function pageFromSnapshot<T extends object>(
   return {
     items: documents
       .map((document) => documentWithId<T>(document.id, document.data()))
-      .filter((item): item is T => item !== null),
+      .filter((item): item is T => item !== null && !isDeleted(item as DocumentData)),
     ...(snapshot.docs.length > limit
       ? { nextCursor: documents.at(-1)?.id }
       : {}),
@@ -95,7 +104,8 @@ export class FirestoreTableRepository implements TableRepository {
     )
       .doc(tableId)
       .get();
-    return documentWithId<Table>(document.id, document.data());
+    const data = document.data();
+    return isDeleted(data) ? null : documentWithId<Table>(document.id, data);
   }
 
   async list(clubId: string, query?: DomainPageQuery): Promise<Page<Table>> {
@@ -122,6 +132,26 @@ export class FirestoreTableRepository implements TableRepository {
       .doc(table.id)
       .set(table, { merge: true });
   }
+
+  async saveIfVersion(table: Table, expectedVersion: number): Promise<void> {
+    const reference = scopedCollection(
+      this.firestore,
+      table.clubId,
+      FIRESTORE_COLLECTIONS.tables,
+    ).doc(table.id);
+    await this.firestore.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(reference);
+      const current = snapshot.data() as Table | undefined;
+      if ((current?.version ?? 0) !== expectedVersion) {
+        throw new Error('STALE_VERSION');
+      }
+      transaction.set(
+        reference,
+        { ...table, version: expectedVersion + 1 },
+        { merge: true },
+      );
+    });
+  }
 }
 
 export class FirestoreTableSessionRepository implements TableSessionRepository {
@@ -135,7 +165,10 @@ export class FirestoreTableSessionRepository implements TableSessionRepository {
     )
       .doc(sessionId)
       .get();
-    return documentWithId<TableSession>(document.id, document.data());
+    const data = document.data();
+    return isDeleted(data)
+      ? null
+      : documentWithId<TableSession>(document.id, data);
   }
 
   async getActiveForTable(
@@ -158,7 +191,10 @@ export class FirestoreTableSessionRepository implements TableSessionRepository {
       .limit(1)
       .get();
     const document = snapshot.docs[0];
-    return document ? documentWithId<TableSession>(document.id, document.data()) : null;
+    const data = document?.data();
+    return document && !isDeleted(data)
+      ? documentWithId<TableSession>(document.id, data)
+      : null;
   }
 
   async save(session: TableSession): Promise<void> {
@@ -169,6 +205,26 @@ export class FirestoreTableSessionRepository implements TableSessionRepository {
     )
       .doc(session.id)
       .set(session, { merge: true });
+  }
+
+  async saveIfVersion(session: TableSession, expectedVersion: number): Promise<void> {
+    const reference = scopedCollection(
+      this.firestore,
+      session.clubId,
+      FIRESTORE_COLLECTIONS.tableSessions,
+    ).doc(session.id);
+    await this.firestore.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(reference);
+      const current = snapshot.data() as TableSession | undefined;
+      if ((current?.version ?? 0) !== expectedVersion) {
+        throw new Error('STALE_VERSION');
+      }
+      transaction.set(
+        reference,
+        { ...session, version: expectedVersion + 1 },
+        { merge: true },
+      );
+    });
   }
 
   async createOwnerSession(input: {
@@ -291,7 +347,10 @@ export class FirestoreCustomerSessionRepository
     )
       .doc(sessionId)
       .get();
-    return documentWithId<CustomerSession>(document.id, document.data());
+    const data = document.data();
+    return isDeleted(data)
+      ? null
+      : documentWithId<CustomerSession>(document.id, data);
   }
 
   async getByDeviceId(
@@ -309,8 +368,9 @@ export class FirestoreCustomerSessionRepository
       .limit(1)
       .get();
     const document = snapshot.docs[0];
-    return document
-      ? documentWithId<CustomerSession>(document.id, document.data())
+    const data = document?.data();
+    return document && !isDeleted(data)
+      ? documentWithId<CustomerSession>(document.id, data)
       : null;
   }
 
@@ -365,6 +425,29 @@ export class FirestoreSettingsRepository implements SettingsRepository {
     )
       .doc('current')
       .set(settings, { merge: true });
+  }
+
+  async saveIfVersion(settings: ClubSettings, expectedVersion: number): Promise<void> {
+    const reference = scopedCollection(
+      this.firestore,
+      settings.clubId,
+      FIRESTORE_COLLECTIONS.settings,
+    ).doc('current');
+    await this.firestore.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(reference);
+      const current = snapshot.data() as ClubSettings | undefined;
+      if ((current?.version ?? 0) !== expectedVersion) {
+        throw new Error('STALE_VERSION');
+      }
+      transaction.set(
+        reference,
+        {
+          ...settings,
+          version: expectedVersion + 1,
+        },
+        { merge: true },
+      );
+    });
   }
 }
 
@@ -442,6 +525,34 @@ export class FirestoreNotificationRepository implements NotificationRepository {
       .doc(notificationId)
       .set({ readAt }, { merge: true });
   }
+
+  async markDelivered(
+    clubId: string,
+    notificationId: string,
+    deliveredAt: string,
+  ): Promise<void> {
+    await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.notifications,
+    )
+      .doc(notificationId)
+      .set({ deliveredAt }, { merge: true });
+  }
+
+  async archive(
+    clubId: string,
+    notificationId: string,
+    archivedAt: string,
+  ): Promise<void> {
+    await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.notifications,
+    )
+      .doc(notificationId)
+      .set({ archivedAt }, { merge: true });
+  }
 }
 
 export class FirestoreServiceTimelineRepository
@@ -518,6 +629,147 @@ export class FirestoreAuditRepository implements AuditRepository {
   }
 }
 
+export class FirestoreRealtimeRepository implements RealtimeRepository {
+  constructor(private readonly firestore: Firestore) {}
+
+  private subscribe(
+    query: FirebaseFirestore.Query,
+    listener: (change: RealtimeChange<Record<string, unknown>>) => void,
+  ): RealtimeSubscription {
+    const unsubscribe = query.onSnapshot((snapshot) => {
+      for (const change of snapshot.docChanges()) {
+        const data = change.doc.data();
+        if (isDeleted(data)) continue;
+        listener({
+          type: change.type,
+          value: { id: change.doc.id, ...data },
+        });
+      }
+    });
+    return { unsubscribe };
+  }
+
+  subscribeToSessions(
+    clubId: string,
+    listener: Parameters<RealtimeRepository['subscribeToSessions']>[1],
+  ): RealtimeSubscription {
+    return this.subscribe(
+      scopedCollection(this.firestore, clubId, FIRESTORE_COLLECTIONS.tableSessions),
+      listener,
+    );
+  }
+
+  subscribeToOrders(
+    clubId: string,
+    listener: Parameters<RealtimeRepository['subscribeToOrders']>[1],
+  ): RealtimeSubscription {
+    return this.subscribe(
+      scopedCollection(this.firestore, clubId, FIRESTORE_COLLECTIONS.orders),
+      listener,
+    );
+  }
+
+  subscribeToNotifications(
+    clubId: string,
+    recipientId: string,
+    listener: Parameters<RealtimeRepository['subscribeToNotifications']>[2],
+  ): RealtimeSubscription {
+    return this.subscribe(
+      scopedCollection(
+        this.firestore,
+        clubId,
+        FIRESTORE_COLLECTIONS.notifications,
+      ).where('recipientId', '==', recipientId),
+      listener,
+    );
+  }
+
+  subscribeToInventory(
+    clubId: string,
+    listener: Parameters<RealtimeRepository['subscribeToInventory']>[1],
+  ): RealtimeSubscription {
+    return this.subscribe(
+      scopedCollection(this.firestore, clubId, FIRESTORE_COLLECTIONS.inventoryItems),
+      listener,
+    );
+  }
+
+  subscribeToDJQueue(
+    clubId: string,
+    listener: Parameters<RealtimeRepository['subscribeToDJQueue']>[1],
+  ): RealtimeSubscription {
+    return this.subscribe(
+      scopedCollection(this.firestore, clubId, FIRESTORE_COLLECTIONS.songRequests)
+        .where('status', 'in', ['queued', 'playing']),
+      listener,
+    );
+  }
+}
+
+export class FirestoreOfflineQueue implements OfflineQueue {
+  constructor(private readonly firestore: Firestore) {}
+
+  private collection(clubId: string) {
+    return scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.offlineQueue,
+    );
+  }
+
+  async enqueue(item: SyncQueueItem): Promise<void> {
+    await this.collection(item.clubId)
+      .doc(item.id)
+      .create(item)
+      .catch((error: unknown) => {
+        if ((error as { code?: number }).code === 6) return;
+        throw error;
+      });
+  }
+
+  async listReady(clubId: string, now: string): Promise<SyncQueueItem[]> {
+    const snapshot = await this.collection(clubId).get();
+    return snapshot.docs
+      .map((document) => documentWithId<SyncQueueItem>(document.id, document.data()))
+      .filter(
+        (item): item is SyncQueueItem =>
+          Boolean(item && !item.completedAt && item.nextAttemptAt <= now),
+      )
+      .sort((left, right) =>
+        left.nextAttemptAt.localeCompare(right.nextAttemptAt),
+      );
+  }
+
+  async markRetry(
+    clubId: string,
+    id: string,
+    nextAttemptAt: string,
+    error: string,
+  ): Promise<void> {
+    const document = await this.collection(clubId).doc(id).get();
+    if (!document.exists) return;
+    const current = document.data() as SyncQueueItem;
+    await document.ref.set(
+      {
+        attempts: current.attempts + 1,
+        nextAttemptAt,
+        lastError: error,
+      },
+      { merge: true },
+    );
+  }
+
+  async markCompleted(
+    clubId: string,
+    id: string,
+    completedAt: string,
+  ): Promise<void> {
+    const document = await this.collection(clubId).doc(id).get();
+    if (!document.exists) return;
+    await document.ref.set({ completedAt }, { merge: true });
+  }
+}
+
 export class FirestoreStaffRepository implements StaffRepository {
   constructor(private readonly firestore: Firestore) {}
 
@@ -577,6 +829,8 @@ export type Module2Repositories = Pick<
   | 'settings'
   | 'serviceTimeline'
   | 'businessDays'
+   | 'realtime'
+   | 'offlineQueue'
 >;
 
 export function createModule2Repositories(firestore: Firestore): Module2Repositories {
@@ -592,5 +846,7 @@ export function createModule2Repositories(firestore: Firestore): Module2Reposito
     settings: new FirestoreSettingsRepository(firestore),
     serviceTimeline: new FirestoreServiceTimelineRepository(firestore),
     businessDays: new FirestoreBusinessDayRepository(firestore),
+    realtime: new FirestoreRealtimeRepository(firestore),
+    offlineQueue: new FirestoreOfflineQueue(firestore),
   };
 }

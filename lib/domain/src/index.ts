@@ -4,3 +4,6 @@ export * from './repositories';
 export * from './settings';
 export * from './lifecycles';
 export * from './firestore';
+export * from './records';
+export * from './errors';
+export * from './infrastructure';

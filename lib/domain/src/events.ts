@@ -14,3 +14,10 @@ export type DomainEvent = {
 export type EventPublisher = {
   publish(event: DomainEvent): Promise<void>;
 };
+
+export type EventSubscriber = {
+  subscribe(
+    eventType: string,
+    handler: (event: DomainEvent) => Promise<void> | void,
+  ): () => void;
+};

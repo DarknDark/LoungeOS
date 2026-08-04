@@ -1,4 +1,5 @@
 import type { ClubId, ClubSettings, ISODateString } from './settings';
+import type { VersionedRecord } from './records';
 
 export type EntityId = string;
 export type CurrencyCode = string;
@@ -21,7 +22,7 @@ export type TableStatus =
   | 'closed'
   | 'ready-for-next-customer';
 
-export type Table = {
+export type Table = VersionedRecord & {
   id: EntityId;
   clubId: ClubId;
   number: number;
@@ -44,7 +45,7 @@ export type TableSessionStatus =
   | 'closed'
   | 'expired';
 
-export type TableSession = {
+export type TableSession = VersionedRecord & {
   id: EntityId;
   clubId: ClubId;
   tableId: EntityId;
@@ -58,7 +59,7 @@ export type TableSession = {
   lastActivityAt: ISODateString;
 };
 
-export type CustomerSession = {
+export type CustomerSession = VersionedRecord & {
   id: EntityId;
   clubId: ClubId;
   tableSessionId: EntityId;
@@ -252,17 +253,30 @@ export type InventoryTransaction = {
 };
 
 export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent';
+export type NotificationCategory =
+  | 'waiter'
+  | 'kitchen'
+  | 'bar'
+  | 'dj'
+  | 'payment'
+  | 'inventory'
+  | 'session'
+  | 'business-day'
+  | 'administration';
 
-export type Notification = {
+export type Notification = VersionedRecord & {
   id: EntityId;
   clubId: ClubId;
   recipientId?: EntityId;
   recipientRole?: StaffRoleName;
   priority: NotificationPriority;
+  category: NotificationCategory;
   message: string;
   relatedRecord?: { type: string; id: EntityId };
   createdAt: ISODateString;
   readAt?: ISODateString;
+  deliveredAt?: ISODateString;
+  archivedAt?: ISODateString;
 };
 
 export type AuditAction =
@@ -279,11 +293,18 @@ export type AuditAction =
   | 'staff-role-changed'
   | string;
 
+export type AuditActorType = 'customer' | 'staff' | 'system' | 'payment-contributor';
+
 export type AuditLog = {
   id: EntityId;
   clubId: ClubId;
   actorId?: EntityId;
+  actorType: AuditActorType;
   action: AuditAction;
+  resourceType: string;
+  resourceId?: EntityId;
+  timestamp: ISODateString;
+  metadata: Record<string, unknown>;
   target?: { type: string; id: EntityId };
   reason?: string;
   before?: Record<string, unknown>;
