@@ -10,6 +10,8 @@ export type AuthTokenGetter = () => Promise<string | null> | string | null;
 
 const NO_BODY_STATUS = new Set([204, 205, 304]);
 const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
+const MAX_RETRIES = 3;
+const inFlightRequests = new Map<string, Promise<unknown>>();
 
 // ---------------------------------------------------------------------------
 // Module-level configuration
@@ -89,6 +91,31 @@ function mergeHeaders(...sources: Array<HeadersInit | undefined>): Headers {
   }
 
   return headers;
+}
+
+function requestKey(url: string, method: string, headers: Headers, body: BodyInit | null | undefined): string {
+  const headerKey = Array.from(headers.entries())
+    .filter(([key]) => key !== "authorization" && key !== "x-customer-session-token")
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, value]) => `${key}:${value}`)
+    .join("|");
+  return `${method} ${url} ${headerKey} ${typeof body === "string" ? body : ""}`;
+}
+
+function canRetry(method: string, headers: Headers): boolean {
+  return method === "GET" || method === "HEAD" || method === "OPTIONS" || headers.has("idempotency-key");
+}
+
+function shouldRetry(error: unknown): boolean {
+  if (error instanceof ApiError) {
+    return error.status === 408 || error.status === 425 || error.status === 429 || error.status >= 500;
+  }
+  return error instanceof TypeError || error instanceof ResponseParseError;
+}
+
+function retryDelay(attempt: number): Promise<void> {
+  const delay = Math.min(1_000 * 2 ** attempt, 4_000) + Math.floor(Math.random() * 250);
+  return new Promise((resolve) => setTimeout(resolve, delay));
 }
 
 function getMediaType(headers: Headers): string | null {
@@ -359,13 +386,34 @@ export async function customFetch<T = unknown>(
   }
 
   const requestInfo = { method, url: resolveUrl(input) };
+  const key = requestKey(requestInfo.url, method, headers, init.body);
+  const shouldDeduplicate = method === "GET" || method === "HEAD";
+  const existing = shouldDeduplicate ? inFlightRequests.get(key) : undefined;
+  if (existing) return existing as Promise<T>;
 
-  const response = await fetch(input, { ...init, method, headers });
+  const request = (async () => {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        const response = await fetch(input, { ...init, method, headers });
 
-  if (!response.ok) {
-    const errorData = await parseErrorBody(response, method);
-    throw new ApiError(response, errorData, requestInfo);
+        if (!response.ok) {
+          const errorData = await parseErrorBody(response, method);
+          throw new ApiError(response, errorData, requestInfo);
+        }
+
+        return (await parseSuccessBody(response, responseType, requestInfo)) as T;
+      } catch (error) {
+        if (!canRetry(method, headers) || attempt >= MAX_RETRIES || !shouldRetry(error)) {
+          throw error;
+        }
+        await retryDelay(attempt);
+      }
+    }
+  })();
+
+  if (shouldDeduplicate) {
+    inFlightRequests.set(key, request);
+    request.finally(() => inFlightRequests.delete(key)).catch(() => undefined);
   }
-
-  return (await parseSuccessBody(response, responseType, requestInfo)) as T;
+  return request;
 }

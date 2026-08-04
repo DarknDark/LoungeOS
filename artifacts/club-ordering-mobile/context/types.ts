@@ -1,5 +1,14 @@
-export type MenuCategory = 'Drinks' | 'Food';
-export type OrderStatus = 'new' | 'preparing' | 'ready' | 'completed';
+import type { ImageSourcePropType } from 'react-native';
+
+export type MenuCategory = string;
+export type OrderStatus =
+  | 'draft'
+  | 'submitted'
+  | 'accepted'
+  | 'preparing'
+  | 'ready'
+  | 'delivered'
+  | 'cancelled';
 export type StaffMode = 'guest' | 'waiter' | 'bartender' | 'dj' | 'admin';
 
 export type MenuItem = {
@@ -8,9 +17,10 @@ export type MenuItem = {
   description: string;
   category: MenuCategory;
   price: number;
-  image: number;
+  image: ImageSourcePropType;
   accent: string;
   popular?: boolean;
+  available?: boolean;
 };
 
 export type CartItem = MenuItem & { quantity: number };

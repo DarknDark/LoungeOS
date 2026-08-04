@@ -3,3 +3,4 @@
 - [Firebase preparation](firebase-preparation.md) — Firestore/Auth live verification is blocked until Firebase Admin Secrets are securely added.
 - [Infrastructure hardening](infrastructure-hardening.md) — shared audit, notification, timeline, event, realtime, offline-sync, metrics, and locking primitives are provider-neutral.
 - [Ordering Engine](ordering-engine.md) — Module 3 uses Firebase tenant-scoped repositories with centralized pricing, idempotency, reservations, and shared lifecycle side effects.
+- [Mobile live ordering](mobile-live-integration.md) — customer mobile uses live sessions/orders with secure credentials; unsupported payment, staff, song, waiter, and client-realtime transports stay explicit.

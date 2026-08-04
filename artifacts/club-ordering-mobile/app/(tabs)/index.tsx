@@ -25,13 +25,6 @@ import {
 } from '@/context/ClubContext';
 import colors from '@/constants/colors';
 import { clubSettings } from '@/config/clubSettings';
-import {
-  DEMO_ACTIVE_TABLES,
-  DEMO_DJ_NAME,
-  DEMO_SALES_DELTA,
-  DEMO_SALES_TOTAL,
-  DEMO_TOTAL_TABLES,
-} from '@/context/demoFixtures';
 
 type ViewName = 'home' | 'menu' | 'cart' | 'request' | 'bill' | 'staff';
 
@@ -192,10 +185,13 @@ function MenuCard({
 
 function OrderStatusPill({ status }: { status: OrderStatus }) {
   const config: Record<OrderStatus, { label: string; tone: 'gold' | 'green' | 'muted' }> = {
-    new: { label: 'New', tone: 'gold' },
+    draft: { label: 'Draft', tone: 'muted' },
+    submitted: { label: 'Submitted', tone: 'gold' },
+    accepted: { label: 'Accepted', tone: 'gold' },
     preparing: { label: 'Preparing', tone: 'gold' },
     ready: { label: 'Ready', tone: 'green' },
-    completed: { label: 'Delivered', tone: 'muted' },
+    delivered: { label: 'Delivered', tone: 'muted' },
+    cancelled: { label: 'Cancelled', tone: 'muted' },
   };
   const item = config[status];
   return <Pill tone={item.tone}><Text style={styles.pillText}>{item.label}</Text></Pill>;
@@ -206,11 +202,13 @@ function OrderRow({
   showControls = false,
   onStatus,
   onPaid,
+  onCancel,
 }: {
   order: ClubOrder;
   showControls?: boolean;
   onStatus?: (status: OrderStatus) => void;
   onPaid?: () => void;
+  onCancel?: () => void;
 }) {
   return (
     <View style={styles.orderRow}>
@@ -229,10 +227,19 @@ function OrderRow({
       </Text>
       {showControls ? (
         <View style={styles.orderControls}>
-          {order.status !== 'completed' ? (
-            <Pressable onPress={() => onStatus?.(order.status === 'new' ? 'preparing' : 'completed')} style={styles.outlineAction}>
-              <Icon name={order.status === 'new' ? 'restaurant-outline' : 'checkmark-circle-outline'} size={16} color={colors.light.primary} />
-              <Text style={styles.outlineActionText}>{order.status === 'new' ? 'Start preparing' : 'Mark delivered'}</Text>
+          {order.status !== 'delivered' && order.status !== 'cancelled' ? (
+            <Pressable
+              onPress={() => onStatus?.(
+                order.status === 'submitted' || order.status === 'accepted'
+                  ? 'preparing'
+                  : order.status === 'preparing'
+                    ? 'ready'
+                    : 'delivered',
+              )}
+              style={styles.outlineAction}
+            >
+              <Icon name={order.status === 'ready' ? 'checkmark-circle-outline' : 'restaurant-outline'} size={16} color={colors.light.primary} />
+              <Text style={styles.outlineActionText}>{order.status === 'ready' ? 'Mark delivered' : 'Advance order'}</Text>
             </Pressable>
           ) : null}
           {!order.paid ? (
@@ -241,6 +248,12 @@ function OrderRow({
             </Pressable>
           ) : null}
         </View>
+      ) : null}
+      {!showControls && onCancel && (order.status === 'submitted' || order.status === 'accepted') ? (
+        <Pressable onPress={onCancel} style={styles.cancelAction}>
+          <Icon name="close-circle-outline" size={15} color={colors.light.destructive} />
+          <Text style={styles.cancelActionText}>Cancel order</Text>
+        </Pressable>
       ) : null}
     </View>
   );
@@ -259,6 +272,7 @@ export default function HomeScreen() {
   const {
     clubSettings,
     menu,
+    menuCategories,
     tableNumber,
     cart,
     orders,
@@ -275,9 +289,16 @@ export default function HomeScreen() {
     payBill,
     markOrderStatus,
     markOrderPaid,
+    cancelOrder,
     updateSongStatus,
     removeSongRequest,
     setSelectedMode,
+    sessionActive,
+    isLoading,
+    isSubmitting,
+    errorMessage,
+    pendingOrderCount,
+    clearError,
   } = useClub();
   const money = formatMoney;
   const clubShortName = clubSettings.branding.shortName;
@@ -296,10 +317,13 @@ export default function HomeScreen() {
   };
   const filteredMenu = useMemo(
     () => (category === 'All' ? menu : menu.filter((item) => item.category === category)),
-    [category],
+    [category, menu],
   );
-  const activeOrders = orders.filter((order) => !order.paid);
+  const activeOrders = orders.filter((order) => order.status !== 'delivered' && order.status !== 'cancelled');
   const queuedCalls = waiterCalls.filter((call) => !call.resolved);
+  const drinkCategory = menuCategories.find((item) => item.toLowerCase().includes('drink'));
+  const foodCategory = menuCategories.find((item) => item.toLowerCase().includes('food'));
+  const liveSales = orders.reduce((sum, order) => sum + order.total, 0);
 
   const renderHome = () => (
     <>
@@ -314,7 +338,7 @@ export default function HomeScreen() {
             <Text style={styles.welcomeTitle}>Your night,<Text style={styles.goldText}> your way.</Text></Text>
           </View>
           <View style={styles.tableCircle}>
-            <Text style={styles.tableCircleNumber}>{tableNumber}</Text>
+            <Text style={styles.tableCircleNumber}>{tableNumber ?? '—'}</Text>
             <Text style={styles.tableCircleLabel}>TABLE</Text>
           </View>
         </View>
@@ -329,7 +353,7 @@ export default function HomeScreen() {
             <View style={styles.openBadge}><View style={styles.liveDot} /><Text style={styles.openText}>OPEN</Text></View>
           </View>
           <View style={styles.heroFooter}>
-            <Text style={styles.heroMeta}>{activeOrders.length} rounds · Last order just now</Text>
+            <Text style={styles.heroMeta}>{activeOrders.length} active rounds{pendingOrderCount ? ` · ${pendingOrderCount} waiting to sync` : ''}</Text>
             <Pressable onPress={() => show('bill')} style={styles.heroLink}>
               <Text style={styles.heroLinkText}>View bill</Text>
               <Icon name="arrow-forward" size={15} color={colors.light.primary} />
@@ -339,8 +363,8 @@ export default function HomeScreen() {
 
         <Text style={styles.sectionTitle}>What are you in the mood for?</Text>
         <View style={styles.actionsGrid}>
-          <ActionTile icon="wine-outline" label="Drinks" onPress={() => { setCategory('Drinks'); show('menu'); }} accent />
-          <ActionTile icon="restaurant-outline" label="Food" onPress={() => { setCategory('Food'); show('menu'); }} />
+          <ActionTile icon="wine-outline" label="Drinks" onPress={() => { setCategory(drinkCategory ?? 'All'); show('menu'); }} accent />
+          <ActionTile icon="restaurant-outline" label="Food" onPress={() => { setCategory(foodCategory ?? 'All'); show('menu'); }} />
           <ActionTile icon="musical-notes-outline" label="Request song" onPress={() => show('request')} />
           <ActionTile icon="hand-left-outline" label="Call waiter" onPress={() => { buzz(); callWaiter(); setFeedback('Your waiter is on the way'); }} />
         </View>
@@ -349,6 +373,18 @@ export default function HomeScreen() {
           <View style={styles.feedbackBar}>
             <Icon name="checkmark-circle" size={17} color={colors.light.primary} />
             <Text style={styles.feedbackText}>{feedback}</Text>
+          </View>
+        ) : null}
+        {!sessionActive ? (
+          <View style={styles.feedbackBar}>
+            <Icon name="qr-code-outline" size={17} color={colors.light.primary} />
+            <Text style={styles.feedbackText}>Scan your table QR code to start ordering.</Text>
+          </View>
+        ) : null}
+        {isLoading && !menu.length ? (
+          <View style={styles.feedbackBar}>
+            <Icon name="sync-outline" size={17} color={colors.light.primary} />
+            <Text style={styles.feedbackText}>Loading the live menu…</Text>
           </View>
         ) : null}
 
@@ -366,7 +402,7 @@ export default function HomeScreen() {
           <View style={styles.liveCardIcon}><Icon name="sparkles-outline" size={19} color={colors.light.primary} /></View>
           <View style={styles.liveCardCopy}>
             <Text style={styles.liveCardTitle}>Live at {clubShortName}</Text>
-            <Text style={styles.liveCardText}>{DEMO_DJ_NAME} is on deck · requests are open</Text>
+            <Text style={styles.liveCardText}>Live service updates will appear here when connected.</Text>
           </View>
           <Icon name="chevron-forward" size={18} color={colors.light.mutedForeground} />
         </View>
@@ -383,7 +419,7 @@ export default function HomeScreen() {
          <Text style={styles.pageDescription}>Everything arrives at table {tableNumber}.</Text>
         </View>
         <View style={styles.categoryRow}>
-          {(['All', 'Drinks', 'Food'] as const).map((item) => (
+          {(['All', ...menuCategories] as const).map((item) => (
             <Pressable key={item} onPress={() => setCategory(item)} style={[styles.categoryChip, category === item && styles.categoryChipActive]}>
               <Text style={[styles.categoryText, category === item && styles.categoryTextActive]}>{item}</Text>
             </Pressable>
@@ -432,11 +468,18 @@ export default function HomeScreen() {
       <View style={[styles.bottomCheckout, { paddingBottom: bottomInset + 14 }]}>
         <View style={styles.checkoutTotal}><Text style={styles.checkoutLabel}>ROUND TOTAL</Text><Text style={styles.checkoutAmount}>{money(cart.reduce((sum, item) => sum + item.price * item.quantity, 0))}</Text></View>
         <Pressable
-          onPress={() => { buzz(); submitOrder(); setFeedback('Order sent to the team'); show('bill'); }}
+          onPress={async () => {
+            buzz();
+            const sent = await submitOrder();
+            if (sent) {
+              setFeedback('Order sent to the team');
+              show('bill');
+            }
+          }}
           style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
           testID="submit-order"
         >
-          <Text style={styles.primaryButtonText}>Send order</Text>
+          <Text style={styles.primaryButtonText}>{isSubmitting ? 'Sending…' : 'Send order'}</Text>
           <Icon name="arrow-forward" size={18} color={colors.light.primaryForeground} />
         </Pressable>
       </View>
@@ -492,12 +535,22 @@ export default function HomeScreen() {
           <Text style={styles.billSummaryNote}>Service is included · no surprises</Text>
         </View>
         <Text style={styles.sectionTitle}>Tonight at table {tableNumber}</Text>
-        {orders.map((order) => <OrderRow key={order.id} order={order} />)}
+          {orders.map((order) => (
+            <OrderRow
+              key={order.id}
+              order={order}
+              onCancel={() => {
+                void cancelOrder(order.id).then((cancelled) => {
+                  if (cancelled) setFeedback('Order cancelled');
+                });
+              }}
+            />
+          ))}
         <View style={styles.paymentCard}>
           <View style={styles.paymentHeader}><View><Text style={styles.paymentTitle}>Ready to settle?</Text><Text style={styles.paymentSubtitle}>Choose how you’d like to pay.</Text></View><Icon name="lock-closed-outline" size={19} color={colors.light.mutedForeground} /></View>
-          <Pressable onPress={() => { buzz(); payBill('mpesa'); setFeedback('Payment request sent · check your phone'); }} style={styles.paymentOption}>
+          <Pressable onPress={() => { buzz(); payBill('mpesa'); }} style={styles.paymentOption}>
             <View style={[styles.paymentIcon, styles.mpesaIcon]}><Text style={styles.mpesaText}>M</Text></View>
-            <View style={styles.paymentCopy}><Text style={styles.paymentName}>M-Pesa</Text><Text style={styles.paymentDescription}>Secure mobile prompt</Text></View>
+            <View style={styles.paymentCopy}><Text style={styles.paymentName}>M-Pesa</Text><Text style={styles.paymentDescription}>Not connected yet</Text></View>
             <Icon name="chevron-forward" size={18} color={colors.light.mutedForeground} />
           </Pressable>
           <View style={styles.cashNote}><Icon name="cash-outline" size={18} color={colors.light.primary} /><Text style={styles.cashNoteText}>Paying cash? Ask your waiter to close the bill.</Text></View>
@@ -526,7 +579,7 @@ export default function HomeScreen() {
           </ScrollView>
           {staffMode === 'admin' ? (
             <>
-              <View style={styles.metricsGrid}><View style={styles.metricCard}><Text style={styles.metricLabel}>TONIGHT’S SALES</Text><Text style={styles.metricValue}>{money(DEMO_SALES_TOTAL)}</Text><Text style={styles.metricDelta}>{DEMO_SALES_DELTA}</Text></View><View style={styles.metricCard}><Text style={styles.metricLabel}>ACTIVE TABLES</Text><Text style={styles.metricValue}>{DEMO_ACTIVE_TABLES} / {DEMO_TOTAL_TABLES}</Text><Text style={styles.metricDelta}>{Math.round((DEMO_ACTIVE_TABLES / DEMO_TOTAL_TABLES) * 100)}% occupied</Text></View></View>
+              <View style={styles.metricsGrid}><View style={styles.metricCard}><Text style={styles.metricLabel}>VISIBLE SALES</Text><Text style={styles.metricValue}>{money(liveSales)}</Text><Text style={styles.metricDelta}>From live orders</Text></View><View style={styles.metricCard}><Text style={styles.metricLabel}>ACTIVE ORDERS</Text><Text style={styles.metricValue}>{activeOrders.length}</Text><Text style={styles.metricDelta}>Current session</Text></View></View>
               <Text style={styles.sectionTitle}>Operations snapshot</Text>
               <View style={styles.adminList}><View style={styles.adminListRow}><Icon name="restaurant-outline" size={19} color={colors.light.primary} /><Text style={styles.adminListText}>Menu & categories</Text><Icon name="chevron-forward" size={17} color={colors.light.mutedForeground} /></View><View style={styles.adminListRow}><Icon name="qr-code-outline" size={19} color={colors.light.primary} /><Text style={styles.adminListText}>Table QR codes</Text><Icon name="chevron-forward" size={17} color={colors.light.mutedForeground} /></View><View style={styles.adminListRow}><Icon name="people-outline" size={19} color={colors.light.primary} /><Text style={styles.adminListText}>Staff accounts</Text><Icon name="chevron-forward" size={17} color={colors.light.mutedForeground} /></View></View>
             </>
@@ -538,13 +591,13 @@ export default function HomeScreen() {
             </>
           ) : (
             <>
-              <View style={styles.staffStat}><Text style={styles.metricLabel}>{staffMode === 'bartender' ? 'BAR QUEUE' : 'INCOMING SERVICE'}</Text><Text style={styles.staffStatValue}>{staffMode === 'bartender' ? staffOrders.length : staffOrders.filter((order) => order.status !== 'completed').length} <Text style={styles.staffStatUnit}>{staffMode === 'bartender' ? 'tickets' : 'active orders'}</Text></Text></View>
+              <View style={styles.staffStat}><Text style={styles.metricLabel}>{staffMode === 'bartender' ? 'BAR QUEUE' : 'INCOMING SERVICE'}</Text><Text style={styles.staffStatValue}>{staffMode === 'bartender' ? staffOrders.length : staffOrders.filter((order) => order.status !== 'delivered' && order.status !== 'cancelled').length} <Text style={styles.staffStatUnit}>{staffMode === 'bartender' ? 'tickets' : 'active orders'}</Text></Text></View>
               {staffMode === 'waiter' && queuedCalls.length ? <View style={styles.callAlert}><Icon name="notifications" size={19} color={colors.light.primary} /><Text style={styles.callAlertText}>{queuedCalls.length} table call{queuedCalls.length > 1 ? 's' : ''} waiting</Text><Icon name="chevron-forward" size={17} color={colors.light.primary} /></View> : null}
               <Text style={styles.sectionTitle}>{staffMode === 'bartender' ? 'Drink tickets' : 'Live orders'}</Text>
               {staffOrders.map((order) => <OrderRow key={order.id} order={order} showControls onStatus={(status) => markOrderStatus(order.id, status)} onPaid={() => markOrderPaid(order.id)} />)}
             </>
           )}
-          <View style={styles.demoNote}><Icon name="information-circle-outline" size={17} color={colors.light.mutedForeground} /><Text style={styles.demoNoteText}>You’re previewing role-based operations. Staff authentication and real-time sync are ready for the next integration pass.</Text></View>
+          <View style={styles.demoNote}><Icon name="information-circle-outline" size={17} color={colors.light.mutedForeground} /><Text style={styles.demoNoteText}>Customer ordering is live. Staff actions require a staff account and are not enabled in this customer session.</Text></View>
         </ScrollView>
       </>
     );
@@ -553,6 +606,12 @@ export default function HomeScreen() {
   return (
     <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={0} style={styles.flex}>
       <View style={styles.app}>
+        {errorMessage ? (
+          <Pressable onPress={clearError} style={styles.errorBanner}>
+            <Icon name="alert-circle-outline" size={17} color={colors.light.destructive} />
+            <Text style={styles.errorBannerText}>{errorMessage}</Text>
+          </Pressable>
+        ) : null}
         {view === 'home' ? renderHome() : view === 'menu' ? renderMenu() : view === 'cart' ? renderCart() : view === 'request' ? renderRequest() : view === 'bill' ? renderBill() : renderStaff()}
       </View>
     </KeyboardAvoidingView>
@@ -714,6 +773,8 @@ const styles = StyleSheet.create({
   outlineActionText: { color: colors.light.primary, fontSize: 10, fontWeight: '700' },
   cashAction: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 10, backgroundColor: colors.light.secondary },
   cashActionText: { color: colors.light.mutedForeground, fontSize: 10, fontWeight: '700' },
+  cancelAction: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
+  cancelActionText: { color: colors.light.destructive, fontSize: 10, fontWeight: '700' },
   djRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: colors.light.border },
   djNumber: { width: 30, alignItems: 'center' },
   djNumberText: { color: colors.light.mutedForeground, fontSize: 10, fontWeight: '800' },
@@ -729,4 +790,6 @@ const styles = StyleSheet.create({
   adminListText: { color: colors.light.foreground, fontSize: 13, fontWeight: '600', flex: 1 },
   demoNote: { flexDirection: 'row', gap: 9, padding: 14, borderRadius: 15, backgroundColor: colors.light.secondary, marginTop: 4 },
   demoNoteText: { flex: 1, color: colors.light.mutedForeground, fontSize: 10, lineHeight: 15 },
+  errorBanner: { position: 'absolute', zIndex: 10, top: 66, left: 20, right: 20, flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 14, backgroundColor: '#3f201e', borderWidth: 1, borderColor: '#75423b' },
+  errorBannerText: { flex: 1, color: '#ffd1c9', fontSize: 11, lineHeight: 16, fontWeight: '600' },
 });
