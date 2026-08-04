@@ -7,6 +7,11 @@ import type {
   KitchenTicket,
   Notification,
   Order,
+  OrderItem,
+  OrderStatus,
+  MenuCategoryRecord,
+  MenuItem,
+  MenuModifier,
   Payment,
   PaymentToken,
   ServiceTimelineEvent,
@@ -15,6 +20,11 @@ import type {
 } from '@workspace/domain';
 import type { RepositoryRegistry } from '@workspace/domain';
 import type { Table, CustomerSession } from '@workspace/domain';
+import type {
+  RealtimeChange,
+  RealtimeSubscription,
+  SyncOperation,
+} from '@workspace/domain';
 
 export type RequestActor = {
   id?: string;
@@ -82,16 +92,98 @@ export type TableSessionAccess = {
 };
 
 export type OrderService = {
-  submit(input: {
+  getMenu(input: {
+    clubId: string;
+  }): Promise<{
+    categories: MenuCategoryRecord[];
+    items: MenuItem[];
+    modifiers: Array<MenuModifier & { options: Array<{
+      id: string;
+      modifierId: string;
+      name: string;
+      priceDeltaMinor: number;
+      available: boolean;
+    }> }>;
+  }>;
+  createDraft(input: {
     actor: RequestActor;
     tableSessionId: string;
-    items: Array<{ menuItemId: string; quantity: number }>;
+    items: Array<{
+      menuItemId: string;
+      quantity: number;
+      modifiers?: Array<{ modifierId: string; optionIds: string[] }>;
+      notes?: string;
+    }>;
+    notes?: string;
+    idempotencyKey: string;
     now: string;
-  }): Promise<Order>;
+  }): Promise<{ order: Order; items: OrderItem[] }>;
+  submit(input: {
+    actor: RequestActor;
+    orderId: string;
+    expectedVersion: number;
+    now: string;
+  }): Promise<{ order: Order; items: OrderItem[] }>;
+  create(input: {
+    actor: RequestActor;
+    tableSessionId: string;
+    items: Array<{
+      menuItemId: string;
+      quantity: number;
+      modifiers?: Array<{ modifierId: string; optionIds: string[] }>;
+      notes?: string;
+    }>;
+    notes?: string;
+    idempotencyKey: string;
+    now: string;
+  }): Promise<{ order: Order; items: OrderItem[] }>;
+  updateDraft(input: {
+    actor: RequestActor;
+    orderId: string;
+    expectedVersion: number;
+    items: Array<{
+      menuItemId: string;
+      quantity: number;
+      modifiers?: Array<{ modifierId: string; optionIds: string[] }>;
+      notes?: string;
+    }>;
+    notes?: string;
+    now: string;
+  }): Promise<{ order: Order; items: OrderItem[] }>;
+  cancel(input: {
+    actor: RequestActor;
+    orderId: string;
+    reason?: string;
+    now: string;
+  }): Promise<{ order: Order; items: OrderItem[] }>;
+  updateStatus(input: {
+    actor: RequestActor;
+    orderId: string;
+    status: Exclude<OrderStatus, 'draft' | 'submitted'>;
+    expectedVersion: number;
+    reason?: string;
+    now: string;
+  }): Promise<{ order: Order; items: OrderItem[] }>;
+  get(input: {
+    actor: RequestActor;
+    orderId: string;
+  }): Promise<{ order: Order; items: OrderItem[] }>;
   getForSession(input: {
     actor: RequestActor;
     tableSessionId: string;
-  }): Promise<Order[]>;
+  }): Promise<Array<{ order: Order; items: OrderItem[] }>>;
+  subscribeToOrders(input: {
+    clubId: string;
+    listener: (change: RealtimeChange<Record<string, unknown>>) => void;
+  }): RealtimeSubscription;
+  queueMutation(input: {
+    clubId: string;
+    operation: SyncOperation;
+    resourceId: string;
+    payload: Record<string, unknown>;
+    expectedVersion?: number;
+    now: string;
+  }): Promise<void>;
 };
 
 export type PaymentService = {

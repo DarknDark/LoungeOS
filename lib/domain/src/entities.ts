@@ -115,7 +115,38 @@ export type Staff = {
 
 export type MenuCategory = 'drinks' | 'food' | string;
 
-export type MenuItem = {
+export type MenuCategoryRecord = VersionedRecord & {
+  id: EntityId;
+  clubId: ClubId;
+  name: string;
+  slug: string;
+  sortOrder: number;
+  active: boolean;
+};
+
+export type ModifierOption = {
+  id: EntityId;
+  clubId: ClubId;
+  modifierId: EntityId;
+  name: string;
+  priceDeltaMinor: number;
+  available: boolean;
+};
+
+export type MenuModifier = VersionedRecord & {
+  id: EntityId;
+  clubId: ClubId;
+  name: string;
+  menuItemIds?: EntityId[];
+  required: boolean;
+  minSelections: number;
+  maxSelections: number;
+  optionIds: EntityId[];
+  options?: ModifierOption[];
+  active: boolean;
+};
+
+export type MenuItem = VersionedRecord & {
   id: EntityId;
   clubId: ClubId;
   name: string;
@@ -123,17 +154,33 @@ export type MenuItem = {
   priceMinor: number;
   currency: CurrencyCode;
   category: MenuCategory;
+  categoryId?: EntityId;
   imageUrl?: string;
   preparationStationId: EntityId;
   inventoryItemId?: EntityId;
   available: boolean;
   sortOrder: number;
+  modifierIds?: EntityId[];
 };
 
-export type OrderStatus = 'new' | 'accepted' | 'preparing' | 'ready' | 'served' | 'cancelled';
+export type OrderStatus =
+  | 'draft'
+  | 'submitted'
+  | 'accepted'
+  | 'preparing'
+  | 'ready'
+  | 'delivered'
+  | 'cancelled';
 
-export type OrderItem = {
+export type OrderModifierSelection = {
+  modifierId: EntityId;
+  optionIds: EntityId[];
+  priceDeltaMinor: number;
+};
+
+export type OrderItem = VersionedRecord & {
   id: EntityId;
+  clubId: ClubId;
   orderId: EntityId;
   menuItemId: EntityId;
   nameSnapshot: string;
@@ -141,9 +188,12 @@ export type OrderItem = {
   quantity: number;
   preparationStationId: EntityId;
   inventoryItemId?: EntityId;
+  modifiers: OrderModifierSelection[];
+  notes?: string;
+  lineSubtotalMinor: number;
 };
 
-export type Order = {
+export type Order = VersionedRecord & {
   id: EntityId;
   clubId: ClubId;
   tableSessionId: EntityId;
@@ -151,11 +201,38 @@ export type Order = {
   businessDayId: EntityId;
   status: OrderStatus;
   itemIds: EntityId[];
+  idempotencyKey: string;
+  subtotalMinor: number;
+  taxMinor: number;
+  serviceChargeMinor: number;
+  discountMinor: number;
   totalMinor: number;
+  notes?: string;
   createdAt: ISODateString;
+  submittedAt?: ISODateString;
+  acceptedAt?: ISODateString;
+  preparingAt?: ISODateString;
+  readyAt?: ISODateString;
+  deliveredAt?: ISODateString;
+  cancelledAt?: ISODateString;
+  cancelledBy?: EntityId;
+  cancellationReason?: string;
 };
 
-export type PreparationStationType = 'bar' | 'kitchen' | 'custom';
+export type InventoryReservationStatus = 'reserved' | 'released' | 'consumed';
+
+export type InventoryReservation = VersionedRecord & {
+  id: EntityId;
+  clubId: ClubId;
+  orderId: EntityId;
+  inventoryItemId: EntityId;
+  quantity: number;
+  status: InventoryReservationStatus;
+  createdAt: ISODateString;
+  releasedAt?: ISODateString;
+};
+
+export type PreparationStationType = 'bar' | 'kitchen' | 'shisha' | 'dj' | 'custom';
 
 export type PreparationStation = {
   id: EntityId;
@@ -230,12 +307,14 @@ export type PaymentToken = {
 
 export type InventoryTransactionType = 'sale' | 'restock' | 'waste' | 'adjustment';
 
-export type InventoryItem = {
+export type InventoryItem = VersionedRecord & {
   id: EntityId;
   clubId: ClubId;
   name: string;
   unit: string;
   lowStockThreshold: number;
+  quantityOnHand?: number;
+  reservedQuantity?: number;
   active: boolean;
 };
 

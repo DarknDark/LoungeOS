@@ -20,11 +20,12 @@ export const TABLE_SESSION_TRANSITIONS: Record<
 };
 
 export const ORDER_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
-  new: ['accepted', 'cancelled'],
+  draft: ['submitted', 'cancelled'],
+  submitted: ['accepted', 'cancelled'],
   accepted: ['preparing', 'cancelled'],
   preparing: ['ready', 'cancelled'],
-  ready: ['served', 'cancelled'],
-  served: [],
+  ready: ['delivered', 'cancelled'],
+  delivered: [],
   cancelled: [],
 };
 

@@ -18,6 +18,166 @@ export interface ApiError {
   error: ApiErrorError;
 }
 
+export interface OrderModifierSelection {
+  modifierId: string;
+  optionIds: string[];
+}
+
+export interface CreateOrderItemRequest {
+  menuItemId: string;
+  /**
+     * @minimum 1
+     * @maximum 99
+     */
+  quantity: number;
+  modifiers?: OrderModifierSelection[];
+  /** @maxLength 500 */
+  notes?: string;
+}
+
+export interface CreateOrderRequest {
+  /** @minLength 1 */
+  clubId: string;
+  /** @minLength 1 */
+  tableSessionId: string;
+  /** @minItems 1 */
+  items: CreateOrderItemRequest[];
+  /** @maxLength 500 */
+  notes?: string;
+}
+
+export interface UpdateDraftOrderRequest {
+  /** @minimum 0 */
+  version: number;
+  /** @minItems 1 */
+  items: CreateOrderItemRequest[];
+  /** @maxLength 500 */
+  notes?: string;
+}
+
+export interface CancelOrderRequest {
+  /** @maxLength 250 */
+  reason?: string;
+}
+
+export type UpdateOrderStatusRequestStatus = typeof UpdateOrderStatusRequestStatus[keyof typeof UpdateOrderStatusRequestStatus];
+
+
+export const UpdateOrderStatusRequestStatus = {
+  accepted: 'accepted',
+  preparing: 'preparing',
+  ready: 'ready',
+  delivered: 'delivered',
+  cancelled: 'cancelled',
+} as const;
+
+export interface UpdateOrderStatusRequest {
+  status: UpdateOrderStatusRequestStatus;
+  /** @minimum 0 */
+  version: number;
+  /** @maxLength 250 */
+  reason?: string;
+}
+
+export interface MenuCategory {
+  id: string;
+  name: string;
+  slug: string;
+  sortOrder: number;
+  active: boolean;
+}
+
+export interface ModifierOption {
+  id: string;
+  name: string;
+  priceDeltaMinor: number;
+  available: boolean;
+}
+
+export interface MenuModifier {
+  id: string;
+  name: string;
+  required: boolean;
+  /** @minimum 0 */
+  minSelections: number;
+  /** @minimum 0 */
+  maxSelections: number;
+  options: ModifierOption[];
+}
+
+export interface MenuItem {
+  id: string;
+  name: string;
+  description?: string;
+  /** @minimum 0 */
+  priceMinor: number;
+  currency: string;
+  categoryId?: string;
+  imageUrl?: string;
+  preparationStationId: string;
+  available: boolean;
+  sortOrder: number;
+  modifierIds?: string[];
+}
+
+export interface OrderMenuResponse {
+  categories: MenuCategory[];
+  items: MenuItem[];
+  modifiers: MenuModifier[];
+}
+
+export interface OrderItem {
+  id: string;
+  menuItemId: string;
+  nameSnapshot: string;
+  unitPriceMinor: number;
+  quantity: number;
+  modifiers: OrderModifierSelection[];
+  notes?: string;
+  lineSubtotalMinor: number;
+}
+
+export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];
+
+
+export const OrderStatus = {
+  draft: 'draft',
+  submitted: 'submitted',
+  accepted: 'accepted',
+  preparing: 'preparing',
+  ready: 'ready',
+  delivered: 'delivered',
+  cancelled: 'cancelled',
+} as const;
+
+export interface Order {
+  id: string;
+  clubId: string;
+  tableSessionId: string;
+  customerSessionId: string;
+  status: OrderStatus;
+  itemIds: string[];
+  idempotencyKey: string;
+  subtotalMinor: number;
+  taxMinor: number;
+  serviceChargeMinor: number;
+  discountMinor: number;
+  totalMinor: number;
+  notes?: string;
+  version?: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface OrderResponse {
+  order: Order;
+  items: OrderItem[];
+}
+
+export interface OrderListResponse {
+  orders: OrderResponse[];
+}
+
 export interface QrValidationRequest {
   /** @minLength 1 */
   qrToken: string;
@@ -118,3 +278,14 @@ export interface TableSessionAccess {
 export type ApiErrorResponse = ApiError;
 
 export type ClubIdParameter = string;
+
+export type TableSessionIdHeaderParameter = string;
+
+export type CustomerSessionIdHeaderParameter = string;
+
+export type CustomerSessionTokenHeaderParameter = string;
+
+export type SubmitOrderBody = {
+  /** @minimum 0 */
+  version: number;
+};

@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: customer-sessions
     description: Anonymous customer table-session operations
+  - name: orders
+    description: Customer ordering and staff order operations
 paths:
   /healthz:
     get:
@@ -168,6 +170,246 @@ paths:
           $ref: "#/components/responses/ApiError"
         "403":
           $ref: "#/components/responses/ApiError"
+  /v1/orders/menu:
+    get:
+      operationId: listOrderMenu
+      tags: [orders]
+      summary: List the available menu for a club
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+      responses:
+        "200":
+          description: Available categories, items, and modifiers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderMenuResponse"
+        "503":
+          $ref: "#/components/responses/ApiError"
+  /v1/orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List orders for the authorized table session
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/TableSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionTokenHeader"
+      responses:
+        "200":
+          description: Order history and active orders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderListResponse"
+        "401":
+          $ref: "#/components/responses/ApiError"
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Create and submit an order
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/CustomerSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionTokenHeader"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Submitted order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/orders/drafts:
+    post:
+      operationId: createOrderDraft
+      tags: [orders]
+      summary: Create an editable draft order
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/CustomerSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionTokenHeader"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Draft order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/orders/{orderId}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Get an order belonging to the authorized table session
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/CustomerSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionTokenHeader"
+      responses:
+        "200":
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "404":
+          $ref: "#/components/responses/ApiError"
+    patch:
+      operationId: updateDraftOrder
+      tags: [orders]
+      summary: Update a draft order before submission
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/CustomerSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionTokenHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDraftOrderRequest"
+      responses:
+        "200":
+          description: Updated draft order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+    delete:
+      operationId: cancelOrder
+      tags: [orders]
+      summary: Cancel an order within the cancellation window
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/CustomerSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionTokenHeader"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelOrderRequest"
+      responses:
+        "200":
+          description: Cancelled order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/orders/{orderId}/status:
+    post:
+      operationId: updateOrderStatus
+      tags: [orders]
+      summary: Move an order through the staff lifecycle
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+        - $ref: "#/components/parameters/ClubId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrderStatusRequest"
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/orders/{orderId}/submit:
+    post:
+      operationId: submitOrder
+      tags: [orders]
+      summary: Submit an editable draft order
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/CustomerSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionTokenHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                version: { type: number, minimum: 0 }
+              required: [version]
+      responses:
+        "200":
+          description: Submitted order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
 components:
   parameters:
     ClubId:
@@ -187,6 +429,34 @@ components:
     SessionId:
       name: sessionId
       in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    TableSessionIdHeader:
+      name: X-Table-Session-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    CustomerSessionIdHeader:
+      name: X-Customer-Session-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    CustomerSessionTokenHeader:
+      name: X-Customer-Session-Token
+      in: header
       required: true
       schema:
         type: string
@@ -218,6 +488,179 @@ components:
               type: string
           required: [code, message]
       required: [error]
+    OrderModifierSelection:
+      type: object
+      properties:
+        modifierId: { type: string }
+        optionIds:
+          type: array
+          items: { type: string }
+      required: [modifierId, optionIds]
+    CreateOrderItemRequest:
+      type: object
+      properties:
+        menuItemId: { type: string }
+        quantity: { type: number, minimum: 1, maximum: 99 }
+        modifiers:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderModifierSelection"
+        notes: { type: string, maxLength: 500 }
+      required: [menuItemId, quantity]
+    CreateOrderRequest:
+      type: object
+      properties:
+        clubId: { type: string, minLength: 1 }
+        tableSessionId: { type: string, minLength: 1 }
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/CreateOrderItemRequest"
+        notes: { type: string, maxLength: 500 }
+      required: [clubId, tableSessionId, items]
+    UpdateDraftOrderRequest:
+      type: object
+      properties:
+        version: { type: number, minimum: 0 }
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/CreateOrderItemRequest"
+        notes: { type: string, maxLength: 500 }
+      required: [version, items]
+    CancelOrderRequest:
+      type: object
+      properties:
+        reason: { type: string, maxLength: 250 }
+    UpdateOrderStatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [accepted, preparing, ready, delivered, cancelled]
+        version: { type: number, minimum: 0 }
+        reason: { type: string, maxLength: 250 }
+      required: [status, version]
+    MenuCategory:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        sortOrder: { type: number }
+        active: { type: boolean }
+      required: [id, name, slug, sortOrder, active]
+    ModifierOption:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        priceDeltaMinor: { type: number }
+        available: { type: boolean }
+      required: [id, name, priceDeltaMinor, available]
+    MenuModifier:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        required: { type: boolean }
+        minSelections: { type: number, minimum: 0 }
+        maxSelections: { type: number, minimum: 0 }
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModifierOption"
+      required: [id, name, required, minSelections, maxSelections, options]
+    MenuItem:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        priceMinor: { type: number, minimum: 0 }
+        currency: { type: string }
+        categoryId: { type: string }
+        imageUrl: { type: string }
+        preparationStationId: { type: string }
+        available: { type: boolean }
+        sortOrder: { type: number }
+        modifierIds:
+          type: array
+          items: { type: string }
+      required: [id, name, priceMinor, currency, preparationStationId, available, sortOrder]
+    OrderMenuResponse:
+      type: object
+      properties:
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/MenuCategory"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MenuItem"
+        modifiers:
+          type: array
+          items:
+            $ref: "#/components/schemas/MenuModifier"
+      required: [categories, items, modifiers]
+    OrderItem:
+      type: object
+      properties:
+        id: { type: string }
+        menuItemId: { type: string }
+        nameSnapshot: { type: string }
+        unitPriceMinor: { type: number }
+        quantity: { type: number }
+        modifiers:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderModifierSelection"
+        notes: { type: string }
+        lineSubtotalMinor: { type: number }
+      required: [id, menuItemId, nameSnapshot, unitPriceMinor, quantity, modifiers, lineSubtotalMinor]
+    Order:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        tableSessionId: { type: string }
+        customerSessionId: { type: string }
+        status: { type: string, enum: [draft, submitted, accepted, preparing, ready, delivered, cancelled] }
+        itemIds:
+          type: array
+          items: { type: string }
+        idempotencyKey: { type: string }
+        subtotalMinor: { type: number }
+        taxMinor: { type: number }
+        serviceChargeMinor: { type: number }
+        discountMinor: { type: number }
+        totalMinor: { type: number }
+        notes: { type: string }
+        version: { type: number }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, clubId, tableSessionId, customerSessionId, status, itemIds, idempotencyKey, subtotalMinor, taxMinor, serviceChargeMinor, discountMinor, totalMinor, createdAt]
+    OrderResponse:
+      type: object
+      properties:
+        order:
+          $ref: "#/components/schemas/Order"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+      required: [order, items]
+    OrderListResponse:
+      type: object
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderResponse"
+      required: [orders]
     QrValidationRequest:
       type: object
       properties:

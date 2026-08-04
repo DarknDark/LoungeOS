@@ -6,9 +6,13 @@ import type {
   Club,
   CustomerSession,
   InventoryItem,
+  InventoryReservation,
   InventoryTransaction,
   KitchenTicket,
   MenuItem,
+  MenuCategoryRecord,
+  MenuModifier,
+  ModifierOption,
   Notification,
   Order,
   OrderItem,
@@ -97,6 +101,22 @@ export type MenuRepository = {
   save(item: MenuItem): Promise<void>;
 };
 
+export type MenuCategoryRepository = {
+  listActive(clubId: ClubId): Promise<MenuCategoryRecord[]>;
+  getById(clubId: ClubId, categoryId: string): Promise<MenuCategoryRecord | null>;
+  save(category: MenuCategoryRecord): Promise<void>;
+};
+
+export type MenuItemRepository = MenuRepository;
+
+export type ModifierRepository = {
+  getById(clubId: ClubId, modifierId: string): Promise<MenuModifier | null>;
+  listForMenuItem(clubId: ClubId, menuItemId: string): Promise<MenuModifier[]>;
+  getOption(clubId: ClubId, optionId: string): Promise<ModifierOption | null>;
+  saveModifier(modifier: MenuModifier): Promise<void>;
+  saveOption(option: ModifierOption): Promise<void>;
+};
+
 export type StationRepository = {
   getById(clubId: ClubId, stationId: string): Promise<PreparationStation | null>;
   listActive(clubId: ClubId): Promise<PreparationStation[]>;
@@ -105,7 +125,29 @@ export type StationRepository = {
 export type OrderRepository = {
   getById(clubId: ClubId, orderId: string): Promise<Order | null>;
   save(order: Order, items: OrderItem[]): Promise<void>;
+  saveIfVersion?: (
+    order: Order,
+    items: OrderItem[],
+    expectedVersion: number,
+  ) => Promise<void>;
+  findByIdempotencyKey(
+    clubId: ClubId,
+    tableSessionId: string,
+    customerSessionId: string,
+    idempotencyKey: string,
+  ): Promise<Order | null>;
   listForSession(clubId: ClubId, tableSessionId: string): Promise<Page<Order>>;
+  listForCustomerSession(
+    clubId: ClubId,
+    tableSessionId: string,
+    customerSessionId: string,
+  ): Promise<Page<Order>>;
+  listItems(clubId: ClubId, orderId: string): Promise<OrderItem[]>;
+};
+
+export type OrderItemRepository = {
+  listForOrder(clubId: ClubId, orderId: string): Promise<OrderItem[]>;
+  save(item: OrderItem): Promise<void>;
 };
 
 export type KitchenTicketRepository = {
@@ -136,6 +178,22 @@ export type InventoryRepository = {
   listItems(clubId: ClubId): Promise<Page<InventoryItem>>;
   appendTransaction(transaction: InventoryTransaction): Promise<void>;
   listTransactions(clubId: ClubId, inventoryItemId: string, query?: PageQuery): Promise<Page<InventoryTransaction>>;
+};
+
+export type InventoryReservationRepository = {
+  reserve(input: {
+    clubId: ClubId;
+    orderId: string;
+    inventoryItemId: string;
+    quantity: number;
+    now: ISODateString;
+  }): Promise<InventoryReservation>;
+  releaseForOrder(
+    clubId: ClubId,
+    orderId: string,
+    now: ISODateString,
+  ): Promise<void>;
+  listForOrder(clubId: ClubId, orderId: string): Promise<InventoryReservation[]>;
 };
 
 export type NotificationRepository = {
@@ -196,13 +254,18 @@ export type RepositoryRegistry = {
   staff: StaffRepository;
   roles: RoleRepository;
   menu: MenuRepository;
+  menuCategories: MenuCategoryRepository;
+  menuItems: MenuItemRepository;
+  modifiers: ModifierRepository;
   stations: StationRepository;
   orders: OrderRepository;
+  orderItems: OrderItemRepository;
   tickets: KitchenTicketRepository;
   songs: SongRepository;
   payments: PaymentRepository;
   paymentTokens: PaymentTokenRepository;
   inventory: InventoryRepository;
+  inventoryReservations: InventoryReservationRepository;
   notifications: NotificationRepository;
   audit: AuditRepository;
   settings: SettingsRepository;

@@ -318,3 +318,596 @@ export const CloseCustomerTableSessionParams = zod.object({
 })
 
 export const CloseCustomerTableSessionResponse = zod.void()
+
+
+/**
+ * @summary List the available menu for a club
+ */
+
+
+
+export const ListOrderMenuHeader = zod.object({
+  "X-Club-Id": zod.string().min(1)
+})
+
+export const listOrderMenuResponseItemsItemPriceMinorMin = 0;
+
+export const listOrderMenuResponseModifiersItemMinSelectionsMin = 0;
+
+export const listOrderMenuResponseModifiersItemMaxSelectionsMin = 0;
+
+
+
+export const ListOrderMenuResponse = zod.object({
+  "categories": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "sortOrder": zod.number(),
+  "active": zod.boolean()
+})),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string().optional(),
+  "priceMinor": zod.number().min(listOrderMenuResponseItemsItemPriceMinorMin),
+  "currency": zod.string(),
+  "categoryId": zod.string().optional(),
+  "imageUrl": zod.string().optional(),
+  "preparationStationId": zod.string(),
+  "available": zod.boolean(),
+  "sortOrder": zod.number(),
+  "modifierIds": zod.array(zod.string()).optional()
+})),
+  "modifiers": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "required": zod.boolean(),
+  "minSelections": zod.number().min(listOrderMenuResponseModifiersItemMinSelectionsMin),
+  "maxSelections": zod.number().min(listOrderMenuResponseModifiersItemMaxSelectionsMin),
+  "options": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "priceDeltaMinor": zod.number(),
+  "available": zod.boolean()
+}))
+}))
+})
+
+
+/**
+ * @summary List orders for the authorized table session
+ */
+
+
+
+
+
+
+export const ListOrdersHeader = zod.object({
+  "X-Club-Id": zod.string().min(1),
+  "X-Table-Session-Id": zod.string().min(1),
+  "X-Customer-Session-Id": zod.string().min(1),
+  "X-Customer-Session-Token": zod.string().min(1)
+})
+
+export const ListOrdersResponse = zod.object({
+  "orders": zod.array(zod.object({
+  "order": zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "customerSessionId": zod.string(),
+  "status": zod.enum(['draft', 'submitted', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled']),
+  "itemIds": zod.array(zod.string()),
+  "idempotencyKey": zod.string(),
+  "subtotalMinor": zod.number(),
+  "taxMinor": zod.number(),
+  "serviceChargeMinor": zod.number(),
+  "discountMinor": zod.number(),
+  "totalMinor": zod.number(),
+  "notes": zod.string().optional(),
+  "version": zod.number().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().optional()
+}),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "menuItemId": zod.string(),
+  "nameSnapshot": zod.string(),
+  "unitPriceMinor": zod.number(),
+  "quantity": zod.number(),
+  "modifiers": zod.array(zod.object({
+  "modifierId": zod.string(),
+  "optionIds": zod.array(zod.string())
+})),
+  "notes": zod.string().optional(),
+  "lineSubtotalMinor": zod.number()
+}))
+}))
+})
+
+
+/**
+ * @summary Create and submit an order
+ */
+
+
+
+export const createOrderHeaderIdempotencyKeyMax = 128;
+
+
+
+export const CreateOrderHeader = zod.object({
+  "X-Club-Id": zod.string().min(1),
+  "X-Customer-Session-Id": zod.string().min(1),
+  "X-Customer-Session-Token": zod.string().min(1),
+  "Idempotency-Key": zod.string().min(1).max(createOrderHeaderIdempotencyKeyMax)
+})
+
+
+
+export const createOrderBodyItemsItemQuantityMax = 99;
+
+export const createOrderBodyItemsItemNotesMax = 500;
+
+
+export const createOrderBodyNotesMax = 500;
+
+
+
+export const CreateOrderBody = zod.object({
+  "clubId": zod.string().min(1),
+  "tableSessionId": zod.string().min(1),
+  "items": zod.array(zod.object({
+  "menuItemId": zod.string(),
+  "quantity": zod.number().min(1).max(createOrderBodyItemsItemQuantityMax),
+  "modifiers": zod.array(zod.object({
+  "modifierId": zod.string(),
+  "optionIds": zod.array(zod.string())
+})).optional(),
+  "notes": zod.string().max(createOrderBodyItemsItemNotesMax).optional()
+})).min(1),
+  "notes": zod.string().max(createOrderBodyNotesMax).optional()
+})
+
+export const CreateOrderResponse = zod.object({
+  "order": zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "customerSessionId": zod.string(),
+  "status": zod.enum(['draft', 'submitted', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled']),
+  "itemIds": zod.array(zod.string()),
+  "idempotencyKey": zod.string(),
+  "subtotalMinor": zod.number(),
+  "taxMinor": zod.number(),
+  "serviceChargeMinor": zod.number(),
+  "discountMinor": zod.number(),
+  "totalMinor": zod.number(),
+  "notes": zod.string().optional(),
+  "version": zod.number().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().optional()
+}),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "menuItemId": zod.string(),
+  "nameSnapshot": zod.string(),
+  "unitPriceMinor": zod.number(),
+  "quantity": zod.number(),
+  "modifiers": zod.array(zod.object({
+  "modifierId": zod.string(),
+  "optionIds": zod.array(zod.string())
+})),
+  "notes": zod.string().optional(),
+  "lineSubtotalMinor": zod.number()
+}))
+})
+
+
+/**
+ * @summary Create an editable draft order
+ */
+
+
+
+export const createOrderDraftHeaderIdempotencyKeyMax = 128;
+
+
+
+export const CreateOrderDraftHeader = zod.object({
+  "X-Club-Id": zod.string().min(1),
+  "X-Customer-Session-Id": zod.string().min(1),
+  "X-Customer-Session-Token": zod.string().min(1),
+  "Idempotency-Key": zod.string().min(1).max(createOrderDraftHeaderIdempotencyKeyMax)
+})
+
+
+
+export const createOrderDraftBodyItemsItemQuantityMax = 99;
+
+export const createOrderDraftBodyItemsItemNotesMax = 500;
+
+
+export const createOrderDraftBodyNotesMax = 500;
+
+
+
+export const CreateOrderDraftBody = zod.object({
+  "clubId": zod.string().min(1),
+  "tableSessionId": zod.string().min(1),
+  "items": zod.array(zod.object({
+  "menuItemId": zod.string(),
+  "quantity": zod.number().min(1).max(createOrderDraftBodyItemsItemQuantityMax),
+  "modifiers": zod.array(zod.object({
+  "modifierId": zod.string(),
+  "optionIds": zod.array(zod.string())
+})).optional(),
+  "notes": zod.string().max(createOrderDraftBodyItemsItemNotesMax).optional()
+})).min(1),
+  "notes": zod.string().max(createOrderDraftBodyNotesMax).optional()
+})
+
+export const CreateOrderDraftResponse = zod.object({
+  "order": zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "customerSessionId": zod.string(),
+  "status": zod.enum(['draft', 'submitted', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled']),
+  "itemIds": zod.array(zod.string()),
+  "idempotencyKey": zod.string(),
+  "subtotalMinor": zod.number(),
+  "taxMinor": zod.number(),
+  "serviceChargeMinor": zod.number(),
+  "discountMinor": zod.number(),
+  "totalMinor": zod.number(),
+  "notes": zod.string().optional(),
+  "version": zod.number().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().optional()
+}),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "menuItemId": zod.string(),
+  "nameSnapshot": zod.string(),
+  "unitPriceMinor": zod.number(),
+  "quantity": zod.number(),
+  "modifiers": zod.array(zod.object({
+  "modifierId": zod.string(),
+  "optionIds": zod.array(zod.string())
+})),
+  "notes": zod.string().optional(),
+  "lineSubtotalMinor": zod.number()
+}))
+})
+
+
+/**
+ * @summary Get an order belonging to the authorized table session
+ */
+
+
+
+export const GetOrderParams = zod.object({
+  "orderId": zod.coerce.string().min(1)
+})
+
+
+
+
+
+
+export const GetOrderHeader = zod.object({
+  "X-Club-Id": zod.string().min(1),
+  "X-Customer-Session-Id": zod.string().min(1),
+  "X-Customer-Session-Token": zod.string().min(1)
+})
+
+export const GetOrderResponse = zod.object({
+  "order": zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "customerSessionId": zod.string(),
+  "status": zod.enum(['draft', 'submitted', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled']),
+  "itemIds": zod.array(zod.string()),
+  "idempotencyKey": zod.string(),
+  "subtotalMinor": zod.number(),
+  "taxMinor": zod.number(),
+  "serviceChargeMinor": zod.number(),
+  "discountMinor": zod.number(),
+  "totalMinor": zod.number(),
+  "notes": zod.string().optional(),
+  "version": zod.number().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().optional()
+}),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "menuItemId": zod.string(),
+  "nameSnapshot": zod.string(),
+  "unitPriceMinor": zod.number(),
+  "quantity": zod.number(),
+  "modifiers": zod.array(zod.object({
+  "modifierId": zod.string(),
+  "optionIds": zod.array(zod.string())
+})),
+  "notes": zod.string().optional(),
+  "lineSubtotalMinor": zod.number()
+}))
+})
+
+
+/**
+ * @summary Update a draft order before submission
+ */
+
+
+
+export const UpdateDraftOrderParams = zod.object({
+  "orderId": zod.coerce.string().min(1)
+})
+
+
+
+
+
+
+export const UpdateDraftOrderHeader = zod.object({
+  "X-Club-Id": zod.string().min(1),
+  "X-Customer-Session-Id": zod.string().min(1),
+  "X-Customer-Session-Token": zod.string().min(1)
+})
+
+export const updateDraftOrderBodyVersionMin = 0;
+
+export const updateDraftOrderBodyItemsItemQuantityMax = 99;
+
+export const updateDraftOrderBodyItemsItemNotesMax = 500;
+
+
+export const updateDraftOrderBodyNotesMax = 500;
+
+
+
+export const UpdateDraftOrderBody = zod.object({
+  "version": zod.number().min(updateDraftOrderBodyVersionMin),
+  "items": zod.array(zod.object({
+  "menuItemId": zod.string(),
+  "quantity": zod.number().min(1).max(updateDraftOrderBodyItemsItemQuantityMax),
+  "modifiers": zod.array(zod.object({
+  "modifierId": zod.string(),
+  "optionIds": zod.array(zod.string())
+})).optional(),
+  "notes": zod.string().max(updateDraftOrderBodyItemsItemNotesMax).optional()
+})).min(1),
+  "notes": zod.string().max(updateDraftOrderBodyNotesMax).optional()
+})
+
+export const UpdateDraftOrderResponse = zod.object({
+  "order": zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "customerSessionId": zod.string(),
+  "status": zod.enum(['draft', 'submitted', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled']),
+  "itemIds": zod.array(zod.string()),
+  "idempotencyKey": zod.string(),
+  "subtotalMinor": zod.number(),
+  "taxMinor": zod.number(),
+  "serviceChargeMinor": zod.number(),
+  "discountMinor": zod.number(),
+  "totalMinor": zod.number(),
+  "notes": zod.string().optional(),
+  "version": zod.number().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().optional()
+}),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "menuItemId": zod.string(),
+  "nameSnapshot": zod.string(),
+  "unitPriceMinor": zod.number(),
+  "quantity": zod.number(),
+  "modifiers": zod.array(zod.object({
+  "modifierId": zod.string(),
+  "optionIds": zod.array(zod.string())
+})),
+  "notes": zod.string().optional(),
+  "lineSubtotalMinor": zod.number()
+}))
+})
+
+
+/**
+ * @summary Cancel an order within the cancellation window
+ */
+
+
+
+export const CancelOrderParams = zod.object({
+  "orderId": zod.coerce.string().min(1)
+})
+
+
+
+
+
+
+export const CancelOrderHeader = zod.object({
+  "X-Club-Id": zod.string().min(1),
+  "X-Customer-Session-Id": zod.string().min(1),
+  "X-Customer-Session-Token": zod.string().min(1)
+})
+
+export const cancelOrderBodyReasonMax = 250;
+
+
+
+export const CancelOrderBody = zod.object({
+  "reason": zod.string().max(cancelOrderBodyReasonMax).optional()
+})
+
+export const CancelOrderResponse = zod.object({
+  "order": zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "customerSessionId": zod.string(),
+  "status": zod.enum(['draft', 'submitted', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled']),
+  "itemIds": zod.array(zod.string()),
+  "idempotencyKey": zod.string(),
+  "subtotalMinor": zod.number(),
+  "taxMinor": zod.number(),
+  "serviceChargeMinor": zod.number(),
+  "discountMinor": zod.number(),
+  "totalMinor": zod.number(),
+  "notes": zod.string().optional(),
+  "version": zod.number().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().optional()
+}),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "menuItemId": zod.string(),
+  "nameSnapshot": zod.string(),
+  "unitPriceMinor": zod.number(),
+  "quantity": zod.number(),
+  "modifiers": zod.array(zod.object({
+  "modifierId": zod.string(),
+  "optionIds": zod.array(zod.string())
+})),
+  "notes": zod.string().optional(),
+  "lineSubtotalMinor": zod.number()
+}))
+})
+
+
+/**
+ * @summary Move an order through the staff lifecycle
+ */
+
+
+
+export const UpdateOrderStatusParams = zod.object({
+  "orderId": zod.coerce.string().min(1)
+})
+
+
+
+
+export const UpdateOrderStatusHeader = zod.object({
+  "X-Club-Id": zod.string().min(1)
+})
+
+export const updateOrderStatusBodyVersionMin = 0;
+
+export const updateOrderStatusBodyReasonMax = 250;
+
+
+
+export const UpdateOrderStatusBody = zod.object({
+  "status": zod.enum(['accepted', 'preparing', 'ready', 'delivered', 'cancelled']),
+  "version": zod.number().min(updateOrderStatusBodyVersionMin),
+  "reason": zod.string().max(updateOrderStatusBodyReasonMax).optional()
+})
+
+export const UpdateOrderStatusResponse = zod.object({
+  "order": zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "customerSessionId": zod.string(),
+  "status": zod.enum(['draft', 'submitted', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled']),
+  "itemIds": zod.array(zod.string()),
+  "idempotencyKey": zod.string(),
+  "subtotalMinor": zod.number(),
+  "taxMinor": zod.number(),
+  "serviceChargeMinor": zod.number(),
+  "discountMinor": zod.number(),
+  "totalMinor": zod.number(),
+  "notes": zod.string().optional(),
+  "version": zod.number().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().optional()
+}),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "menuItemId": zod.string(),
+  "nameSnapshot": zod.string(),
+  "unitPriceMinor": zod.number(),
+  "quantity": zod.number(),
+  "modifiers": zod.array(zod.object({
+  "modifierId": zod.string(),
+  "optionIds": zod.array(zod.string())
+})),
+  "notes": zod.string().optional(),
+  "lineSubtotalMinor": zod.number()
+}))
+})
+
+
+/**
+ * @summary Submit an editable draft order
+ */
+
+
+
+export const SubmitOrderParams = zod.object({
+  "orderId": zod.coerce.string().min(1)
+})
+
+
+
+
+
+
+export const SubmitOrderHeader = zod.object({
+  "X-Club-Id": zod.string().min(1),
+  "X-Customer-Session-Id": zod.string().min(1),
+  "X-Customer-Session-Token": zod.string().min(1)
+})
+
+export const submitOrderBodyVersionMin = 0;
+
+
+
+export const SubmitOrderBody = zod.object({
+  "version": zod.number().min(submitOrderBodyVersionMin)
+})
+
+export const SubmitOrderResponse = zod.object({
+  "order": zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "customerSessionId": zod.string(),
+  "status": zod.enum(['draft', 'submitted', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled']),
+  "itemIds": zod.array(zod.string()),
+  "idempotencyKey": zod.string(),
+  "subtotalMinor": zod.number(),
+  "taxMinor": zod.number(),
+  "serviceChargeMinor": zod.number(),
+  "discountMinor": zod.number(),
+  "totalMinor": zod.number(),
+  "notes": zod.string().optional(),
+  "version": zod.number().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().optional()
+}),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "menuItemId": zod.string(),
+  "nameSnapshot": zod.string(),
+  "unitPriceMinor": zod.number(),
+  "quantity": zod.number(),
+  "modifiers": zod.array(zod.object({
+  "modifierId": zod.string(),
+  "optionIds": zod.array(zod.string())
+})),
+  "notes": zod.string().optional(),
+  "lineSubtotalMinor": zod.number()
+}))
+})

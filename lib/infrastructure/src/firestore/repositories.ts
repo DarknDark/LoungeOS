@@ -16,6 +16,14 @@ import {
   type ServiceTimelineEvent,
   type AuditLog,
   type BusinessDay,
+  type MenuCategoryRecord,
+  type MenuItem,
+  type MenuModifier,
+  type ModifierOption,
+  type Order,
+  type OrderItem,
+  type InventoryItem,
+  type InventoryReservation,
 } from '@workspace/domain';
 import type {
   BusinessDayRepository,
@@ -29,6 +37,13 @@ import type {
   TableRepository,
   TableSessionRepository,
   RoleRepository,
+  MenuCategoryRepository,
+  MenuItemRepository,
+  ModifierRepository,
+  OrderRepository,
+  OrderItemRepository,
+  InventoryRepository,
+  InventoryReservationRepository,
   AuditRepository,
   RealtimeChange,
   RealtimeRepository,
@@ -47,7 +62,7 @@ function documentWithId<T extends object>(
   id: string,
   data: DocumentData | undefined,
 ): T | null {
-  return data ? ({ id, ...data } as T) : null;
+  return data && !isDeleted(data) ? ({ id, ...data } as T) : null;
 }
 
 function limitFor(query?: PageQuery): number {
@@ -478,6 +493,483 @@ export class FirestoreBusinessDayRepository implements BusinessDayRepository {
   }
 }
 
+export class FirestoreMenuCategoryRepository implements MenuCategoryRepository {
+  constructor(private readonly firestore: Firestore) {}
+
+  async listActive(clubId: string): Promise<MenuCategoryRecord[]> {
+    const snapshot = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.menuCategories,
+    )
+      .where('active', '==', true)
+      .orderBy('sortOrder')
+      .get();
+    return snapshot.docs
+      .map((document) => documentWithId<MenuCategoryRecord>(document.id, document.data()))
+      .filter((category): category is MenuCategoryRecord => Boolean(category));
+  }
+
+  async getById(clubId: string, categoryId: string): Promise<MenuCategoryRecord | null> {
+    const document = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.menuCategories,
+    )
+      .doc(categoryId)
+      .get();
+    return documentWithId<MenuCategoryRecord>(document.id, document.data());
+  }
+
+  async save(category: MenuCategoryRecord): Promise<void> {
+    await scopedCollection(
+      this.firestore,
+      category.clubId,
+      FIRESTORE_COLLECTIONS.menuCategories,
+    )
+      .doc(category.id)
+      .set(category, { merge: true });
+  }
+}
+
+export class FirestoreMenuItemRepository implements MenuItemRepository {
+  constructor(private readonly firestore: Firestore) {}
+
+  async getById(clubId: string, menuItemId: string): Promise<MenuItem | null> {
+    const document = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.menuItems,
+    )
+      .doc(menuItemId)
+      .get();
+    return documentWithId<MenuItem>(document.id, document.data());
+  }
+
+  async listAvailable(clubId: string): Promise<MenuItem[]> {
+    const snapshot = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.menuItems,
+    )
+      .where('available', '==', true)
+      .orderBy('sortOrder')
+      .get();
+    return snapshot.docs
+      .map((document) => documentWithId<MenuItem>(document.id, document.data()))
+      .filter((item): item is MenuItem => Boolean(item));
+  }
+
+  async save(item: MenuItem): Promise<void> {
+    await scopedCollection(
+      this.firestore,
+      item.clubId,
+      FIRESTORE_COLLECTIONS.menuItems,
+    )
+      .doc(item.id)
+      .set(item, { merge: true });
+  }
+}
+
+export class FirestoreModifierRepository implements ModifierRepository {
+  constructor(private readonly firestore: Firestore) {}
+
+  async getById(clubId: string, modifierId: string): Promise<MenuModifier | null> {
+    const document = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.modifiers,
+    )
+      .doc(modifierId)
+      .get();
+    return documentWithId<MenuModifier>(document.id, document.data());
+  }
+
+  async listForMenuItem(clubId: string, menuItemId: string): Promise<MenuModifier[]> {
+    const snapshot = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.modifiers,
+    )
+      .where('menuItemIds', 'array-contains', menuItemId)
+      .where('active', '==', true)
+      .get();
+    return snapshot.docs
+      .map((document) => documentWithId<MenuModifier>(document.id, document.data()))
+      .filter((modifier): modifier is MenuModifier => Boolean(modifier));
+  }
+
+  async getOption(clubId: string, optionId: string): Promise<ModifierOption | null> {
+    const snapshot = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.modifiers,
+    )
+      .where('optionIds', 'array-contains', optionId)
+      .limit(1)
+      .get();
+    const modifier = snapshot.docs[0]?.data() as MenuModifier | undefined;
+    const option = modifier?.options?.find(
+      (candidate) => candidate.id === optionId,
+    );
+    return option ?? null;
+  }
+
+  async saveModifier(modifier: MenuModifier): Promise<void> {
+    await scopedCollection(
+      this.firestore,
+      modifier.clubId,
+      FIRESTORE_COLLECTIONS.modifiers,
+    )
+      .doc(modifier.id)
+      .set(modifier, { merge: true });
+  }
+
+  async saveOption(option: ModifierOption): Promise<void> {
+    const reference = scopedCollection(
+      this.firestore,
+      option.clubId,
+      FIRESTORE_COLLECTIONS.modifiers,
+    ).doc(option.modifierId);
+    const current = await reference.get();
+    const modifier = current.data() as MenuModifier | undefined;
+    const options = (modifier?.options ?? []).filter((candidate) => candidate.id !== option.id);
+    await reference.set(
+      {
+        options: [...options, option],
+      },
+      { merge: true },
+    );
+  }
+}
+
+export class FirestoreOrderRepository implements OrderRepository {
+  constructor(private readonly firestore: Firestore) {}
+
+  async getById(clubId: string, orderId: string): Promise<Order | null> {
+    const document = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.orders,
+    )
+      .doc(orderId)
+      .get();
+    return documentWithId<Order>(document.id, document.data());
+  }
+
+  async save(order: Order, items: OrderItem[]): Promise<void> {
+    const batch = this.firestore.batch();
+    const orderReference = scopedCollection(
+      this.firestore,
+      order.clubId,
+      FIRESTORE_COLLECTIONS.orders,
+    ).doc(order.id);
+    batch.set(orderReference, order, { merge: true });
+    for (const item of items) {
+      batch.set(
+        scopedCollection(
+          this.firestore,
+          order.clubId,
+          FIRESTORE_COLLECTIONS.orderItems,
+        ).doc(item.id),
+        item,
+        { merge: true },
+      );
+    }
+    await batch.commit();
+  }
+
+  async saveIfVersion(
+    order: Order,
+    items: OrderItem[],
+    expectedVersion: number,
+  ): Promise<void> {
+    const orderReference = scopedCollection(
+      this.firestore,
+      order.clubId,
+      FIRESTORE_COLLECTIONS.orders,
+    ).doc(order.id);
+    await this.firestore.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(orderReference);
+      const current = snapshot.data() as Order | undefined;
+      if ((current?.version ?? 0) !== expectedVersion) {
+        throw new Error('STALE_VERSION');
+      }
+      transaction.set(
+        orderReference,
+        { ...order, version: expectedVersion + 1 },
+        { merge: true },
+      );
+      for (const item of items) {
+        transaction.set(
+          scopedCollection(
+            this.firestore,
+            order.clubId,
+            FIRESTORE_COLLECTIONS.orderItems,
+          ).doc(item.id),
+          item,
+          { merge: true },
+        );
+      }
+    });
+  }
+
+  async findByIdempotencyKey(
+    clubId: string,
+    tableSessionId: string,
+    customerSessionId: string,
+    idempotencyKey: string,
+  ): Promise<Order | null> {
+    const snapshot = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.orders,
+    )
+      .where('tableSessionId', '==', tableSessionId)
+      .where('customerSessionId', '==', customerSessionId)
+      .where('idempotencyKey', '==', idempotencyKey)
+      .limit(1)
+      .get();
+    const document = snapshot.docs[0];
+    return document
+      ? documentWithId<Order>(document.id, document.data())
+      : null;
+  }
+
+  async listForSession(clubId: string, tableSessionId: string): Promise<Page<Order>> {
+    const snapshot = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.orders,
+    )
+      .where('tableSessionId', '==', tableSessionId)
+      .orderBy('createdAt', 'desc')
+      .get();
+    return pageFromSnapshot<Order>(snapshot, 100);
+  }
+
+  async listForCustomerSession(
+    clubId: string,
+    tableSessionId: string,
+    customerSessionId: string,
+  ): Promise<Page<Order>> {
+    const snapshot = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.orders,
+    )
+      .where('tableSessionId', '==', tableSessionId)
+      .where('customerSessionId', '==', customerSessionId)
+      .orderBy('createdAt', 'desc')
+      .get();
+    return pageFromSnapshot<Order>(snapshot, 100);
+  }
+
+  async listItems(clubId: string, orderId: string): Promise<OrderItem[]> {
+    const snapshot = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.orderItems,
+    )
+      .where('orderId', '==', orderId)
+      .get();
+    return snapshot.docs
+      .map((document) => documentWithId<OrderItem>(document.id, document.data()))
+      .filter((item): item is OrderItem => Boolean(item));
+  }
+}
+
+export class FirestoreOrderItemRepository implements OrderItemRepository {
+  constructor(private readonly firestore: Firestore) {}
+
+  async listForOrder(clubId: string, orderId: string): Promise<OrderItem[]> {
+    return new FirestoreOrderRepository(this.firestore).listItems(clubId, orderId);
+  }
+
+  async save(item: OrderItem): Promise<void> {
+    await scopedCollection(
+      this.firestore,
+      item.clubId ?? '',
+      FIRESTORE_COLLECTIONS.orderItems,
+    )
+      .doc(item.id)
+      .set(item, { merge: true });
+  }
+}
+
+export class FirestoreInventoryRepository implements InventoryRepository {
+  constructor(private readonly firestore: Firestore) {}
+
+  async getItem(clubId: string, inventoryItemId: string): Promise<InventoryItem | null> {
+    const document = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.inventoryItems,
+    )
+      .doc(inventoryItemId)
+      .get();
+    return documentWithId<InventoryItem>(document.id, document.data());
+  }
+
+  async listItems(clubId: string): Promise<Page<InventoryItem>> {
+    const snapshot = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.inventoryItems,
+    ).get();
+    return pageFromSnapshot<InventoryItem>(snapshot, 100);
+  }
+
+  async appendTransaction(transaction: import('@workspace/domain').InventoryTransaction): Promise<void> {
+    await scopedCollection(
+      this.firestore,
+      transaction.clubId,
+      FIRESTORE_COLLECTIONS.inventoryTransactions,
+    )
+      .doc(transaction.id)
+      .create(transaction);
+  }
+
+  async listTransactions(
+    clubId: string,
+    inventoryItemId: string,
+    query?: DomainPageQuery,
+  ): Promise<Page<import('@workspace/domain').InventoryTransaction>> {
+    const snapshot = await applyCursor(
+      scopedCollection(
+        this.firestore,
+        clubId,
+        FIRESTORE_COLLECTIONS.inventoryTransactions,
+      )
+        .where('inventoryItemId', '==', inventoryItemId)
+        .orderBy('createdAt', 'desc'),
+      query?.cursor,
+    )
+      .limit(limitFor(query) + 1)
+      .get();
+    return pageFromSnapshot(snapshot, limitFor(query));
+  }
+}
+
+export class FirestoreInventoryReservationRepository
+  implements InventoryReservationRepository
+{
+  constructor(private readonly firestore: Firestore) {}
+
+  async reserve(input: {
+    clubId: string;
+    orderId: string;
+    inventoryItemId: string;
+    quantity: number;
+    now: string;
+  }): Promise<InventoryReservation> {
+    const inventoryReference = scopedCollection(
+      this.firestore,
+      input.clubId,
+      FIRESTORE_COLLECTIONS.inventoryItems,
+    ).doc(input.inventoryItemId);
+    const reservation = {
+      id: `${input.orderId}:${input.inventoryItemId}`,
+      clubId: input.clubId,
+      orderId: input.orderId,
+      inventoryItemId: input.inventoryItemId,
+      quantity: input.quantity,
+      status: 'reserved' as const,
+      createdAt: input.now,
+      version: 0,
+      updatedAt: input.now,
+    };
+    const reservationReference = scopedCollection(
+      this.firestore,
+      input.clubId,
+      FIRESTORE_COLLECTIONS.inventoryReservations,
+    ).doc(reservation.id);
+    await this.firestore.runTransaction(async (transaction) => {
+      const [inventorySnapshot, reservationSnapshot] = await Promise.all([
+        transaction.get(inventoryReference),
+        transaction.get(reservationReference),
+      ]);
+      if (reservationSnapshot.exists && reservationSnapshot.data()?.status === 'reserved') {
+        return;
+      }
+      const inventory = inventorySnapshot.data() as InventoryItem | undefined;
+      if (
+        !inventory ||
+        (inventory.quantityOnHand !== undefined &&
+          inventory.quantityOnHand - (inventory.reservedQuantity ?? 0) < input.quantity)
+      ) {
+        throw new Error('ITEM_OUT_OF_STOCK');
+      }
+      transaction.set(
+        inventoryReference,
+        {
+              reservedQuantity: (inventory.reservedQuantity ?? 0) + input.quantity,
+          updatedAt: input.now,
+          version: (inventory.version ?? 0) + 1,
+        },
+        { merge: true },
+      );
+      transaction.create(reservationReference, reservation);
+    });
+    return reservation;
+  }
+
+  async releaseForOrder(clubId: string, orderId: string, now: string): Promise<void> {
+    const snapshot = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.inventoryReservations,
+    )
+      .where('orderId', '==', orderId)
+      .where('status', '==', 'reserved')
+      .get();
+    for (const document of snapshot.docs) {
+      const reservation = document.data() as InventoryReservation;
+      const inventoryReference = scopedCollection(
+        this.firestore,
+        clubId,
+        FIRESTORE_COLLECTIONS.inventoryItems,
+      ).doc(reservation.inventoryItemId);
+      await this.firestore.runTransaction(async (transaction) => {
+        const inventorySnapshot = await transaction.get(inventoryReference);
+        const inventory = inventorySnapshot.data() as InventoryItem | undefined;
+        if (inventory) {
+          transaction.set(
+            inventoryReference,
+            {
+              reservedQuantity: Math.max(
+                0,
+                (inventory.reservedQuantity ?? 0) - reservation.quantity,
+              ),
+              updatedAt: now,
+              version: (inventory.version ?? 0) + 1,
+            },
+            { merge: true },
+          );
+        }
+        transaction.set(
+          document.ref,
+          { status: 'released', releasedAt: now, updatedAt: now },
+          { merge: true },
+        );
+      });
+    }
+  }
+
+  async listForOrder(clubId: string, orderId: string): Promise<InventoryReservation[]> {
+    const snapshot = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.inventoryReservations,
+    )
+      .where('orderId', '==', orderId)
+      .get();
+    return snapshot.docs
+      .map((document) => documentWithId<InventoryReservation>(document.id, document.data()))
+      .filter((reservation): reservation is InventoryReservation => Boolean(reservation));
+  }
+}
+
 export class FirestoreNotificationRepository implements NotificationRepository {
   constructor(private readonly firestore: Firestore) {}
 
@@ -831,6 +1323,14 @@ export type Module2Repositories = Pick<
   | 'businessDays'
    | 'realtime'
    | 'offlineQueue'
+   | 'menu'
+   | 'menuCategories'
+   | 'menuItems'
+   | 'modifiers'
+   | 'orders'
+   | 'orderItems'
+   | 'inventory'
+   | 'inventoryReservations'
 >;
 
 export function createModule2Repositories(firestore: Firestore): Module2Repositories {
@@ -848,5 +1348,13 @@ export function createModule2Repositories(firestore: Firestore): Module2Reposito
     businessDays: new FirestoreBusinessDayRepository(firestore),
     realtime: new FirestoreRealtimeRepository(firestore),
     offlineQueue: new FirestoreOfflineQueue(firestore),
+    menuCategories: new FirestoreMenuCategoryRepository(firestore),
+    menuItems: new FirestoreMenuItemRepository(firestore),
+    menu: new FirestoreMenuItemRepository(firestore),
+    modifiers: new FirestoreModifierRepository(firestore),
+    orders: new FirestoreOrderRepository(firestore),
+    orderItems: new FirestoreOrderItemRepository(firestore),
+    inventory: new FirestoreInventoryRepository(firestore),
+    inventoryReservations: new FirestoreInventoryReservationRepository(firestore),
   };
 }

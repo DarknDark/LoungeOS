@@ -2,3 +2,4 @@
 - [Expo SDK migration](expo-sdk-migration.md) — SDK 57 needs a fully aligned package graph and a non-default Metro build port in this workspace.
 - [Firebase preparation](firebase-preparation.md) — Firestore/Auth live verification is blocked until Firebase Admin Secrets are securely added.
 - [Infrastructure hardening](infrastructure-hardening.md) — shared audit, notification, timeline, event, realtime, offline-sync, metrics, and locking primitives are provider-neutral.
+- [Ordering Engine](ordering-engine.md) — Module 3 uses Firebase tenant-scoped repositories with centralized pricing, idempotency, reservations, and shared lifecycle side effects.
