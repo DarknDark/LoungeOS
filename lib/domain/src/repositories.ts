@@ -48,12 +48,29 @@ export type TableSessionRepository = {
   getById(clubId: ClubId, sessionId: string): Promise<TableSession | null>;
   getActiveForTable(clubId: ClubId, tableId: string): Promise<TableSession | null>;
   save(session: TableSession): Promise<void>;
+  createOwnerSession(input: {
+    table: Table;
+    session: TableSession;
+    customerSession: CustomerSession;
+    now: ISODateString;
+  }): Promise<void>;
+  createParticipantSession(input: {
+    session: TableSession;
+    customerSession: CustomerSession;
+    maximumContributors: number;
+    now: ISODateString;
+  }): Promise<void>;
 };
 
 export type CustomerSessionRepository = {
   getById(clubId: ClubId, sessionId: string): Promise<CustomerSession | null>;
+  getByDeviceId(
+    clubId: ClubId,
+    tableSessionId: string,
+    deviceId: string,
+  ): Promise<CustomerSession | null>;
   save(session: CustomerSession): Promise<void>;
-  expire(sessionId: string, expiredAt: ISODateString): Promise<void>;
+  expire(clubId: ClubId, sessionId: string, expiredAt: ISODateString): Promise<void>;
 };
 
 export type StaffRepository = {

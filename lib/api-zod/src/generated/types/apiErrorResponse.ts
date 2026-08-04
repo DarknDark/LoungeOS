@@ -5,7 +5,9 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ApiError } from './apiError';
 
-export interface HealthStatus {
-  status: string;
-}
+/**
+ * LoungeOS API error
+ */
+export type ApiErrorResponse = ApiError;

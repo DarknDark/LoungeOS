@@ -9,5 +9,12 @@
   },
   "dependencies": {
     "@workspace/domain": "workspace:*"
+  },
+  "scripts": {
+    "test": "tsx --test tests/table-sessions.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsx": "catalog:"
   }
 }

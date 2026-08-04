@@ -1,0 +1,45 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "tableSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tableId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "customerSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tableSessionId", "order": "ASCENDING" },
+        { "fieldPath": "deviceId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "customerSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tableSessionId", "order": "ASCENDING" },
+        { "fieldPath": "expiredAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "recipientId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "serviceTimeline",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tableSessionId", "order": "ASCENDING" },
+        { "fieldPath": "occurredAt", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

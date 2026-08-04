@@ -5,7 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ApiErrorError } from './apiErrorError';
 
-export interface HealthStatus {
-  status: string;
+export interface ApiError {
+  error: ApiErrorError;
 }

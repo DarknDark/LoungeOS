@@ -14,6 +14,7 @@ import type {
   TableSession,
 } from '@workspace/domain';
 import type { RepositoryRegistry } from '@workspace/domain';
+import type { Table, CustomerSession } from '@workspace/domain';
 
 export type RequestActor = {
   id?: string;
@@ -21,24 +22,63 @@ export type RequestActor = {
   kind: 'customer' | 'staff' | 'payment-contributor' | 'system';
   role?: string;
   customerSessionId?: string;
+  customerSessionToken?: string;
   staffId?: string;
 };
 
 export type TableSessionService = {
+  validateQr(input: {
+    clubId: string;
+    tableId: string;
+    qrToken: string;
+    now: string;
+  }): Promise<Table>;
   createFromQr(input: {
     actor: RequestActor;
     tableId: string;
+    qrToken: string;
+    deviceId?: string;
     now: string;
-  }): Promise<TableSession>;
+  }): Promise<TableSessionAccess>;
+  join(input: {
+    actor: RequestActor;
+    tableSessionId: string;
+    qrToken: string;
+    deviceId?: string;
+    now: string;
+  }): Promise<TableSessionAccess>;
+  recover(input: {
+    actor: RequestActor;
+    recoveryToken: string;
+    deviceId?: string;
+    now: string;
+  }): Promise<TableSessionAccess>;
+  heartbeat(input: {
+    actor: RequestActor;
+    tableSessionId: string;
+    customerSessionId: string;
+    now: string;
+  }): Promise<TableSessionAccess>;
   getCustomerSession(input: {
     actor: RequestActor;
     sessionId: string;
   }): Promise<TableSession>;
+  getStatus(input: {
+    actor: RequestActor;
+    tableSessionId: string;
+    now: string;
+  }): Promise<TableSessionAccess>;
   closeAfterVerifiedPayment(input: {
     actor: RequestActor;
     tableSessionId: string;
     now: string;
   }): Promise<void>;
+};
+
+export type TableSessionAccess = {
+  tableSession: TableSession;
+  customerSession: CustomerSession;
+  recoveryToken: string;
 };
 
 export type OrderService = {

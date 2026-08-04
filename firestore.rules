@@ -1,0 +1,11 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // LoungeOS uses Firebase Admin SDK through the API as its single
+    // persistence boundary. Direct client reads/writes are denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

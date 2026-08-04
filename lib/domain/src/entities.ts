@@ -17,7 +17,9 @@ export type TableStatus =
   | 'occupied'
   | 'payment-pending'
   | 'cleaning'
-  | 'reserved';
+  | 'reserved'
+  | 'closed'
+  | 'ready-for-next-customer';
 
 export type Table = {
   id: EntityId;
@@ -26,11 +28,21 @@ export type Table = {
   label: string;
   capacity?: number;
   qrVersion: number;
+  qrTokenHash?: string;
+  qrTokenExpiresAt?: ISODateString;
   status: TableStatus;
   activeSessionId?: EntityId;
 };
 
-export type TableSessionStatus = 'active' | 'payment-pending' | 'closed';
+export type TableSessionStatus =
+  | 'created'
+  | 'active'
+  | 'splitting-bill'
+  | 'awaiting-payment'
+  | 'payment-pending'
+  | 'completed'
+  | 'closed'
+  | 'expired';
 
 export type TableSession = {
   id: EntityId;
@@ -42,6 +54,8 @@ export type TableSession = {
   closedAt?: ISODateString;
   status: TableSessionStatus;
   runningTotalMinor: number;
+  expiresAt: ISODateString;
+  lastActivityAt: ISODateString;
 };
 
 export type CustomerSession = {
@@ -51,6 +65,10 @@ export type CustomerSession = {
   createdAt: ISODateString;
   expiresAt: ISODateString;
   isTableOwner: boolean;
+  deviceId?: string;
+  lastHeartbeatAt?: ISODateString;
+  recoveryTokenHash?: string;
+  expiredAt?: ISODateString;
 };
 
 export type StaffRoleName =

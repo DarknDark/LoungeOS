@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: customer-sessions
+    description: Anonymous customer table-session operations
 paths:
   /healthz:
     get:
@@ -24,7 +26,178 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /v1/customer/tables/{tableId}/validate:
+    post:
+      operationId: validateCustomerTable
+      tags: [customer-sessions]
+      summary: Validate a table QR context
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QrValidationRequest"
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/TableId"
+      responses:
+        "200":
+          description: Valid table context
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableValidationResponse"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "404":
+          $ref: "#/components/responses/ApiError"
+  /v1/customer/table-sessions:
+    post:
+      operationId: createCustomerTableSession
+      tags: [customer-sessions]
+      summary: Create the owner session from a table QR
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTableSessionRequest"
+      responses:
+        "201":
+          description: Created customer table session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSessionAccess"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/customer/table-sessions/{sessionId}/join:
+    post:
+      operationId: joinCustomerTableSession
+      tags: [customer-sessions]
+      summary: Join an active customer table session
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinTableSessionRequest"
+      responses:
+        "201":
+          description: Joined customer table session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSessionAccess"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+  /v1/customer/table-sessions/recover:
+    post:
+      operationId: recoverCustomerTableSession
+      tags: [customer-sessions]
+      summary: Recover a customer session after refresh or reconnection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecoverTableSessionRequest"
+      responses:
+        "200":
+          description: Recovered customer table session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSessionAccess"
+        "401":
+          $ref: "#/components/responses/ApiError"
+  /v1/customer/table-sessions/{sessionId}/heartbeat:
+    post:
+      operationId: heartbeatCustomerTableSession
+      tags: [customer-sessions]
+      summary: Refresh customer session activity and expiry
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HeartbeatRequest"
+      responses:
+        "200":
+          description: Updated customer table session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSessionAccess"
+        "401":
+          $ref: "#/components/responses/ApiError"
+  /v1/customer/table-sessions/{sessionId}:
+    get:
+      operationId: getCustomerTableSessionStatus
+      tags: [customer-sessions]
+      summary: Get the authorized customer session status
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: Current customer table session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSessionAccess"
+        "401":
+          $ref: "#/components/responses/ApiError"
+    delete:
+      operationId: closeCustomerTableSession
+      tags: [customer-sessions]
+      summary: Close a customer session
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "204":
+          description: Session closed
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
 components:
+  parameters:
+    ClubId:
+      name: X-Club-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    TableId:
+      name: tableId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+  responses:
+    ApiError:
+      description: LoungeOS API error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +206,135 @@ components:
           type: string
       required:
         - status
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+          required: [code, message]
+      required: [error]
+    QrValidationRequest:
+      type: object
+      properties:
+        qrToken:
+          type: string
+          minLength: 1
+      required: [qrToken]
+    CreateTableSessionRequest:
+      type: object
+      properties:
+        clubId:
+          type: string
+          minLength: 1
+        tableId:
+          type: string
+          minLength: 1
+        qrToken:
+          type: string
+          minLength: 1
+        deviceId:
+          type: string
+          minLength: 1
+      required: [clubId, tableId, qrToken]
+    JoinTableSessionRequest:
+      type: object
+      properties:
+        clubId:
+          type: string
+          minLength: 1
+        qrToken:
+          type: string
+          minLength: 1
+        deviceId:
+          type: string
+          minLength: 1
+      required: [clubId, qrToken]
+    RecoverTableSessionRequest:
+      type: object
+      properties:
+        clubId:
+          type: string
+          minLength: 1
+        customerSessionId:
+          type: string
+          minLength: 1
+        recoveryToken:
+          type: string
+          minLength: 1
+        deviceId:
+          type: string
+          minLength: 1
+      required: [clubId, customerSessionId, recoveryToken]
+    HeartbeatRequest:
+      type: object
+      properties:
+        clubId:
+          type: string
+          minLength: 1
+        customerSessionId:
+          type: string
+          minLength: 1
+      required: [clubId, customerSessionId]
+    TableValidationResponse:
+      type: object
+      properties:
+        table:
+          $ref: "#/components/schemas/Table"
+      required: [table]
+    TableSessionAccess:
+      type: object
+      properties:
+        tableSession:
+          $ref: "#/components/schemas/TableSession"
+        customerSession:
+          $ref: "#/components/schemas/CustomerSession"
+        recoveryToken:
+          type: string
+      required: [tableSession, customerSession, recoveryToken]
+    Table:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        number: { type: number, minimum: 1 }
+        label: { type: string }
+        capacity: { type: number, minimum: 1 }
+        qrVersion: { type: number, minimum: 1 }
+        status: { type: string }
+        activeSessionId: { type: string }
+      required: [id, clubId, number, label, qrVersion, status]
+    TableSession:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        tableId: { type: string }
+        businessDayId: { type: string }
+        ownerCustomerSessionId: { type: string }
+        openedAt: { type: string, format: date-time }
+        closedAt: { type: string, format: date-time }
+        status: { type: string }
+        runningTotalMinor: { type: number, minimum: 0 }
+        expiresAt: { type: string, format: date-time }
+        lastActivityAt: { type: string, format: date-time }
+      required:
+        [id, clubId, tableId, businessDayId, ownerCustomerSessionId, openedAt, status, runningTotalMinor, expiresAt, lastActivityAt]
+    CustomerSession:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        tableSessionId: { type: string }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        isTableOwner: { type: boolean }
+        deviceId: { type: string }
+        lastHeartbeatAt: { type: string, format: date-time }
+        expiredAt: { type: string, format: date-time }
+      required: [id, clubId, tableSessionId, createdAt, expiresAt, isTableOwner]
 
