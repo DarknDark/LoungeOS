@@ -168,7 +168,7 @@ payments, dashboards, or integrations.
 | `lib/api-spec/` | Define the contract-first API surface and regenerate clients after spec changes. |
 | `lib/api-client-react/` | Consume generated contract types/hooks rather than UI-specific mock state. |
 | `lib/api-zod/` | Share request/response validation at the API boundary. |
-| `lib/db/` | Establish persistence boundaries and schema foundations for multi-club data. |
+| `lib/infrastructure/` | Establish Firebase Admin, Firestore, and Auth provider boundaries. |
 | Root documentation | Record architecture decisions, folder ownership, and module verification rules. |
 
 No payment provider, Firebase project, music API, or other external integration
@@ -255,10 +255,10 @@ generated contracts separate.
 │   │   └── Generated client hooks for frontend applications
 │   ├── api-zod/
 │   │   └── Shared request and response validation
-│   ├── db/
-│   │   └── Persistence schema, repositories, and migrations
+│   ├── infrastructure/
+│   │   └── Firebase Admin, Firestore, Auth, and future provider adapters
 │   └── integrations/
-│       └── Firebase, M-Pesa, music search, and future provider adapters
+│       └── M-Pesa, music search, and future provider adapters
 ├── scripts/
 │   └── Workspace automation and validation
 └── attached_assets/
@@ -274,7 +274,8 @@ generated contracts separate.
 - `lib/domain` contains framework-independent business concepts.
 - `lib/application` coordinates use cases through interfaces and does not know
   React or Firestore implementation details.
-- `lib/db` implements persistence and transaction boundaries.
+- `lib/infrastructure` implements provider adapters while depending inward on
+  domain repository contracts.
 - `lib/api-spec`, `lib/api-client-react`, and `lib/api-zod` keep API contracts
   explicit and generated.
 - `lib/integrations` isolates external providers behind replaceable adapters.

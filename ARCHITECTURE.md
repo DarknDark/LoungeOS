@@ -259,6 +259,26 @@ defines collection names and document contracts without importing the Firebase
 SDK. This keeps the architecture testable and allows local adapters during
 development.
 
+### Firebase integration foundation
+
+The Firebase Admin SDK is isolated in `lib/infrastructure`. It is initialized
+only by the Firebase composition root and receives all credentials from
+environment variables managed by Replit Secrets. Domain code, application
+services, API routes, and mobile code do not construct Firebase clients.
+
+Initialization flow:
+
+1. An infrastructure operation requests the Firebase composition root.
+2. The root reads and validates the required environment variables.
+3. The Admin SDK is initialized once for the process.
+4. Firestore and Firebase Auth clients are injected into infrastructure
+   adapters.
+5. A missing required variable raises a `FirebaseConfigurationError` naming
+   only the missing variable names. Secret values are never logged.
+
+There is no PostgreSQL or in-memory fallback. The Firestore repository adapters
+will be enabled against the real project once the required secrets are added.
+
 | Collection | Purpose | Key relationships | Initial index considerations |
 | --- | --- | --- | --- |
 | `clubs` | Tenant identity and high-level configuration | Root of all tenant data | `slug`, `active` |
@@ -387,6 +407,35 @@ Firestore SDK calls.
 Staff authentication will use Firebase Authentication. The Firebase UID is
 resolved to a staff membership in the active club. A signed-in identity is not
 automatically authorized to access any club or operation.
+
+### Environment variable checklist
+
+| Variable | Required | Used for |
+| --- | --- | --- |
+| `FIREBASE_PROJECT_ID` | Yes | Firebase project identity for Admin SDK, Firestore, and Auth |
+| `FIREBASE_CLIENT_EMAIL` | Yes | Server-side service-account identity |
+| `FIREBASE_PRIVATE_KEY` | Yes | Server-side service-account signing key |
+| `FIREBASE_STORAGE_BUCKET` | No | Future Firebase Storage media and receipt files |
+| `FIREBASE_DATABASE_URL` | No | Optional Realtime Database URL; not used by the Firestore foundation |
+
+The three required values must be stored as Replit Secrets. They must never be
+committed, placed in source files, exposed to the mobile bundle, returned by an
+endpoint, or written to logs/audit records. `FIREBASE_PRIVATE_KEY` may use
+escaped newline characters; the integration normalizes them only in memory.
+No Firebase client configuration is required for this backend preparation
+because login screens and customer UI are explicitly out of scope.
+
+The authentication foundation verifies Firebase ID tokens and exposes only the
+Firebase UID and decoded claims to the application boundary. Membership lookup,
+club scoping, role resolution, and permission checks remain server-side
+application concerns; possession of a valid Firebase token alone never grants a
+LoungeOS role.
+
+The API exposes reusable required and optional Firebase staff-token middleware
+for protected route groups. The middleware rejects missing/invalid tokens and
+returns a configuration response when Firebase Secrets are absent. It does not
+grant club membership or permissions and is not attached to public health
+routes.
 
 Staff login flow:
 
@@ -532,7 +581,7 @@ actor/type/time/business day, and may be denormalized for fast admin review.
 │   ├── api-spec/           OpenAPI source and code generation
 │   ├── api-client-react/   Generated React Query client
 │   ├── api-zod/            Generated request/response validation
-│   ├── db/                 Persistence schema and database adapters
+│   ├── infrastructure/    Firebase and future provider adapters
 │   └── integrations/       Firebase, M-Pesa, music, messaging, printers
 └── scripts/                 Build and validation automation
 ```

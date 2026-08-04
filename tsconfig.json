@@ -10,7 +10,7 @@
       "path": "./lib/application"
     },
     {
-      "path": "./lib/db"
+      "path": "./lib/infrastructure"
     },
     {
       "path": "./lib/api-client-react"

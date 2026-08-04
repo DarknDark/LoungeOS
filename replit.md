@@ -8,16 +8,18 @@ A premium mobile-first table ordering experience for nightclub guests and the st
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required server secrets: `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`,
+  `FIREBASE_PRIVATE_KEY`
+- Optional Firebase environment variables:
+  `FIREBASE_STORAGE_BUCKET`, `FIREBASE_DATABASE_URL`
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 6
 - Mobile: Expo SDK 57, React Native 0.86, React 19.2
 - API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
+- Persistence: Firebase Firestore through `@workspace/infrastructure`
+- Validation: Zod
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
 
