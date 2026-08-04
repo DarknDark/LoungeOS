@@ -1,0 +1,352 @@
+LoungeOS – Module 1.5: Complete the Production Architecture (No Customer Features Yet)
+
+Excellent work.
+
+The architecture review was honest and confirms we have a strong blueprint, but the production architecture is not yet complete. I agree with the assessment that Module 2 should not begin until the remaining architectural decisions are finalized.
+
+This is the final architecture pass before feature implementation.
+
+Objective
+
+Transform the current architecture from contracts and documentation into a working production foundation, without building customer-facing or staff-facing features yet.
+
+Do not create UI screens beyond what is required for testing architecture.
+
+Do not continue expanding the existing prototype.
+
+Instead, complete the production backbone that every future module will depend on.
+
+1. Finalize the Persistence Strategy
+
+The review identified an unresolved persistence decision.
+
+LoungeOS will use Firebase Firestore as the primary operational database.
+
+Keep PostgreSQL/Drizzle only if it has a clearly documented future purpose (for example reporting, warehousing, or exports). Otherwise remove the unused scaffold.
+
+After this step there must be one authoritative persistence strategy.
+
+2. Implement Repository Adapters
+
+Every repository interface currently defined should receive a concrete Firestore implementation.
+
+Implement adapters for:
+
+ClubRepository
+TableRepository
+TableSessionRepository
+CustomerSessionRepository
+StaffRepository
+MenuRepository
+OrderRepository
+PaymentRepository
+InventoryRepository
+NotificationRepository
+AnalyticsRepository
+ActivityFeedRepository
+AuditRepository
+BusinessDayRepository
+ServiceTimelineRepository
+SettingsRepository
+
+These implementations should perform Firestore reads/writes using the domain entities.
+
+3. Implement Application Services
+
+Replace service contracts with real implementations.
+
+Each service should contain business rules, not UI logic.
+
+Implement:
+
+TableSessionService
+OrderService
+PaymentService
+InventoryService
+KitchenService
+BartenderService
+DJService
+NotificationService
+AnalyticsService
+ActivityFeedService
+AuditService
+BusinessDayService
+SettingsService
+AuthorizationService
+
+Every service should use repositories through dependency injection.
+
+4. Define the Business Lifecycles
+
+Implement state models for:
+
+Table
+
+Available
+
+Occupied
+
+Awaiting Payment
+
+Awaiting Waiter Verification
+
+Closed
+
+Ready For Next Customer
+
+Table Session
+
+Created
+
+Active
+
+Splitting Bill
+
+Awaiting Payment
+
+Completed
+
+Closed
+
+Expired
+
+Order
+
+Created
+
+Submitted
+
+Accepted
+
+Preparing
+
+Ready
+
+Collected
+
+Completed
+
+Cancelled
+
+Song Request
+
+Requested
+
+Queued
+
+Playing
+
+Completed
+
+Skipped
+
+Skipped with reason
+
+Payment
+
+Pending
+
+Prompt Sent
+
+Customer Confirmed
+
+Waiter Verified
+
+Completed
+
+Failed
+
+Cancelled
+
+Kitchen Ticket
+
+Queued
+
+Preparing
+
+Ready
+
+Collected
+
+Completed
+
+5. QR Session Rules
+
+Implement the production rules.
+
+A QR scan must:
+
+validate the table
+ensure only one active table session exists
+prevent replay
+create an anonymous customer session
+assign the first customer as the session owner
+
+The owner controls:
+
+ordering
+running tab
+inviting contributors
+closing the bill
+
+Additional contributors receive temporary payment tokens only.
+
+They cannot modify orders.
+
+6. Split Bill Rules
+
+Implement the business rules only.
+
+Do not build UI.
+
+The owner specifies:
+
+"How many additional contributors will help pay?"
+
+Generate secure payment tokens.
+
+Each token:
+
+belongs to one contributor
+expires automatically
+can only be used once
+can only pay toward that table session
+7. Notification Pipeline
+
+Build the notification engine.
+
+Support events such as:
+
+order received
+kitchen preparing
+kitchen ready
+bartender preparing
+bartender ready
+waiter called
+payment requested
+payment confirmed
+payment verified
+song queued
+song playing
+song skipped
+table closed
+8. Inventory Rules
+
+Implement the inventory domain.
+
+Sales should create inventory deductions automatically.
+
+Business Day closing should calculate:
+
+opening stock
+sales
+wastage
+manual adjustments
+closing stock
+
+No UI yet.
+
+9. Business Day Engine
+
+Implement:
+
+Start New Day
+
+Close Day
+
+Daily summaries
+
+Daily revenue
+
+Inventory movement
+
+Audit logging
+
+Analytics generation
+
+The goal is that when the manager presses Start New Day, yesterday is finalized and today begins with a clean operational state while preserving historical records.
+
+10. Event Pipeline
+
+Business events should automatically create:
+
+Notifications
+Activity Feed
+Analytics
+Audit Logs
+Service Timeline
+
+No duplicated logic should exist.
+
+Everything should flow from domain events.
+
+11. API Foundation
+
+Expand the API beyond the health endpoint.
+
+Define versioned REST endpoints for:
+
+QR session creation
+Customer session validation
+Orders
+Payments
+Song requests
+Kitchen tickets
+Bartender tickets
+Notifications
+Business day
+Inventory
+Authentication
+
+Do not build UI around them yet.
+
+12. Authentication
+
+Implement:
+
+Firebase Authentication for staff.
+
+Anonymous customer sessions.
+
+Role Based Access Control.
+
+Permission checking.
+
+Route guards.
+
+Session expiration.
+
+13. Tests
+
+Before any feature module begins, create tests for:
+
+table locking
+QR validation
+session creation
+payment token validation
+duplicate QR prevention
+split payment rules
+inventory deduction
+business day closing
+authorization
+repository adapters
+14. Deliverables
+
+When complete, provide:
+
+Updated architecture diagram.
+Firestore collection diagram.
+Event flow diagram.
+Service dependency diagram.
+Repository implementation summary.
+API endpoint list.
+Remaining technical debt.
+Confirmation that the production architecture is complete.
+Important Constraints
+Do not build the Customer Web App yet.
+Do not build staff dashboards yet.
+Do not expand the prototype UI.
+Keep the current prototype only as a visual reference.
+Focus entirely on making the backend architecture production-ready.
+
+Once this architecture pass is complete and verified, we will approve Module 2 (Customer Web Experience) knowing it is being built on a stable, scalable foundation rather than on prototype code.
