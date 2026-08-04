@@ -50,6 +50,7 @@ function customerActor(req: Request, clubId: string, customerSessionId: string) 
 function orderErrorStatus(error: unknown): number {
   if (error instanceof FirebaseConfigurationError) return 503;
   if (error instanceof OrderError) return error.status;
+  if (error instanceof Error && error.name === "ZodError") return 400;
   if (error instanceof Error && error.message === "STALE_VERSION") return 409;
   if (error instanceof Error && error.message === "ITEM_OUT_OF_STOCK") return 409;
   return 500;
