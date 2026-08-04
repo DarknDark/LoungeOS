@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
   menuImageWrap: { height: 145, position: 'relative', overflow: 'hidden', backgroundColor: colors.light.accent },
   menuImageWrapCompact: { height: 128 },
   menuImage: { width: '100%', height: '100%', opacity: 0.78 },
-  imageTint: { ...StyleSheet.absoluteFillObject },
+  imageTint: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
   popularBadge: { position: 'absolute', left: 10, top: 10, flexDirection: 'row', gap: 4, alignItems: 'center', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, backgroundColor: '#1b1210dd' },
   popularText: { color: '#f9d484', fontSize: 9, fontWeight: '800', letterSpacing: 0.7 },
   menuCardBody: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 13 },

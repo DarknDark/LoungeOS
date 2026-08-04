@@ -1,0 +1,752 @@
+We are NOT continuing the previous prototype by adding patches.
+
+Stop implementation for a moment and treat this as a software architecture redesign.
+
+The first prototype successfully proved the concept, but after reviewing the workflows we discovered several architectural improvements that would become difficult to maintain if simply patched onto the existing code.
+
+IMPORTANT
+
+Do NOT blindly continue coding from the previous implementation.
+
+First:
+
+Review the current project.
+Refactor where necessary.
+Keep reusable code that still fits the new architecture.
+Replace any prototype shortcuts with production-ready architecture.
+
+Think like a senior software architect designing a scalable SaaS product rather than a prototype.
+
+The application should be modular, maintainable, scalable, and easy to extend.
+
+Do NOT hardcode demo data.
+
+Do NOT hardcode branding.
+
+Everything should be configurable by the Admin dashboard.
+
+Do NOT expose unfinished developer menus or demo navigation to customers.
+
+PROJECT
+
+Build a production-ready nightclub management platform.
+
+The first deployment is for
+
+Mamu's Lounge
+
+However the architecture must support multiple clubs in future.
+
+The system must consist of two completely separate experiences.
+
+CUSTOMER
+
+A web application.
+
+Opened only by scanning a QR code.
+
+No downloads.
+
+No login.
+
+Simple interface.
+
+STAFF
+
+A downloadable mobile application.
+
+Login required.
+
+Each staff member has one role.
+
+The system must enforce Role-Based Access Control.
+
+STAFF ROLES
+
+Administrator
+
+Waiter
+
+Bartender
+
+Kitchen
+
+DJ
+
+Future roles must be easy to add.
+
+BEFORE WRITING NEW FEATURES
+
+Produce an updated implementation plan.
+
+Show:
+
+• Folder structure
+
+• Architecture
+
+• Firestore collections
+
+• Authentication flow
+
+• Session lifecycle
+
+• Notification flow
+
+• Role permissions
+
+• State management
+
+Then begin implementation in logical phases.
+
+Do NOT try to build everything in one commit.
+
+CUSTOMER EXPERIENCE
+
+When a customer scans the QR code:
+
+Create a Table Session.
+
+Mark table as Occupied.
+
+The first customer automatically becomes
+
+TABLE OWNER.
+
+Only the Table Owner may:
+
+Order food
+
+Order drinks
+
+Request songs
+
+View running bill
+
+View Service Timeline
+
+Call waiter
+
+Close tab
+
+Customers must NEVER see
+
+Admin
+
+DJ
+
+Kitchen
+
+Waiter
+
+Bartender
+
+Developer
+
+Staff
+
+Settings
+
+Any internal navigation.
+
+The interface should be extremely simple.
+
+TABLE LOCKING
+
+When a Table Session exists:
+
+The table becomes Occupied.
+
+If another person scans the table:
+
+Display:
+
+"This table already has an active session.
+
+If you are part of this group, please ask the table owner to continue ordering.
+
+Need help?
+
+Call a waiter."
+
+Do NOT create another owner session.
+
+Only Waiter or Admin may free a table.
+
+CLOSE TAB
+
+When the owner presses Close Tab
+
+Ask
+
+"Are you sure you want to close your tab?"
+
+If Yes
+
+Choose
+
+Full Payment
+
+Split Bill
+
+SPLIT BILL
+
+Ask
+
+"How many additional contributors will help pay?"
+
+The owner remains the primary customer.
+
+Example
+
+Owner enters
+
+2
+
+The system creates
+
+2 secure Payment Tokens.
+
+The table QR becomes temporarily available for exactly
+
+2 additional scans.
+
+Each contributor scans the same QR.
+
+They must NOT see the ordering dashboard.
+
+They only see
+
+Enter Amount
+
+Phone Number
+
+Till Number
+
+Payment Instructions
+
+Pay
+
+I Have Paid
+
+Nothing else.
+
+No ordering.
+
+No menu.
+
+No song requests.
+
+No running bill.
+
+PAYMENT TOKENS
+
+Every contributor receives a unique secure payment token.
+
+Example
+
+PAY-83KF
+
+PAY-7H29
+
+Tokens:
+
+Expire after successful payment.
+
+Cannot be reused.
+
+Cannot exceed requested contributor count.
+
+After all contributors have completed payment:
+
+Disable contributor mode.
+
+Return QR to Occupied state.
+
+PAYMENT
+
+Support
+
+M-Pesa
+
+Cash
+
+When paying by M-Pesa
+
+Display full screen:
+
+Club Name
+
+Amount
+
+Till Number
+
+Table Number
+
+Message
+
+"Please confirm the Till Number displayed on your table before making payment."
+
+After payment
+
+Customer presses
+
+"I Have Paid"
+
+Waiter receives notification.
+
+Waiter verifies payment.
+
+Only then may the table be closed.
+
+Cash works similarly except the waiter verifies cash received.
+
+WAITER
+
+Waiter Dashboard includes
+
+Live Table Map
+
+Incoming Orders
+
+Ready Orders
+
+Waiter Calls
+
+Payment Verification
+
+Split Bill Verification
+
+Cash Payments
+
+Close Table
+
+Table Status
+
+Table Timeline
+
+Only waiter may release a table.
+
+TABLE MAP
+
+Display tables visually.
+
+Statuses
+
+Available
+
+Occupied
+
+Payment Pending
+
+Needs Cleaning
+
+Reserved
+
+Allow waiter to immediately see floor status.
+
+MENU
+
+Admin creates menu.
+
+Nothing should be hardcoded.
+
+Each Menu Item includes
+
+Name
+
+Description
+
+Price
+
+Category
+
+Image
+
+Preparation Station
+
+Inventory Link
+
+Availability
+
+PREPARATION STATIONS
+
+Menu items belong to stations.
+
+Examples
+
+Bar
+
+Kitchen
+
+Pork Grill
+
+Nyama Choma
+
+Future stations must be easy to add.
+
+One order may generate tickets for multiple stations.
+
+Each station only sees its own items.
+
+BARTENDER
+
+Receives drink tickets only.
+
+Workflow
+
+New
+
+Preparing
+
+Ready
+
+Collected
+
+Notify waiter when Ready.
+
+KITCHEN
+
+Separate login.
+
+Receives food tickets only.
+
+Workflow
+
+Order Received
+
+Preparing
+
+Ready
+
+Collected
+
+Every update appears instantly on the customer's Service Timeline.
+
+DJ
+
+Customers search songs.
+
+Do NOT allow free typing only.
+
+Search by
+
+Song
+
+Artist
+
+Prevent duplicate requests already in queue.
+
+Customer sees
+
+Queue Position
+
+Estimated Wait
+
+Playing
+
+Played
+
+Skipped
+
+If skipped
+
+Display skip reason.
+
+Allow customer to request another song.
+
+DJ Dashboard
+
+Playing
+
+Played
+
+Skip
+
+Skip Reason
+
+Custom Message
+
+Also include editable DJ profile
+
+Photo
+
+Bio
+
+Instagram
+
+TikTok
+
+Facebook
+
+YouTube
+
+Mixcloud
+
+SoundCloud
+
+Booking Contact
+
+SERVICE TIMELINE
+
+Every action becomes a timeline event.
+
+Examples
+
+Table Opened
+
+Order Placed
+
+Kitchen Accepted
+
+Kitchen Preparing
+
+Kitchen Ready
+
+Waiter Collected
+
+Food Served
+
+Song Requested
+
+Song Playing
+
+Song Skipped
+
+Payment Requested
+
+Payment Verified
+
+Table Closed
+
+Customers should always know what is happening.
+
+ADMIN
+
+Admin manages
+
+Club Name
+
+Logo
+
+Theme
+
+Tables
+
+QR Codes
+
+Menu
+
+Prices
+
+Preparation Stations
+
+Staff
+
+Inventory
+
+Business Day
+
+Reports
+
+M-Pesa Till
+
+Settings
+
+Everything editable from UI.
+
+INVENTORY
+
+Inventory must be transaction-based.
+
+Never directly edit stock after sales.
+
+Every movement becomes an Inventory Transaction.
+
+Transaction Types
+
+Sale
+
+Restock
+
+Waste
+
+Adjustment
+
+Provide
+
+Low Stock Alerts
+
+Restock Suggestions
+
+Daily Usage
+
+Weekly Usage
+
+Monthly Usage
+
+BUSINESS DAY
+
+Admin opens business day.
+
+Admin closes business day.
+
+Closing a business day should
+
+Archive
+
+Orders
+
+Payments
+
+Song Requests
+
+Timeline
+
+Inventory Movements
+
+Sales
+
+Generate reports
+
+Cash Total
+
+M-Pesa Total
+
+Sales by Category
+
+Inventory Usage
+
+Staff Activity
+
+Do NOT delete history.
+
+DATABASE
+
+Implement Firestore collections
+
+clubs
+
+tables
+
+tableSessions
+
+customerSessions
+
+orders
+
+orderItems
+
+menuItems
+
+preparationStations
+
+kitchenTickets
+
+songRequests
+
+staff
+
+roles
+
+inventoryItems
+
+inventoryTransactions
+
+payments
+
+paymentTokens
+
+serviceTimeline
+
+businessDays
+
+notifications
+
+Every collection must include proper relationships and documentation.
+
+NOTIFICATIONS
+
+Create one centralized notification system.
+
+Every notification includes
+
+Recipient
+
+Role
+
+Type
+
+Message
+
+Timestamp
+
+Read Status
+
+Related Record
+
+Examples
+
+New Order
+
+Food Ready
+
+Drink Ready
+
+Waiter Called
+
+Song Request
+
+Payment Waiting
+
+Low Stock
+
+Business Day Reminder
+
+Use Firestore real-time listeners.
+
+UI
+
+Premium nightclub design.
+
+Dark theme.
+
+Black background.
+
+Gold and amber accents.
+
+Elegant typography.
+
+Large touch targets.
+
+Smooth animations.
+
+Modern cards.
+
+No placeholder branding.
+
+Use "Mamu's Lounge" as the default club name, but make it editable by the administrator.
+
+CODING STANDARDS
+Use TypeScript throughout.
+Follow clean architecture and SOLID principles.
+Keep business logic separate from UI.
+Build reusable components.
+Document major modules and data models.
+Avoid duplicated code.
+Design with future multi-club support in mind.
+IMPLEMENTATION STRATEGY
+
+Do not attempt to build every feature in one pass.
+
+First, review the current codebase and present a refactoring plan that aligns it with this architecture.
+
+Then implement features in small, testable phases. After each phase:
+
+Verify type safety.
+Verify mobile preview.
+Verify role permissions.
+Verify database interactions.
+Summarize what changed before moving to the next phase.
+
+The goal is not just to have a working prototype—it is to build a maintainable, production-ready nightclub operating platform that can grow with the business and support additional clubs in the future.

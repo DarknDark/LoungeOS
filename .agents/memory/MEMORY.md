@@ -1,1 +1,2 @@
 - [Expo artifact routing](expo-artifact-routing.md) — grouped Expo Router screens may need an explicit root re-export for the proxied web preview.
+- [Expo SDK migration](expo-sdk-migration.md) — SDK 57 needs a fully aligned package graph and a non-default Metro build port in this workspace.

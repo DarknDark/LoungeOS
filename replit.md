@@ -13,7 +13,8 @@ A premium mobile-first table ordering experience for nightclub guests and the st
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
+- pnpm workspaces, Node.js 24, TypeScript 6
+- Mobile: Expo SDK 57, React Native 0.86, React 19.2
 - API: Express 5
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
@@ -47,6 +48,7 @@ The user wants a premium nightclub experience with a dark background, gold and a
 
 - The Expo Router root entry explicitly re-exports the grouped home screen so the artifact preview root resolves correctly on web.
 - Use `pnpm --filter @workspace/club-ordering-mobile run typecheck` for mobile verification.
+- Use `pnpm --filter @workspace/club-ordering-mobile run build` to generate and validate Android/iOS Expo Go bundles.
 
 ## Pointers
 
