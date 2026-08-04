@@ -1,0 +1,229 @@
+The Firebase Admin SDK and Firestore Admin connectivity are now confirmed working. The database is currently empty.
+
+Continue the production smoke test, but do NOT start Module 4 and do NOT redesign the UI.
+
+Rules
+Use the real Firebase project only.
+Do not use mock data or in-memory fallbacks.
+Create only the minimum production seed data required.
+Make all writes idempotent (do not create duplicates if run twice).
+Before creating anything, check whether it already exists.
+Log every document that is created.
+Stop immediately if an unexpected production error occurs.
+Phase 1 – Inspect Firestore
+
+Read-only inspection first.
+
+Check whether these collections exist:
+
+clubs
+tables
+menuCategories
+menuItems
+inventory
+businessDays
+staff
+tableSessions
+customerSessions
+orders
+notifications
+serviceTimeline
+
+For each collection report:
+
+exists or not
+document count
+do not print sensitive data
+
+If required composite indexes are missing, report them before continuing.
+
+Phase 2 – Seed Minimum Production Data
+
+If the database is empty, create only one complete working environment.
+
+Create:
+
+Club
+
+One club.
+
+Example:
+
+Mamu's Lounge
+active = true
+
+Return the generated document ID.
+
+Tables
+
+Create only:
+
+Table 1
+
+Capacity:
+
+4
+
+QR/session support enabled.
+
+Return the document ID.
+
+Business Day
+
+Create today's business day.
+
+Status:
+
+OPEN
+
+Link it to the club.
+
+Menu Categories
+
+Create only:
+
+Drinks
+Food
+Menu Items
+
+Create a very small menu.
+
+Example:
+
+Tusker
+
+available
+inventory tracked
+
+Guinness
+
+available
+inventory tracked
+
+Water
+
+available
+
+Fries
+
+available
+
+Chicken
+
+available
+
+Only enough items to verify ordering.
+
+Inventory
+
+Create inventory records matching tracked menu items.
+
+Example:
+
+Tusker
+Stock: 100
+
+Guinness
+Stock: 100
+
+Staff
+
+Create one staff record compatible with the current backend.
+
+Do not create unnecessary users.
+
+If Firebase Auth user mapping is required, explain exactly what is missing.
+
+Phase 3 – Live Smoke Test
+
+Run the complete ordering journey.
+
+Verify:
+
+✓ Club loads
+
+✓ Table lookup works
+
+✓ QR/session creation works
+
+✓ Session recovery works
+
+✓ Menu loads from Firestore
+
+✓ Draft order created
+
+✓ Draft edited
+
+✓ Draft submitted
+
+✓ Order written to Firestore
+
+✓ Running bill updated
+
+✓ Inventory reserved
+
+✓ Timeline written
+
+✓ Audit written
+
+✓ Notification generated
+
+✓ Order history updated
+
+✓ Order cancelled
+
+✓ Inventory released
+
+✓ Running bill updated again
+
+✓ Duplicate submit prevented by idempotency
+
+✓ Optimistic locking works
+
+✓ Offline retry queue behaves correctly
+
+Do not simulate.
+
+Use the real backend.
+
+Phase 4 – Verification
+
+After the smoke test report:
+
+Document IDs created
+
+Collections modified
+
+Documents created
+
+Documents updated
+
+Documents deleted
+
+Firestore read count
+
+Firestore write count
+
+Execution time
+
+Any warnings
+
+Any failures
+
+Phase 5 – Cleanup
+
+Do NOT delete the club, table, menu or inventory.
+
+Only clean temporary smoke-test sessions/orders if appropriate.
+
+Leave the project ready for development.
+
+Stop Condition
+
+When the smoke test passes:
+
+Do NOT begin Module 4.
+Do NOT add new features.
+Wait for my approval.
+
+If any step fails, stop immediately and explain the exact reason instead of working around it or creating mock behavior.
