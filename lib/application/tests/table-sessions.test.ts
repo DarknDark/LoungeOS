@@ -300,6 +300,34 @@ test('requires close request before opening split payment branches', async () =>
   assert.equal(sessions.get(owner.tableSession.id)?.status, 'splitting-bill');
 });
 
+test('waiter can reopen a finishing tab and restore the active table state', async () => {
+  const { service, tables, sessions, notifications, timeline } = makeHarness();
+  const owner = await service.open({
+    actor: customerActor(),
+    tableId,
+    deviceId: 'owner-device',
+    now: '2026-08-04T12:00:00.000Z',
+  });
+
+  await service.requestClose({
+    actor: customerActor(owner.customerSession.id, owner.recoveryToken),
+    tableSessionId: owner.tableSession.id,
+    now: '2026-08-04T12:02:00.000Z',
+  });
+  const reopened = await service.reopenClose({
+    actor: { kind: 'staff', id: 'staff-1', staffId: 'staff-1', clubId },
+    tableSessionId: owner.tableSession.id,
+    now: '2026-08-04T12:03:00.000Z',
+  });
+
+  assert.equal(reopened.status, 'active');
+  assert.equal(sessions.get(owner.tableSession.id)?.status, 'active');
+  assert.equal(tables.get(tableId)?.status, 'active');
+  assert.equal(tables.get(tableId)?.activeSessionId, owner.tableSession.id);
+  assert.ok(notifications.some((entry) => entry.message.includes('reopened')));
+  assert.ok(timeline.some((entry) => entry.type === 'finishing-up-cancelled'));
+});
+
 test('requires verified payment before closing and expires every customer session', async () => {
   const { service, sessions, customers, payments, tables } = makeHarness();
   const owner = await service.open({

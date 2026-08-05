@@ -1019,6 +1019,77 @@ export function createTableSessionService(
       return access(updatedSession, customer, '');
     },
 
+    async reopenClose(input) {
+      if (input.actor.kind !== 'staff' && input.actor.kind !== 'system') {
+        throw new TableSessionError(
+          'Only authorized staff can reopen a table.',
+          'ACCESS_DENIED',
+        );
+      }
+      const session = await repos.tableSessions.getById(
+        input.actor.clubId,
+        input.tableSessionId,
+      );
+      if (!session) {
+        throw new TableSessionError('The table session was not found.', 'SESSION_NOT_FOUND');
+      }
+      if (session.status !== 'awaiting-payment' && session.status !== 'splitting-bill') {
+        throw new TableSessionError(
+          'This table is not waiting to be reopened.',
+          'SESSION_NOT_ACTIVE',
+        );
+      }
+      const table = await repos.tables.getById(input.actor.clubId, session.tableId);
+      if (!table || table.activeSessionId !== session.id || table.status !== 'finishing') {
+        throw new TableSessionError(
+          'The table session is not finishing up.',
+          'SESSION_NOT_ACTIVE',
+        );
+      }
+      const updatedSession: TableSession = {
+        ...session,
+        status: 'active',
+        lastActivityAt: input.now,
+        updatedAt: input.now,
+        version: (session.version ?? 0) + 1,
+      };
+      await repos.tableSessions.save(updatedSession);
+      await repos.tables.save({
+        ...table,
+        status: 'active',
+        splitSlotsRemaining: undefined,
+        updatedAt: input.now,
+        version: (table.version ?? 0) + 1,
+      });
+      await repos.notifications.save(
+        notification(
+          `${session.id}:reopened:${input.now}`,
+          session,
+          session.ownerCustomerSessionId,
+          'Your waiter reopened the tab. Ordering is available again.',
+          input.now,
+        ),
+      );
+      await repos.serviceTimeline.append({
+        id: `${session.id}:timeline-reopened:${input.now}`,
+        clubId: session.clubId,
+        tableSessionId: session.id,
+        type: 'finishing-up-cancelled',
+        message: 'Waiter reopened the table tab.',
+        sourceRecord: { type: 'tableSession', id: session.id },
+        occurredAt: input.now,
+      });
+      await recordAudit(
+        input.actor,
+        'close-request-reopened',
+        'tableSession',
+        session.id,
+        input.now,
+        { tableId: session.tableId },
+      );
+      return updatedSession;
+    },
+
     async getCustomerSession(input) {
       const { session } = await activeSession(
         input.actor,

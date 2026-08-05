@@ -179,6 +179,102 @@ export interface OrderListResponse {
   orders: OrderResponse[];
 }
 
+export interface Staff {
+  id: string;
+  clubId: string;
+  firebaseUid: string;
+  displayName: string;
+  email?: string;
+  roleIds: string[];
+  active: boolean;
+  photoUrl?: string;
+}
+
+export type NotificationPriority = typeof NotificationPriority[keyof typeof NotificationPriority];
+
+
+export const NotificationPriority = {
+  low: 'low',
+  normal: 'normal',
+  high: 'high',
+  urgent: 'urgent',
+} as const;
+
+export type NotificationCategory = typeof NotificationCategory[keyof typeof NotificationCategory];
+
+
+export const NotificationCategory = {
+  waiter: 'waiter',
+  kitchen: 'kitchen',
+  bar: 'bar',
+  dj: 'dj',
+  payment: 'payment',
+  inventory: 'inventory',
+  session: 'session',
+  'business-day': 'business-day',
+  administration: 'administration',
+} as const;
+
+export type NotificationRelatedRecord = {
+  type: string;
+  id: string;
+};
+
+export interface Notification {
+  id: string;
+  clubId: string;
+  recipientId?: string;
+  recipientRole?: string;
+  priority: NotificationPriority;
+  category: NotificationCategory;
+  message: string;
+  relatedRecord?: NotificationRelatedRecord;
+  createdAt: string;
+  readAt?: string;
+  deliveredAt?: string;
+  archivedAt?: string;
+}
+
+export type SongRequestStatus = typeof SongRequestStatus[keyof typeof SongRequestStatus];
+
+
+export const SongRequestStatus = {
+  queued: 'queued',
+  playing: 'playing',
+  played: 'played',
+  skipped: 'skipped',
+} as const;
+
+export interface SongRequest {
+  id: string;
+  clubId: string;
+  tableSessionId: string;
+  customerSessionId: string;
+  businessDayId: string;
+  songId?: string;
+  song: string;
+  artist: string;
+  duplicateKey: string;
+  queuePosition?: number;
+  status: SongRequestStatus;
+  skipReason?: string;
+}
+
+export type ServiceTimelineEventSourceRecord = {
+  type: string;
+  id: string;
+};
+
+export interface ServiceTimelineEvent {
+  id: string;
+  clubId: string;
+  tableSessionId: string;
+  type: string;
+  message: string;
+  sourceRecord?: ServiceTimelineEventSourceRecord;
+  occurredAt: string;
+}
+
 export type TableStatus = typeof TableStatus[keyof typeof TableStatus];
 
 
@@ -243,6 +339,40 @@ export interface TableSession {
   lastActivityAt: string;
 }
 
+export type CustomerSessionAccessLevel = typeof CustomerSessionAccessLevel[keyof typeof CustomerSessionAccessLevel];
+
+
+export const CustomerSessionAccessLevel = {
+  owner: 'owner',
+  participant: 'participant',
+  temporary: 'temporary',
+} as const;
+
+export type CustomerSessionApprovalStatus = typeof CustomerSessionApprovalStatus[keyof typeof CustomerSessionApprovalStatus];
+
+
+export const CustomerSessionApprovalStatus = {
+  approved: 'approved',
+  'pending-approval': 'pending-approval',
+} as const;
+
+export interface CustomerSession {
+  id: string;
+  clubId: string;
+  tableSessionId: string;
+  createdAt: string;
+  expiresAt: string;
+  isTableOwner: boolean;
+  accessLevel: CustomerSessionAccessLevel;
+  approvalStatus: CustomerSessionApprovalStatus;
+  approvalRequestedAt?: string;
+  approvedAt?: string;
+  approvedByStaffId?: string;
+  deviceId?: string;
+  lastHeartbeatAt?: string;
+  expiredAt?: string;
+}
+
 export type PaymentResponseMethod = typeof PaymentResponseMethod[keyof typeof PaymentResponseMethod];
 
 
@@ -279,46 +409,17 @@ export interface PaymentResponse {
   verifiedAt?: string;
 }
 
-export type CustomerSessionAccessLevel = typeof CustomerSessionAccessLevel[keyof typeof CustomerSessionAccessLevel];
-
-
-export const CustomerSessionAccessLevel = {
-  owner: 'owner',
-  participant: 'participant',
-  temporary: 'temporary',
-} as const;
-
-export type CustomerSessionApprovalStatus = typeof CustomerSessionApprovalStatus[keyof typeof CustomerSessionApprovalStatus];
-
-
-export const CustomerSessionApprovalStatus = {
-  approved: 'approved',
-  'pending-approval': 'pending-approval',
-} as const;
-
-export interface CustomerSession {
-  id: string;
-  clubId: string;
-  tableSessionId: string;
-  createdAt: string;
-  expiresAt: string;
-  isTableOwner: boolean;
-  accessLevel: CustomerSessionAccessLevel;
-  approvalStatus: CustomerSessionApprovalStatus;
-  approvalRequestedAt?: string;
-  approvedAt?: string;
-  approvedByStaffId?: string;
-  deviceId?: string;
-  lastHeartbeatAt?: string;
-  expiredAt?: string;
-}
-
 export interface StaffTableOperations {
   table: Table;
   session: TableSession | null;
+  assignedStaff: Staff | null;
+  customerSessions: CustomerSession[];
   orders: OrderResponse[];
   payments: PaymentResponse[];
   joinRequests: CustomerSession[];
+  customerRequests: Notification[];
+  songRequests: SongRequest[];
+  timeline: ServiceTimelineEvent[];
 }
 
 export interface StaffTableListResponse {

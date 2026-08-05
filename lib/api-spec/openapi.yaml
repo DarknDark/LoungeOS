@@ -311,6 +311,48 @@ paths:
           $ref: "#/components/responses/ApiError"
         "403":
           $ref: "#/components/responses/ApiError"
+  /v1/staff/table-sessions/{sessionId}/reopen:
+    post:
+      operationId: reopenStaffTableSession
+      tags: [customer-sessions]
+      summary: Reopen a finishing table tab
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: Reopened table session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSession"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/staff/table-sessions/{sessionId}/close:
+    post:
+      operationId: closeStaffTableSession
+      tags: [customer-sessions]
+      summary: Close a staff table after verified payment
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "204":
+          description: Table closed and released
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
   /v1/staff/table-sessions/{sessionId}/join-requests:
     get:
       operationId: listStaffTableSessionJoinRequests
@@ -946,6 +988,80 @@ components:
           items:
             $ref: "#/components/schemas/OrderResponse"
       required: [orders]
+    Staff:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        firebaseUid: { type: string }
+        displayName: { type: string }
+        email: { type: string }
+        roleIds:
+          type: array
+          items: { type: string }
+        active: { type: boolean }
+        photoUrl: { type: string }
+      required: [id, clubId, firebaseUid, displayName, roleIds, active]
+    Notification:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        recipientId: { type: string }
+        recipientRole: { type: string }
+        priority:
+          type: string
+          enum: [low, normal, high, urgent]
+        category:
+          type: string
+          enum: [waiter, kitchen, bar, dj, payment, inventory, session, business-day, administration]
+        message: { type: string }
+        relatedRecord:
+          type: object
+          properties:
+            type: { type: string }
+            id: { type: string }
+          required: [type, id]
+        createdAt: { type: string, format: date-time }
+        readAt: { type: string, format: date-time }
+        deliveredAt: { type: string, format: date-time }
+        archivedAt: { type: string, format: date-time }
+      required: [id, clubId, priority, category, message, createdAt]
+    SongRequest:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        tableSessionId: { type: string }
+        customerSessionId: { type: string }
+        businessDayId: { type: string }
+        songId: { type: string }
+        song: { type: string }
+        artist: { type: string }
+        duplicateKey: { type: string }
+        queuePosition: { type: number }
+        status:
+          type: string
+          enum: [queued, playing, played, skipped]
+        skipReason: { type: string }
+      required:
+        [id, clubId, tableSessionId, customerSessionId, businessDayId, song, artist, duplicateKey, status]
+    ServiceTimelineEvent:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        tableSessionId: { type: string }
+        type: { type: string }
+        message: { type: string }
+        sourceRecord:
+          type: object
+          properties:
+            type: { type: string }
+            id: { type: string }
+          required: [type, id]
+        occurredAt: { type: string, format: date-time }
+      required: [id, clubId, tableSessionId, type, message, occurredAt]
     StaffTableListResponse:
       type: object
       properties:
@@ -963,6 +1079,14 @@ components:
           anyOf:
             - $ref: "#/components/schemas/TableSession"
             - type: "null"
+        assignedStaff:
+          anyOf:
+            - $ref: "#/components/schemas/Staff"
+            - type: "null"
+        customerSessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerSession"
         orders:
           type: array
           items:
@@ -975,7 +1099,20 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CustomerSession"
-      required: [table, session, orders, payments, joinRequests]
+        customerRequests:
+          type: array
+          items:
+            $ref: "#/components/schemas/Notification"
+        songRequests:
+          type: array
+          items:
+            $ref: "#/components/schemas/SongRequest"
+        timeline:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceTimelineEvent"
+      required:
+        [table, session, assignedStaff, customerSessions, orders, payments, joinRequests, customerRequests, songRequests, timeline]
     QrValidationRequest:
       type: object
       properties:

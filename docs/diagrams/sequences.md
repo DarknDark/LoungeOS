@@ -133,6 +133,38 @@ sequenceDiagram
   API-->>Staff: authorized response
 ```
 
+## Waiter operations and finishing queue
+
+```mermaid
+sequenceDiagram
+  participant Staff as Authenticated waiter app
+  participant API as Staff API
+  participant Auth as Firebase Auth
+  participant Repo as Firestore repositories
+  participant Customer as Customer app
+
+  Staff->>API: GET /v1/staff/tables
+  API->>Auth: verify Firebase bearer token
+  API->>Repo: resolve club staff, roles, tables, sessions and related records
+  Repo-->>API: live table operations read model
+  API-->>Staff: tables, orders, payments, joins, requests and timeline
+
+  Customer->>API: request Close Tab
+  API->>Repo: set session awaiting-payment and table finishing
+  Repo-->>Customer: finishing status
+  Staff->>API: verify submitted payment
+  API->>Repo: persist verified payment and apply settlement
+  Staff->>API: Reopen Tab or Close Table
+  alt Reopen Tab
+    API->>Repo: set session active and table active
+    Repo-->>Customer: ordering available again
+  else Close Table
+    API->>Repo: expire customer sessions and release table
+    Repo-->>Customer: session closed
+    Repo-->>Staff: permanent QR remains reusable
+  end
+```
+
 ## Payment lifecycle
 
 ```mermaid

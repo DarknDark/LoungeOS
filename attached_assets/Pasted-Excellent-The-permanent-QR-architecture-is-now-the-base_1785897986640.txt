@@ -1,0 +1,154 @@
+Excellent. The permanent QR architecture is now the baseline. Do not change it.
+
+The next objective is to complete the real waiter workflow around it.
+
+Waiter Dashboard (Operational)
+
+The protected GET /v1/staff/tables endpoint now exists.
+
+Build the real waiter dashboard using only this authenticated endpoint.
+
+It should display every table as a live status card.
+
+Each table should clearly show:
+
+Table number
+Current status:
+Available
+Occupied
+Finishing Up
+Waiting For Join Approval
+Running bill
+Number of customers attached
+Time since table opened
+Assigned waiter (if applicable)
+
+The dashboard should update automatically while open.
+
+Table Details
+
+Selecting a table opens a live table screen.
+
+Display:
+
+Running bill
+Ordered items
+Customer requests
+Song requests
+Payment history
+Current order status
+Pending join approvals
+Current customer sessions
+
+No placeholder data.
+
+Everything must come from the authenticated API.
+
+Finishing Up Queue
+
+When a customer presses Close Tab, the table must move into a dedicated queue.
+
+Instead of simply showing a notification, present a prominent section such as:
+
+Finishing Up
+
+Each card should show:
+
+Table number
+Amount due
+Payment method selected (if already chosen)
+Time waiting
+Buttons:
+Confirm Payment
+Reopen Tab
+Close Table
+Confirm Payment
+
+If payment is M-Pesa:
+
+Verify payment against the recorded transaction.
+Display transaction reference.
+Mark payment confirmed.
+
+If payment is cash:
+
+Waiter confirms cash received.
+Optionally print receipt.
+Optionally send SMS receipt if the customer provided a phone number.
+Close Table
+
+This remains the only operation that officially ends service.
+
+Closing the table must:
+
+Close every active customer session.
+Close the table session.
+Archive the running bill.
+Finalize timeline.
+Finalize audit log.
+Complete inventory processing.
+Mark the table Available.
+Immediately make the permanent QR reusable for the next customers.
+
+No QR regeneration.
+
+Manual Waiter Tables
+
+Continue supporting customers who never scan the QR.
+
+The waiter may:
+
+Open a table manually.
+Add orders.
+Modify orders.
+Receive payment.
+Close the table.
+
+If those customers later scan the permanent QR:
+
+Display a green waiting screen:
+
+"Please wait. Your waiter has been notified."
+
+The waiter receives a join request.
+
+If approved:
+
+The customer receives the limited dashboard only.
+
+The limited dashboard allows:
+
+View running bill
+View ordered items
+Request songs
+Call waiter
+
+It must never allow:
+
+Ordering
+Paying
+Splitting bills
+Closing the table
+Real-time Updates
+
+Where practical, use Firestore listeners or an equivalent real-time mechanism so waiter dashboards and customer dashboards stay synchronized.
+
+Examples:
+
+Waiter adds a drink → customer bill updates immediately.
+Customer places an order → waiter sees it immediately.
+Waiter confirms payment → customer sees payment confirmed.
+Waiter closes table → customer session closes automatically and the permanent QR becomes available again.
+
+Avoid polling unless there is no suitable real-time alternative.
+
+Architecture Rules
+Keep the permanent QR model exactly as implemented.
+Do not weaken staff authorization.
+Do not fabricate Firebase authentication.
+Do not fabricate SMS or M-Pesa integrations.
+Keep all existing tests passing.
+Add tests for the waiter dashboard read model and the table-close workflow.
+Update documentation to reflect the completed operational waiter flow.
+
+Only after this waiter workflow is complete should we move on to additional customer-facing features such as loyalty, reservations, promotions, or analytics.

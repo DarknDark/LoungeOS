@@ -25,6 +25,7 @@ import {
 } from '@/context/ClubContext';
 import colors from '@/constants/colors';
 import { clubSettings } from '@/config/clubSettings';
+import StaffOperationsDashboard from '@/components/StaffOperationsDashboard';
 
 type ViewName = 'home' | 'menu' | 'cart' | 'request' | 'bill' | 'staff';
 
@@ -662,43 +663,11 @@ export default function HomeScreen() {
   );
 
   const renderStaff = () => {
-    const staffOrders = staffMode === 'bartender'
-      ? orders.filter((order) => order.items.some((item) => item.category === 'Drinks'))
-      : orders;
     return (
       <>
         <TopBar title={`${clubShortName} OPS`} subtitle={roleLabel[staffMode]} onBack={() => show('home')} />
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingTop: topInset + 8, paddingBottom: bottomInset + 30 }]}>
-          <View style={styles.staffWelcome}><View><Text style={styles.welcomeKicker}>TONIGHT · 9:42 PM</Text><Text style={styles.pageTitle}>Keep the room moving.</Text></View><View style={styles.staffOnline}><View style={styles.liveDot} /><Text style={styles.staffOnlineText}>LIVE</Text></View></View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.roleRow}>
-            {(['waiter', 'bartender', 'dj', 'admin'] as StaffMode[]).map((mode) => (
-              <Pressable key={mode} onPress={() => { setStaffMode(mode); setSelectedMode(mode); }} style={[styles.roleChip, staffMode === mode && styles.roleChipActive]}>
-                <Icon name={mode === 'waiter' ? 'hand-left-outline' : mode === 'bartender' ? 'wine-outline' : mode === 'dj' ? 'musical-notes-outline' : 'analytics-outline'} size={16} color={staffMode === mode ? colors.light.primaryForeground : colors.light.mutedForeground} />
-                <Text style={[styles.roleChipText, staffMode === mode && styles.roleChipTextActive]}>{roleLabel[mode]}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-          {staffMode === 'admin' ? (
-            <>
-              <View style={styles.metricsGrid}><View style={styles.metricCard}><Text style={styles.metricLabel}>VISIBLE SALES</Text><Text style={styles.metricValue}>{money(liveSales)}</Text><Text style={styles.metricDelta}>From live orders</Text></View><View style={styles.metricCard}><Text style={styles.metricLabel}>ACTIVE ORDERS</Text><Text style={styles.metricValue}>{activeOrders.length}</Text><Text style={styles.metricDelta}>Current session</Text></View></View>
-              <Text style={styles.sectionTitle}>Operations snapshot</Text>
-              <View style={styles.adminList}><View style={styles.adminListRow}><Icon name="restaurant-outline" size={19} color={colors.light.primary} /><Text style={styles.adminListText}>Menu & categories</Text><Icon name="chevron-forward" size={17} color={colors.light.mutedForeground} /></View><View style={styles.adminListRow}><Icon name="qr-code-outline" size={19} color={colors.light.primary} /><Text style={styles.adminListText}>Table QR codes</Text><Icon name="chevron-forward" size={17} color={colors.light.mutedForeground} /></View><View style={styles.adminListRow}><Icon name="people-outline" size={19} color={colors.light.primary} /><Text style={styles.adminListText}>Staff accounts</Text><Icon name="chevron-forward" size={17} color={colors.light.mutedForeground} /></View></View>
-            </>
-          ) : staffMode === 'dj' ? (
-            <>
-              <View style={styles.staffStat}><Text style={styles.metricLabel}>REQUEST QUEUE</Text><Text style={styles.staffStatValue}>{songRequests.filter((item) => item.status === 'queued').length} <Text style={styles.staffStatUnit}>requests waiting</Text></Text></View>
-              <Text style={styles.sectionTitle}>DJ queue</Text>
-              {songRequests.map((item) => <View key={item.id} style={styles.djRow}><View style={styles.djNumber}><Text style={styles.djNumberText}>01</Text></View><View style={styles.songCopy}><Text style={styles.songName}>{item.song}</Text><Text style={styles.songArtist}>{item.artist}</Text></View><View style={styles.djActions}>{item.status === 'queued' ? <Pressable onPress={() => updateSongStatus(item.id, 'playing')} style={styles.smallIconButton}><Icon name="play" size={15} color={colors.light.primary} /></Pressable> : <Pressable onPress={() => updateSongStatus(item.id, 'played')} style={styles.smallIconButton}><Icon name="checkmark" size={15} color={colors.light.primary} /></Pressable>}<Pressable onPress={() => removeSongRequest(item.id)} style={styles.smallIconButton}><Icon name="close" size={15} color={colors.light.mutedForeground} /></Pressable></View></View>)}
-            </>
-          ) : (
-            <>
-              <View style={styles.staffStat}><Text style={styles.metricLabel}>{staffMode === 'bartender' ? 'BAR QUEUE' : 'INCOMING SERVICE'}</Text><Text style={styles.staffStatValue}>{staffMode === 'bartender' ? staffOrders.length : staffOrders.filter((order) => order.status !== 'delivered' && order.status !== 'cancelled').length} <Text style={styles.staffStatUnit}>{staffMode === 'bartender' ? 'tickets' : 'active orders'}</Text></Text></View>
-              {staffMode === 'waiter' && queuedCalls.length ? <View style={styles.callAlert}><Icon name="notifications" size={19} color={colors.light.primary} /><Text style={styles.callAlertText}>{queuedCalls.length} table call{queuedCalls.length > 1 ? 's' : ''} waiting</Text><Icon name="chevron-forward" size={17} color={colors.light.primary} /></View> : null}
-              <Text style={styles.sectionTitle}>{staffMode === 'bartender' ? 'Drink tickets' : 'Live orders'}</Text>
-              {staffOrders.map((order) => <OrderRow key={order.id} order={order} showControls onStatus={(status) => markOrderStatus(order.id, status)} onPaid={() => markOrderPaid(order.id)} />)}
-            </>
-          )}
-          <View style={styles.demoNote}><Icon name="information-circle-outline" size={17} color={colors.light.mutedForeground} /><Text style={styles.demoNoteText}>Customer ordering is live. Staff actions require a staff account and are not enabled in this customer session.</Text></View>
+          <StaffOperationsDashboard />
         </ScrollView>
       </>
     );

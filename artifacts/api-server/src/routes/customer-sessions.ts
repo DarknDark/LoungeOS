@@ -536,19 +536,33 @@ router.get(
             return {
               table,
               session: null,
+              assignedStaff: null,
+              customerSessions: [],
               orders: [],
               payments: [],
               joinRequests: [],
+              customerRequests: [],
+              songRequests: [],
+              timeline: [],
             };
           }
-          const [orderPage, payments, customers] = await Promise.all([
+          const [orderPage, payments, customers, timelinePage, songPage, notificationPage] =
+            await Promise.all([
             repositories.orders.listForSession(clubId, session.id),
             repositories.payments.listForSession(clubId, session.id),
             repositories.customerSessions.listForTableSession(clubId, session.id),
+            repositories.serviceTimeline.listForSession(clubId, session.id),
+            repositories.songs.listForSession(clubId, session.id),
+            repositories.notifications.listForSession(clubId, session.id),
           ]);
+          const assignedStaff = session.controllerStaffId
+            ? await repositories.staff.getById(clubId, session.controllerStaffId)
+            : null;
           return {
             table,
             session,
+            assignedStaff,
+            customerSessions: customers.filter((customer) => !customer.expiredAt),
             orders: await Promise.all(
               orderPage.items.map(async (order) => ({
                 order,
@@ -559,10 +573,93 @@ router.get(
             joinRequests: customers.filter(
               (customer) => customer.approvalStatus === "pending-approval" && !customer.expiredAt,
             ),
+            customerRequests: notificationPage.items.filter(
+              (notification) => notification.category === "waiter" && !notification.archivedAt,
+            ),
+            songRequests: songPage.items,
+            timeline: timelinePage.items,
           };
         }),
       );
       res.json({ tables });
+    } catch (error) {
+      sendError(res, error);
+    }
+  },
+);
+
+router.post(
+  "/v1/staff/table-sessions/:sessionId/reopen",
+  requireFirebaseStaff,
+  async (req, res) => {
+    const params = CloseCustomerTableSessionParams.parse(req.params);
+    const clubId = headerValue(req, "X-Club-Id");
+    const identity = res.locals.firebaseStaff;
+    if (!clubId || !identity) {
+      res.status(400).json({
+        error: { code: "CLUB_ID_REQUIRED", message: "X-Club-Id is required." },
+      });
+      return;
+    }
+    try {
+      const context = await staffForRequest(req, res, clubId, identity);
+      if (!context) return;
+      if (!hasClosePermission(identity, context.staff, context.roles)) {
+        res.status(403).json({
+          error: { code: "PERMISSION_DENIED", message: "Table reopening is not permitted." },
+        });
+        return;
+      }
+      const session = await getModule2TableSessionService().reopenClose({
+        actor: {
+          kind: "staff",
+          id: context.staff.id,
+          staffId: context.staff.id,
+          clubId,
+        },
+        tableSessionId: params.sessionId,
+        now: now(),
+      });
+      res.json(session);
+    } catch (error) {
+      sendError(res, error);
+    }
+  },
+);
+
+router.post(
+  "/v1/staff/table-sessions/:sessionId/close",
+  requireFirebaseStaff,
+  async (req, res) => {
+    const params = CloseCustomerTableSessionParams.parse(req.params);
+    const clubId = headerValue(req, "X-Club-Id");
+    const identity = res.locals.firebaseStaff;
+    if (!clubId || !identity) {
+      res.status(400).json({
+        error: { code: "CLUB_ID_REQUIRED", message: "X-Club-Id is required." },
+      });
+      return;
+    }
+    try {
+      const context = await staffForRequest(req, res, clubId, identity);
+      if (!context) return;
+      if (!hasClosePermission(identity, context.staff, context.roles)) {
+        res.status(403).json({
+          error: { code: "PERMISSION_DENIED", message: "Table closure is not permitted." },
+        });
+        return;
+      }
+      await getModule2TableSessionService().closeAfterVerifiedPayment({
+        actor: {
+          kind: "staff",
+          id: context.staff.id,
+          staffId: context.staff.id,
+          clubId,
+        },
+        tableSessionId: params.sessionId,
+        now: now(),
+      });
+      res.status(204).send();
     } catch (error) {
       sendError(res, error);
     }

@@ -1095,6 +1095,148 @@ export function useListStaffTables<TData = Awaited<ReturnType<typeof listStaffTa
 
 
 
+export const getReopenStaffTableSessionUrl = (sessionId: string,) => {
+
+
+
+
+  return `/api/v1/staff/table-sessions/${sessionId}/reopen`
+}
+
+/**
+ * @summary Reopen a finishing table tab
+ */
+export const reopenStaffTableSession = async (sessionId: string, options?: Parameters<typeof customFetch>[1]): Promise<TableSession> => {
+
+  return customFetch<TableSession>(getReopenStaffTableSessionUrl(sessionId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getReopenStaffTableSessionMutationOptions = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reopenStaffTableSession>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reopenStaffTableSession>>, TError,{sessionId: string}, TContext> => {
+
+const mutationKey = ['reopenStaffTableSession'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reopenStaffTableSession>>, {sessionId: string}> = (props) => {
+          const {sessionId} = props ?? {};
+
+          return  reopenStaffTableSession(sessionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReopenStaffTableSessionMutationResult = NonNullable<Awaited<ReturnType<typeof reopenStaffTableSession>>>
+
+    export type ReopenStaffTableSessionMutationError = ErrorType<ApiErrorResponse>
+
+    /**
+ * @summary Reopen a finishing table tab
+ */
+export const useReopenStaffTableSession = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reopenStaffTableSession>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reopenStaffTableSession>>,
+        TError,
+        {sessionId: string},
+        TContext
+      > => {
+      return useMutation(getReopenStaffTableSessionMutationOptions(options));
+    }
+
+export const getCloseStaffTableSessionUrl = (sessionId: string,) => {
+
+
+
+
+  return `/api/v1/staff/table-sessions/${sessionId}/close`
+}
+
+/**
+ * @summary Close a staff table after verified payment
+ */
+export const closeStaffTableSession = async (sessionId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getCloseStaffTableSessionUrl(sessionId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCloseStaffTableSessionMutationOptions = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeStaffTableSession>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof closeStaffTableSession>>, TError,{sessionId: string}, TContext> => {
+
+const mutationKey = ['closeStaffTableSession'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof closeStaffTableSession>>, {sessionId: string}> = (props) => {
+          const {sessionId} = props ?? {};
+
+          return  closeStaffTableSession(sessionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CloseStaffTableSessionMutationResult = NonNullable<Awaited<ReturnType<typeof closeStaffTableSession>>>
+
+    export type CloseStaffTableSessionMutationError = ErrorType<ApiErrorResponse>
+
+    /**
+ * @summary Close a staff table after verified payment
+ */
+export const useCloseStaffTableSession = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeStaffTableSession>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof closeStaffTableSession>>,
+        TError,
+        {sessionId: string},
+        TContext
+      > => {
+      return useMutation(getCloseStaffTableSessionMutationOptions(options));
+    }
+
 export const getListStaffTableSessionJoinRequestsUrl = (sessionId: string,) => {
 
 

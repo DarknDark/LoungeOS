@@ -79,6 +79,11 @@ export type TableSessionService = {
     tableSessionId: string;
     now: string;
   }): Promise<TableSessionAccess>;
+  reopenClose(input: {
+    actor: RequestActor;
+    tableSessionId: string;
+    now: string;
+  }): Promise<TableSession>;
   createFromQr(input: {
     actor: RequestActor;
     tableId: string;

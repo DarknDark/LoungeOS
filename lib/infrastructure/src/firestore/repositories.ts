@@ -25,6 +25,7 @@ import {
   type InventoryItem,
   type InventoryReservation,
   type Payment,
+  type SongRequest,
 } from '@workspace/domain';
 import type {
   BusinessDayRepository,
@@ -35,6 +36,7 @@ import type {
   ServiceTimelineRepository,
   SettingsRepository,
   StaffRepository,
+  SongRepository,
   TableRepository,
   TableSessionRepository,
   RoleRepository,
@@ -1190,6 +1192,21 @@ export class FirestoreNotificationRepository implements NotificationRepository {
     return pageFromSnapshot<Notification>(snapshot, limit);
   }
 
+  async listForSession(
+    clubId: string,
+    tableSessionId: string,
+  ): Promise<Page<Notification>> {
+    const snapshot = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.notifications,
+    )
+      .where('relatedRecord.id', '==', tableSessionId)
+      .orderBy('createdAt', 'desc')
+      .get();
+    return pageFromSnapshot<Notification>(snapshot, 100);
+  }
+
   async markRead(clubId: string, notificationId: string, readAt: string): Promise<void> {
     await scopedCollection(
       this.firestore,
@@ -1447,6 +1464,18 @@ export class FirestoreOfflineQueue implements OfflineQueue {
 export class FirestoreStaffRepository implements StaffRepository {
   constructor(private readonly firestore: Firestore) {}
 
+  async getById(clubId: string, staffId: string): Promise<Staff | null> {
+    const document = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.staff,
+    )
+      .doc(staffId)
+      .get();
+    const data = document.data();
+    return isDeleted(data) ? null : documentWithId<Staff>(document.id, data);
+  }
+
   async getByFirebaseUid(clubId: string, firebaseUid: string): Promise<Staff | null> {
     const snapshot = await scopedCollection(
       this.firestore,
@@ -1459,6 +1488,57 @@ export class FirestoreStaffRepository implements StaffRepository {
       .get();
     const document = snapshot.docs[0];
     return document ? documentWithId<Staff>(document.id, document.data()) : null;
+  }
+}
+
+export class FirestoreSongRepository implements SongRepository {
+  constructor(private readonly firestore: Firestore) {}
+
+  async getById(clubId: string, requestId: string): Promise<SongRequest | null> {
+    const document = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.songRequests,
+    )
+      .doc(requestId)
+      .get();
+    const data = document.data();
+    return isDeleted(data) ? null : documentWithId<SongRequest>(document.id, data);
+  }
+
+  async save(request: SongRequest): Promise<void> {
+    await scopedCollection(
+      this.firestore,
+      request.clubId,
+      FIRESTORE_COLLECTIONS.songRequests,
+    )
+      .doc(request.id)
+      .set(request, { merge: true });
+  }
+
+  async listQueue(clubId: string, businessDayId: string): Promise<Page<SongRequest>> {
+    const snapshot = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.songRequests,
+    )
+      .where('businessDayId', '==', businessDayId)
+      .where('status', 'in', ['queued', 'playing'])
+      .orderBy('queuePosition')
+      .get();
+    return pageFromSnapshot<SongRequest>(snapshot, 100);
+  }
+
+  async listForSession(clubId: string, tableSessionId: string): Promise<Page<SongRequest>> {
+    const snapshot = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.songRequests,
+    )
+      .where('tableSessionId', '==', tableSessionId)
+      .orderBy('queuePosition')
+      .get();
+    return pageFromSnapshot<SongRequest>(snapshot, 100);
   }
 }
 
@@ -1497,6 +1577,7 @@ export type Module2Repositories = Pick<
   | 'tableSessions'
   | 'customerSessions'
   | 'staff'
+  | 'songs'
   | 'roles'
   | 'notifications'
   | 'audit'
@@ -1523,6 +1604,7 @@ export function createModule2Repositories(firestore: Firestore): Module2Reposito
     tableSessions: new FirestoreTableSessionRepository(firestore),
     customerSessions: new FirestoreCustomerSessionRepository(firestore),
     staff: new FirestoreStaffRepository(firestore),
+    songs: new FirestoreSongRepository(firestore),
     roles: new FirestoreRoleRepository(firestore),
     notifications: new FirestoreNotificationRepository(firestore),
     audit: new FirestoreAuditRepository(firestore),

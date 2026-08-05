@@ -91,6 +91,36 @@ provider and must never be represented as delivered by a fabricated transport.
 
 `tableSessionId`, `type`, `message`, `sourceRecord`, and `occurredAt`.
 
+## Waiter operations read model
+
+The protected `GET /v1/staff/tables` endpoint reads the same tenant-scoped
+Firestore repositories used by customer ordering. Each table entry includes:
+
+- the permanent table record and canonical lifecycle status;
+- the active table session and assigned staff member, when present;
+- non-expired customer sessions and pending join approvals;
+- shared orders with their order items;
+- submitted, verified, and historical payment records;
+- waiter customer requests, song requests, and service timeline events.
+
+The endpoint does not create operational records or return placeholder data.
+Staff mutations remain protected by Firebase bearer-token verification, club
+membership, and role permissions. The staff API supports manual waiter table
+opening, join approval, payment verification, waiter-created orders, Reopen
+Tab, and Close Table.
+
+When a customer requests Close Tab, the table moves to `finishing` and the
+session enters `awaiting-payment`. A waiter can verify submitted cash/till
+payments, reopen the tab to return the table to `active`, or close it once
+verified payment covers the running balance. Closure expires all customer
+sessions, finalizes the session lifecycle, releases the table, and leaves the
+permanent QR identity reusable.
+
+The Expo customer bundle intentionally does not infer staff identity from a
+customer session. Its waiter dashboard remains locked until a real Firebase
+client sign-in flow registers an ID-token provider; no fake staff credentials
+or operational records are used.
+
 ## Indexes
 
 The deployable index source is `firestore.indexes.json`. Current composite

@@ -6,15 +6,24 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CustomerSession } from './customerSession';
+import type { Notification } from './notification';
 import type { OrderResponse } from './orderResponse';
 import type { PaymentResponse } from './paymentResponse';
+import type { ServiceTimelineEvent } from './serviceTimelineEvent';
+import type { SongRequest } from './songRequest';
+import type { Staff } from './staff';
 import type { Table } from './table';
 import type { TableSession } from './tableSession';
 
 export interface StaffTableOperations {
   table: Table;
   session: TableSession | null;
+  assignedStaff: Staff | null;
+  customerSessions: CustomerSession[];
   orders: OrderResponse[];
   payments: PaymentResponse[];
   joinRequests: CustomerSession[];
+  customerRequests: Notification[];
+  songRequests: SongRequest[];
+  timeline: ServiceTimelineEvent[];
 }

@@ -99,6 +99,7 @@ export type CustomerSessionRepository = {
 };
 
 export type StaffRepository = {
+  getById(clubId: ClubId, staffId: string): Promise<Staff | null>;
   getByFirebaseUid(clubId: ClubId, firebaseUid: string): Promise<Staff | null>;
 };
 
@@ -172,6 +173,7 @@ export type SongRepository = {
   getById(clubId: ClubId, requestId: string): Promise<SongRequest | null>;
   save(request: SongRequest): Promise<void>;
   listQueue(clubId: ClubId, businessDayId: string): Promise<Page<SongRequest>>;
+  listForSession(clubId: ClubId, tableSessionId: string): Promise<Page<SongRequest>>;
 };
 
 export type PaymentRepository = {
@@ -211,6 +213,7 @@ export type InventoryReservationRepository = {
 export type NotificationRepository = {
   save(notification: Notification): Promise<void>;
   listForRecipient(clubId: ClubId, recipientId: string, query?: PageQuery): Promise<Page<Notification>>;
+  listForSession(clubId: ClubId, tableSessionId: string): Promise<Page<Notification>>;
   markRead(clubId: ClubId, notificationId: string, readAt: ISODateString): Promise<void>;
   markDelivered?: (
     clubId: ClubId,

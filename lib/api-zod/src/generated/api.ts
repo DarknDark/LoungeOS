@@ -665,6 +665,32 @@ export const ListStaffTablesResponse = zod.object({
   "expiresAt": zod.coerce.date(),
   "lastActivityAt": zod.coerce.date()
 }),zod.null()]),
+  "assignedStaff": zod.union([zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "firebaseUid": zod.string(),
+  "displayName": zod.string(),
+  "email": zod.string().optional(),
+  "roleIds": zod.array(zod.string()),
+  "active": zod.boolean(),
+  "photoUrl": zod.string().optional()
+}),zod.null()]),
+  "customerSessions": zod.array(zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date(),
+  "isTableOwner": zod.boolean(),
+  "accessLevel": zod.enum(['owner', 'participant', 'temporary']),
+  "approvalStatus": zod.enum(['approved', 'pending-approval']),
+  "approvalRequestedAt": zod.coerce.date().optional(),
+  "approvedAt": zod.coerce.date().optional(),
+  "approvedByStaffId": zod.string().optional(),
+  "deviceId": zod.string().optional(),
+  "lastHeartbeatAt": zod.coerce.date().optional(),
+  "expiredAt": zod.coerce.date().optional()
+})),
   "orders": zod.array(zod.object({
   "order": zod.object({
   "id": zod.string(),
@@ -728,9 +754,110 @@ export const ListStaffTablesResponse = zod.object({
   "deviceId": zod.string().optional(),
   "lastHeartbeatAt": zod.coerce.date().optional(),
   "expiredAt": zod.coerce.date().optional()
+})),
+  "customerRequests": zod.array(zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "recipientId": zod.string().optional(),
+  "recipientRole": zod.string().optional(),
+  "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
+  "category": zod.enum(['waiter', 'kitchen', 'bar', 'dj', 'payment', 'inventory', 'session', 'business-day', 'administration']),
+  "message": zod.string(),
+  "relatedRecord": zod.object({
+  "type": zod.string(),
+  "id": zod.string()
+}).optional(),
+  "createdAt": zod.coerce.date(),
+  "readAt": zod.coerce.date().optional(),
+  "deliveredAt": zod.coerce.date().optional(),
+  "archivedAt": zod.coerce.date().optional()
+})),
+  "songRequests": zod.array(zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "customerSessionId": zod.string(),
+  "businessDayId": zod.string(),
+  "songId": zod.string().optional(),
+  "song": zod.string(),
+  "artist": zod.string(),
+  "duplicateKey": zod.string(),
+  "queuePosition": zod.number().optional(),
+  "status": zod.enum(['queued', 'playing', 'played', 'skipped']),
+  "skipReason": zod.string().optional()
+})),
+  "timeline": zod.array(zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "type": zod.string(),
+  "message": zod.string(),
+  "sourceRecord": zod.object({
+  "type": zod.string(),
+  "id": zod.string()
+}).optional(),
+  "occurredAt": zod.coerce.date()
 }))
 }))
 })
+
+
+/**
+ * @summary Reopen a finishing table tab
+ */
+
+
+
+export const ReopenStaffTableSessionParams = zod.object({
+  "sessionId": zod.coerce.string().min(1)
+})
+
+
+
+
+export const ReopenStaffTableSessionHeader = zod.object({
+  "X-Club-Id": zod.string().min(1)
+})
+
+export const reopenStaffTableSessionResponseRunningTotalMinorMin = 0;
+
+
+
+export const ReopenStaffTableSessionResponse = zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableId": zod.string(),
+  "businessDayId": zod.string(),
+  "ownerCustomerSessionId": zod.string().optional(),
+  "controllerType": zod.enum(['customer', 'staff']),
+  "controllerStaffId": zod.string().optional(),
+  "openedAt": zod.coerce.date(),
+  "closedAt": zod.coerce.date().optional(),
+  "status": zod.enum(['created', 'active', 'splitting-bill', 'awaiting-payment', 'payment-pending', 'completed', 'closed', 'expired']),
+  "runningTotalMinor": zod.number().min(reopenStaffTableSessionResponseRunningTotalMinorMin),
+  "expiresAt": zod.coerce.date(),
+  "lastActivityAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Close a staff table after verified payment
+ */
+
+
+
+export const CloseStaffTableSessionParams = zod.object({
+  "sessionId": zod.coerce.string().min(1)
+})
+
+
+
+
+export const CloseStaffTableSessionHeader = zod.object({
+  "X-Club-Id": zod.string().min(1)
+})
+
+export const CloseStaffTableSessionResponse = zod.void()
 
 
 /**
