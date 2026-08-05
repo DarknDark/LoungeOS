@@ -5,6 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { CustomerSessionAccessLevel } from './customerSessionAccessLevel';
+import type { CustomerSessionApprovalStatus } from './customerSessionApprovalStatus';
 
 export interface CustomerSession {
   id: string;
@@ -13,6 +15,11 @@ export interface CustomerSession {
   createdAt: Date;
   expiresAt: Date;
   isTableOwner: boolean;
+  accessLevel: CustomerSessionAccessLevel;
+  approvalStatus: CustomerSessionApprovalStatus;
+  approvalRequestedAt?: Date;
+  approvedAt?: Date;
+  approvedByStaffId?: string;
   deviceId?: string;
   lastHeartbeatAt?: Date;
   expiredAt?: Date;

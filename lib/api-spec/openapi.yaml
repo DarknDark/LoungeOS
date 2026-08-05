@@ -205,7 +205,7 @@ paths:
         - $ref: "#/components/parameters/ClubId"
       responses:
         "200":
-          description: Table session moved to finishing up
+          description: Table session moved to finishing
           content:
             application/json:
               schema:
@@ -224,7 +224,7 @@ paths:
         - $ref: "#/components/parameters/ClubId"
       responses:
         "200":
-          description: Table session returned to occupied
+          description: Table session returned to active
           content:
             application/json:
               schema:
@@ -259,6 +259,85 @@ paths:
         "400":
           $ref: "#/components/responses/ApiError"
         "401":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/staff/table-sessions/manual:
+    post:
+      operationId: openManualStaffTableSession
+      tags: [customer-sessions]
+      summary: Open a waiter-controlled table session
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpenManualTableSessionRequest"
+      responses:
+        "201":
+          description: Manual table session opened
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSession"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/staff/table-sessions/{sessionId}/join-requests:
+    get:
+      operationId: listStaffTableSessionJoinRequests
+      tags: [customer-sessions]
+      summary: List pending customer requests to join a manual table
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: Pending customer join requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CustomerSession"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+    post:
+      operationId: approveStaffTableSessionJoin
+      tags: [customer-sessions]
+      summary: Approve a customer request to join a manual table
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/SessionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApproveTableSessionJoinRequest"
+      responses:
+        "200":
+          description: Approved temporary customer access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSession"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
           $ref: "#/components/responses/ApiError"
         "409":
           $ref: "#/components/responses/ApiError"
@@ -383,6 +462,43 @@ paths:
         "400":
           $ref: "#/components/responses/ApiError"
         "401":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/staff/orders:
+    post:
+      operationId: createStaffOrder
+      tags: [orders]
+      summary: Create and submit an order for a waiter-controlled table
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Submitted waiter order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
           $ref: "#/components/responses/ApiError"
         "409":
           $ref: "#/components/responses/ApiError"
@@ -775,6 +891,7 @@ components:
         clubId: { type: string }
         tableSessionId: { type: string }
         customerSessionId: { type: string }
+        createdByStaffId: { type: string }
         status: { type: string, enum: [draft, submitted, accepted, preparing, ready, delivered, cancelled] }
         itemIds:
           type: array
@@ -825,6 +942,20 @@ components:
           type: string
           minLength: 1
       required: [clubId]
+    OpenManualTableSessionRequest:
+      type: object
+      properties:
+        tableId:
+          type: string
+          minLength: 1
+      required: [tableId]
+    ApproveTableSessionJoinRequest:
+      type: object
+      properties:
+        customerSessionId:
+          type: string
+          minLength: 1
+      required: [customerSessionId]
     CreateTableSessionRequest:
       type: object
       properties:
@@ -840,7 +971,7 @@ components:
         deviceId:
           type: string
           minLength: 1
-      required: [clubId, tableId, qrToken]
+      required: [clubId, tableId]
     JoinTableSessionRequest:
       type: object
       properties:
@@ -853,7 +984,7 @@ components:
         deviceId:
           type: string
           minLength: 1
-      required: [clubId, qrToken]
+      required: [clubId]
     RecoverTableSessionRequest:
       type: object
       properties:
@@ -942,7 +1073,7 @@ components:
         qrVersion: { type: number, minimum: 1 }
         status:
           type: string
-          enum: [available, occupied, finishing-up]
+          enum: [available, active, finishing]
         activeSessionId: { type: string }
         splitSlotsRemaining: { type: number, minimum: 0 }
       required: [id, clubId, number, label, qrVersion, status]
@@ -954,6 +1085,10 @@ components:
         tableId: { type: string }
         businessDayId: { type: string }
         ownerCustomerSessionId: { type: string }
+        controllerType:
+          type: string
+          enum: [customer, staff]
+        controllerStaffId: { type: string }
         openedAt: { type: string, format: date-time }
         closedAt: { type: string, format: date-time }
         status:
@@ -963,7 +1098,7 @@ components:
         expiresAt: { type: string, format: date-time }
         lastActivityAt: { type: string, format: date-time }
       required:
-        [id, clubId, tableId, businessDayId, ownerCustomerSessionId, openedAt, status, runningTotalMinor, expiresAt, lastActivityAt]
+        [id, clubId, tableId, businessDayId, controllerType, openedAt, status, runningTotalMinor, expiresAt, lastActivityAt]
     CustomerSession:
       type: object
       properties:
@@ -973,8 +1108,17 @@ components:
         createdAt: { type: string, format: date-time }
         expiresAt: { type: string, format: date-time }
         isTableOwner: { type: boolean }
+        accessLevel:
+          type: string
+          enum: [owner, participant, temporary]
+        approvalStatus:
+          type: string
+          enum: [approved, pending-approval]
+        approvalRequestedAt: { type: string, format: date-time }
+        approvedAt: { type: string, format: date-time }
+        approvedByStaffId: { type: string }
         deviceId: { type: string }
         lastHeartbeatAt: { type: string, format: date-time }
         expiredAt: { type: string, format: date-time }
-      required: [id, clubId, tableSessionId, createdAt, expiresAt, isTableOwner]
+      required: [id, clubId, tableSessionId, createdAt, expiresAt, isTableOwner, accessLevel, approvalStatus]
 

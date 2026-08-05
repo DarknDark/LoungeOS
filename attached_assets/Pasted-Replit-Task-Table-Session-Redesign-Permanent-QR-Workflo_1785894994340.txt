@@ -1,0 +1,352 @@
+Replit Task — Table Session Redesign (Permanent QR Workflow)
+
+Do not start Module 4.
+
+This is an architecture improvement to Module 1 only.
+
+Do not introduce temporary hacks or duplicate flows. Refactor the current QR/session workflow to use a permanent table identity instead of rotating QR secrets.
+
+New Core Principle
+
+The QR code is permanent.
+
+It should never normally change.
+
+The QR only identifies the table.
+
+Example:
+
+loungeos://table/table-5
+
+or
+
+tableId = table-5
+
+No secret token should be printed on the QR.
+
+The API decides whether the table can be entered.
+
+Table State
+
+A table can only be in one of these states:
+
+AVAILABLE
+ACTIVE
+FINISHING
+AVAILABLE
+
+No active customer tab.
+
+Scanning QR starts a new session.
+
+ACTIVE
+
+Customers are still dining.
+
+Scanning the QR must NOT create another session.
+
+Instead display:
+
+This table already has an active tab.
+
+If you are seated here, please call the waiter. They may have forgotten to close the previous tab.
+
+Show only:
+
+Call Waiter
+
+Nothing else.
+
+FINISHING
+
+Customer has pressed Close Tab.
+
+Customer is waiting for the waiter.
+
+Display:
+
+Waiting for your waiter...
+
+The customer can still:
+
+Cancel Close Tab
+Continue ordering (returns table to ACTIVE)
+
+No new customers may enter.
+
+Customer Flow
+Customer scans QR
+
+If AVAILABLE
+
+↓
+
+Create:
+
+table session
+owner customer session
+
+↓
+
+Customer orders normally.
+
+Customer presses Pay Now
+
+New feature.
+
+Pay Now means:
+
+settle current running balance
+keep table open
+continue ordering afterwards
+
+The table remains ACTIVE.
+
+The waiter confirms payment.
+
+Running bill returns to zero.
+
+Customer may continue ordering.
+
+Unlimited Pay Now operations are allowed.
+
+Customer presses Close Tab
+
+This DOES NOT close the table.
+
+Instead:
+
+mark session FINISHING
+freeze ordering
+notify waiter
+
+Customer sees:
+
+Waiting for your waiter...
+
+Buttons:
+
+Cancel Close Tab
+
+If cancelled:
+
+Return to ACTIVE.
+
+Ordering resumes.
+
+Waiter Dashboard
+
+The waiter is the only authority that officially closes a table.
+
+When customer presses Close Tab:
+
+Display on waiter dashboard:
+
+Table 5
+
+Finishing Up
+
+or similar polished wording.
+
+Waiter goes to table.
+
+Collects payment.
+
+Confirms M-Pesa or cash.
+
+Checks bill.
+
+After everything is settled:
+
+Press:
+
+Close Table
+
+That action:
+
+closes customer session
+closes table session
+archives running bill
+completes audit
+clears temporary state
+
+Automatically change table:
+
+ACTIVE
+
+↓
+
+AVAILABLE
+
+The same permanent QR immediately works for the next customers.
+
+No QR regeneration.
+
+No QR rotation.
+
+No new printed code.
+
+Waiter Manual Tables
+
+Some customers will never scan.
+
+Support this.
+
+Waiter dashboard:
+
+Open Manual Table
+
+Select:
+
+Table 7
+
+↓
+
+Creates normal table session.
+
+Waiter owns ordering.
+
+Customers never scan.
+
+Later Customer Scans
+
+If customers later decide to scan:
+
+Do NOT give them full ownership.
+
+Display:
+
+The waiter is on the way to approve access.
+
+Green waiting screen.
+
+Waiter receives:
+
+Table 7
+
+Customer wants to join
+
+Approve
+
+↓
+
+Customer gets a Temporary Dashboard.
+
+Temporary Dashboard
+
+This dashboard is intentionally limited.
+
+Customer can:
+
+View running bill
+Request songs
+Call waiter
+
+Customer CANNOT:
+
+Order food
+Order drinks
+Pay
+Split bill
+Close tab
+Become owner
+
+All ordering remains waiter-controlled.
+
+Orders Added By Waiter
+
+If waiter adds:
+
+2 Tuskers
+
+Customer dashboard updates instantly.
+
+Running bill updates instantly.
+
+Everything stays synchronized.
+
+Receipts
+
+Automatic behaviour:
+
+M-Pesa / Till
+
+Payment phone number already exists.
+
+Automatically send SMS receipt.
+
+No prompt required.
+
+Cash
+
+After payment ask:
+
+Would you like your receipt by SMS?
+
+YES
+
+NO
+
+If YES
+
+Collect phone number.
+
+Send receipt.
+
+Otherwise print normally.
+
+Running Bill
+
+The running bill belongs to the TABLE.
+
+Not to a customer.
+
+Any approved dashboard always shows:
+
+Current table bill.
+
+Session Ownership
+
+There is still exactly ONE owner session.
+
+Only:
+
+First QR scan
+
+creates the owner.
+
+If waiter opened the table manually:
+
+The waiter remains controller.
+
+Customers joining later never become owner.
+
+Required Refactor
+
+Refactor existing QR/session implementation to:
+
+remove dependency on rotating table QR secrets
+use permanent table identity
+keep session tokens internal
+keep recovery tokens internal
+keep security through server validation
+preserve audit history
+preserve optimistic locking
+preserve idempotency
+preserve inventory handling
+
+Do not break existing business logic.
+
+Deliverables
+
+After implementation provide:
+
+Updated architecture diagram.
+Updated state machine.
+API changes.
+Database schema changes.
+Migration strategy.
+Any security considerations.
+Full regression verification proving existing ordering still works.
+
+Do not implement Module 4. Only complete this architectural refactor.

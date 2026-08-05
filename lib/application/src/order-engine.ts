@@ -161,6 +161,30 @@ export function createOrderService(
     return { session, customer };
   }
 
+  async function activeStaffTable(
+    actor: RequestActor,
+    tableSessionId: string,
+    now: string,
+  ): Promise<TableSession> {
+    if (actor.kind !== 'staff' && actor.kind !== 'system') {
+      throw new OrderError('Only waiter staff may order for a table.', 'NOT_AUTHORIZED', 403);
+    }
+    const session = await repos.tableSessions.getById(actor.clubId, tableSessionId);
+    if (
+      !session ||
+      session.controllerType !== 'staff' ||
+      session.status !== 'active' ||
+      isExpired(now, session.expiresAt)
+    ) {
+      throw new OrderError(
+        'The waiter-controlled table session is not active.',
+        'SESSION_NOT_ACTIVE',
+        409,
+      );
+    }
+    return session;
+  }
+
   async function orderForActor(
     actor: RequestActor,
     orderId: string,
@@ -483,6 +507,60 @@ export function createOrderService(
       });
     },
 
+    async createForStaff(input) {
+      const session = await activeStaffTable(
+        input.actor,
+        input.tableSessionId,
+        input.now,
+      );
+      const staffId = input.actor.staffId ?? input.actor.id;
+      if (!staffId) {
+        throw new OrderError('A staff identity is required.', 'NOT_AUTHORIZED', 401);
+      }
+      const existing = await repos.orders.findByIdempotencyKey(
+        input.actor.clubId,
+        session.id,
+        staffId,
+        input.idempotencyKey,
+      );
+      if (existing) return orderForActor(input.actor, existing.id);
+      const pricing = await validateItems(input.actor.clubId, input.items, input.now);
+      const order: Order = {
+        id: ids.next(),
+        clubId: input.actor.clubId,
+        tableSessionId: session.id,
+        customerSessionId: staffId,
+        createdByStaffId: staffId,
+        businessDayId: session.businessDayId,
+        status: 'submitted',
+        itemIds: pricing.pricedItems.map((item) => item.id),
+        idempotencyKey: input.idempotencyKey,
+        subtotalMinor: pricing.subtotalMinor,
+        taxMinor: pricing.taxMinor,
+        serviceChargeMinor: pricing.serviceChargeMinor,
+        discountMinor: pricing.discountMinor,
+        totalMinor: pricing.totalMinor,
+        ...(input.notes ? { notes: input.notes } : {}),
+        submittedAt: input.now,
+        createdAt: input.now,
+        version: 0,
+        updatedAt: input.now,
+      };
+      await persist(order, pricing.pricedItems);
+      await repos.tableSessions.save({
+        ...session,
+        runningTotalMinor: session.runningTotalMinor + order.totalMinor,
+        version: (session.version ?? 0) + 1,
+        updatedAt: input.now,
+        lastActivityAt: input.now,
+      });
+      await recordTransition(input.actor, order, 'submitted', input.now);
+      return {
+        order,
+        items: pricing.pricedItems.map((item) => ({ ...item, orderId: order.id })),
+      };
+    },
+
     async updateDraft(input) {
       const current = await orderForActor(input.actor, input.orderId);
       assertOrderOwner(input.actor, current.order);
@@ -623,7 +701,11 @@ export function createOrderService(
     },
 
     async getForSession(input) {
-      await activeCustomer(input.actor, input.tableSessionId, new Date().toISOString());
+      await activeCustomer(
+        input.actor,
+        input.tableSessionId,
+        new Date().toISOString(),
+      );
       const page = await repos.orders.listForSession(
         input.actor.clubId,
         input.tableSessionId,

@@ -290,6 +290,8 @@ export default function HomeScreen() {
     requestClose,
     cancelClose,
     tableSessionStatus,
+    customerAccessLevel,
+    customerApprovalStatus,
     markOrderStatus,
     markOrderPaid,
     cancelOrder,
@@ -305,6 +307,9 @@ export default function HomeScreen() {
   } = useClub();
   const money = formatMoney;
   const clubShortName = clubSettings.branding.shortName;
+  const canMutateTable =
+    customerAccessLevel !== 'temporary' && customerApprovalStatus === 'approved';
+  const isPendingApproval = customerApprovalStatus === 'pending-approval';
 
   const show = (next: ViewName) => {
     setFeedback('');
@@ -346,7 +351,22 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <View style={styles.billHero}>
+         {!canMutateTable ? (
+           <View style={styles.accessBanner}>
+             <Icon name={isPendingApproval ? 'time-outline' : 'eye-outline'} size={18} color={colors.light.primary} />
+             <View style={styles.accessBannerCopy}>
+               <Text style={styles.accessBannerTitle}>
+                 {isPendingApproval ? 'Waiting for waiter approval' : 'View-only table access'}
+               </Text>
+               <Text style={styles.accessBannerText}>
+                 {isPendingApproval
+                   ? 'You can stay on this screen while your waiter approves your join request.'
+                   : 'You can view the shared running bill, but only the waiter can add orders or settle it.'}
+               </Text>
+             </View>
+           </View>
+         ) : null}
+         <View style={styles.billHero}>
           <View style={styles.billHeroGlow} />
           <View style={styles.billHeroHeader}>
             <View>
@@ -365,9 +385,13 @@ export default function HomeScreen() {
         </View>
 
         <Text style={styles.sectionTitle}>What are you in the mood for?</Text>
-        <View style={styles.actionsGrid}>
-          <ActionTile icon="wine-outline" label="Drinks" onPress={() => { setCategory(drinkCategory ?? 'All'); show('menu'); }} accent />
-          <ActionTile icon="restaurant-outline" label="Food" onPress={() => { setCategory(foodCategory ?? 'All'); show('menu'); }} />
+         {canMutateTable ? (
+           <View style={styles.actionsGrid}>
+             <ActionTile icon="wine-outline" label="Drinks" onPress={() => { setCategory(drinkCategory ?? 'All'); show('menu'); }} accent />
+             <ActionTile icon="restaurant-outline" label="Food" onPress={() => { setCategory(foodCategory ?? 'All'); show('menu'); }} />
+           </View>
+         ) : null}
+         <View style={styles.actionsGrid}>
           <ActionTile icon="musical-notes-outline" label="Request song" onPress={() => show('request')} />
           <ActionTile icon="hand-left-outline" label="Call waiter" onPress={() => { buzz(); callWaiter(); setFeedback('Your waiter is on the way'); }} />
         </View>
@@ -430,7 +454,7 @@ export default function HomeScreen() {
         </View>
         {filteredMenu.map((item) => <MenuCard key={item.id} item={item} onAdd={addItem} />)}
       </ScrollView>
-      {cartCount ? (
+       {canMutateTable && cartCount ? (
         <Pressable onPress={() => show('cart')} style={[styles.floatingCart, { bottom: bottomInset + 18 }]} testID="view-cart">
           <View style={styles.cartCount}><Text style={styles.cartCountText}>{cartCount}</Text></View>
           <Text style={styles.floatingCartText}>View your round</Text>
@@ -538,18 +562,18 @@ export default function HomeScreen() {
           <Text style={styles.billSummaryNote}>Service is included · no surprises</Text>
         </View>
         <Text style={styles.sectionTitle}>Tonight at table {tableNumber}</Text>
-          {orders.map((order) => (
+           {orders.map((order) => (
             <OrderRow
               key={order.id}
               order={order}
-              onCancel={() => {
+               onCancel={canMutateTable ? () => {
                 void cancelOrder(order.id).then((cancelled) => {
                   if (cancelled) setFeedback('Order cancelled');
                 });
-              }}
+               } : undefined}
             />
           ))}
-        <View style={styles.paymentCard}>
+         {canMutateTable ? <View style={styles.paymentCard}>
           <View style={styles.paymentHeader}><View><Text style={styles.paymentTitle}>Ready to settle?</Text><Text style={styles.paymentSubtitle}>Choose how you’d like to pay.</Text></View><Icon name="lock-closed-outline" size={19} color={colors.light.mutedForeground} /></View>
           <Pressable
             onPress={() => {
@@ -604,26 +628,34 @@ export default function HomeScreen() {
               <Icon name="arrow-forward" size={17} color={colors.light.background} />
             </Pressable>
           ) : tableSessionStatus === 'awaiting-payment' || tableSessionStatus === 'splitting-bill' ? (
-            <View style={styles.finishingCard}>
-              <View style={styles.finishingHeader}>
-                <Icon name="time-outline" size={18} color={colors.light.primary} />
-                <Text style={styles.finishingTitle}>Finishing up</Text>
-              </View>
-              <Text style={styles.finishingCopy}>Ordering is paused while your waiter confirms payment.</Text>
-              <Pressable
-                onPress={() => {
-                  buzz();
-                  void cancelClose().then((cancelled) => {
-                    if (cancelled) setFeedback('Close request cancelled');
-                  });
-                }}
-                style={styles.outlineButton}
-              >
-                <Text style={styles.outlineActionText}>Cancel Close</Text>
-              </Pressable>
-            </View>
-          ) : null}
-        </View>
+             <View style={styles.finishingCard}>
+               <View style={styles.finishingHeader}>
+                 <Icon name="time-outline" size={18} color={colors.light.primary} />
+                 <Text style={styles.finishingTitle}>Finishing up</Text>
+               </View>
+               <Text style={styles.finishingCopy}>Ordering is paused while your waiter confirms payment.</Text>
+               <Pressable
+                 onPress={() => {
+                   buzz();
+                   void cancelClose().then((cancelled) => {
+                     if (cancelled) setFeedback('Close request cancelled');
+                   });
+                 }}
+                 style={styles.outlineButton}
+               >
+                 <Text style={styles.outlineActionText}>Cancel Close</Text>
+               </Pressable>
+             </View>
+           ) : null}
+         </View> : (
+           <View style={styles.accessBanner}>
+             <Icon name="lock-closed-outline" size={18} color={colors.light.primary} />
+             <View style={styles.accessBannerCopy}>
+               <Text style={styles.accessBannerTitle}>Settlement is waiter-controlled</Text>
+               <Text style={styles.accessBannerText}>Ask your waiter to take payment or close the table.</Text>
+             </View>
+           </View>
+         )}
         {feedback ? <View style={styles.feedbackBar}><Icon name="checkmark-circle" size={17} color={colors.light.primary} /><Text style={styles.feedbackText}>{feedback}</Text></View> : null}
       </ScrollView>
     </>
@@ -731,6 +763,10 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.76, transform: [{ scale: 0.98 }] },
   feedbackBar: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 13, backgroundColor: '#1b3225', borderWidth: 1, borderColor: '#31563e' },
   feedbackText: { color: '#9fe0b0', fontSize: 12, fontWeight: '600', flex: 1 },
+  accessBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 15, backgroundColor: colors.light.secondary, borderWidth: 1, borderColor: colors.light.border, marginBottom: 16 },
+  accessBannerCopy: { flex: 1, gap: 3 },
+  accessBannerTitle: { color: colors.light.foreground, fontSize: 12, fontWeight: '700' },
+  accessBannerText: { color: colors.light.mutedForeground, fontSize: 11, lineHeight: 16 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   seeAll: { color: colors.light.primary, fontSize: 12, fontWeight: '700' },
   horizontalMenu: { gap: 12, paddingRight: 10 },

@@ -63,6 +63,16 @@ export type TableSessionRepository = {
     customerSession: CustomerSession;
     now: ISODateString;
   }): Promise<void>;
+  createStaffSession(input: {
+    table: Table;
+    session: TableSession;
+    now: ISODateString;
+  }): Promise<void>;
+  approveCustomerSession(input: {
+    session: TableSession;
+    customerSession: CustomerSession;
+    now: ISODateString;
+  }): Promise<void>;
   saveIfVersion?: (
     session: TableSession,
     expectedVersion: number,

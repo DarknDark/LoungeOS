@@ -21,12 +21,15 @@ import type {
 
 import type {
   ApiErrorResponse,
+  ApproveTableSessionJoinRequest,
   CancelOrderRequest,
   CreateOrderRequest,
   CreateTableSessionRequest,
+  CustomerSession,
   HealthStatus,
   HeartbeatRequest,
   JoinTableSessionRequest,
+  OpenManualTableSessionRequest,
   OpenTableSessionRequest,
   OrderListResponse,
   OrderMenuResponse,
@@ -37,6 +40,7 @@ import type {
   SplitTableSessionRequest,
   SubmitOrderBody,
   SubmitPaymentRequest,
+  TableSession,
   TableSessionAccess,
   TableValidationResponse,
   UpdateDraftOrderRequest,
@@ -941,6 +945,226 @@ export const useSubmitCustomerTableSessionPayment = <TError = ErrorType<ApiError
       return useMutation(getSubmitCustomerTableSessionPaymentMutationOptions(options));
     }
 
+export const getOpenManualStaffTableSessionUrl = () => {
+
+
+
+
+  return `/api/v1/staff/table-sessions/manual`
+}
+
+/**
+ * @summary Open a waiter-controlled table session
+ */
+export const openManualStaffTableSession = async (openManualTableSessionRequest: OpenManualTableSessionRequest, options?: Parameters<typeof customFetch>[1]): Promise<TableSession> => {
+
+  return customFetch<TableSession>(getOpenManualStaffTableSessionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(openManualTableSessionRequest)
+  }
+);}
+
+
+
+
+
+export const getOpenManualStaffTableSessionMutationOptions = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof openManualStaffTableSession>>, TError,{data: BodyType<OpenManualTableSessionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof openManualStaffTableSession>>, TError,{data: BodyType<OpenManualTableSessionRequest>}, TContext> => {
+
+const mutationKey = ['openManualStaffTableSession'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof openManualStaffTableSession>>, {data: BodyType<OpenManualTableSessionRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  openManualStaffTableSession(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type OpenManualStaffTableSessionMutationResult = NonNullable<Awaited<ReturnType<typeof openManualStaffTableSession>>>
+    export type OpenManualStaffTableSessionMutationBody = BodyType<OpenManualTableSessionRequest>
+    export type OpenManualStaffTableSessionMutationError = ErrorType<ApiErrorResponse>
+
+    /**
+ * @summary Open a waiter-controlled table session
+ */
+export const useOpenManualStaffTableSession = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof openManualStaffTableSession>>, TError,{data: BodyType<OpenManualTableSessionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof openManualStaffTableSession>>,
+        TError,
+        {data: BodyType<OpenManualTableSessionRequest>},
+        TContext
+      > => {
+      return useMutation(getOpenManualStaffTableSessionMutationOptions(options));
+    }
+
+export const getListStaffTableSessionJoinRequestsUrl = (sessionId: string,) => {
+
+
+
+
+  return `/api/v1/staff/table-sessions/${sessionId}/join-requests`
+}
+
+/**
+ * @summary List pending customer requests to join a manual table
+ */
+export const listStaffTableSessionJoinRequests = async (sessionId: string, options?: Parameters<typeof customFetch>[1]): Promise<CustomerSession[]> => {
+
+  return customFetch<CustomerSession[]>(getListStaffTableSessionJoinRequestsUrl(sessionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListStaffTableSessionJoinRequestsQueryKey = (sessionId: string,) => {
+    return [
+    `/api/v1/staff/table-sessions/${sessionId}/join-requests`
+    ] as const;
+    }
+
+
+export const getListStaffTableSessionJoinRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listStaffTableSessionJoinRequests>>, TError = ErrorType<ApiErrorResponse>>(sessionId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStaffTableSessionJoinRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListStaffTableSessionJoinRequestsQueryKey(sessionId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStaffTableSessionJoinRequests>>> = ({ signal }) => listStaffTableSessionJoinRequests(sessionId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: sessionId !== null && sessionId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStaffTableSessionJoinRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListStaffTableSessionJoinRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listStaffTableSessionJoinRequests>>>
+export type ListStaffTableSessionJoinRequestsQueryError = ErrorType<ApiErrorResponse>
+
+
+/**
+ * @summary List pending customer requests to join a manual table
+ */
+
+export function useListStaffTableSessionJoinRequests<TData = Awaited<ReturnType<typeof listStaffTableSessionJoinRequests>>, TError = ErrorType<ApiErrorResponse>>(
+ sessionId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStaffTableSessionJoinRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListStaffTableSessionJoinRequestsQueryOptions(sessionId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getApproveStaffTableSessionJoinUrl = (sessionId: string,) => {
+
+
+
+
+  return `/api/v1/staff/table-sessions/${sessionId}/join-requests`
+}
+
+/**
+ * @summary Approve a customer request to join a manual table
+ */
+export const approveStaffTableSessionJoin = async (sessionId: string,
+    approveTableSessionJoinRequest: ApproveTableSessionJoinRequest, options?: Parameters<typeof customFetch>[1]): Promise<CustomerSession> => {
+
+  return customFetch<CustomerSession>(getApproveStaffTableSessionJoinUrl(sessionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(approveTableSessionJoinRequest)
+  }
+);}
+
+
+
+
+
+export const getApproveStaffTableSessionJoinMutationOptions = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveStaffTableSessionJoin>>, TError,{sessionId: string;data: BodyType<ApproveTableSessionJoinRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveStaffTableSessionJoin>>, TError,{sessionId: string;data: BodyType<ApproveTableSessionJoinRequest>}, TContext> => {
+
+const mutationKey = ['approveStaffTableSessionJoin'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveStaffTableSessionJoin>>, {sessionId: string;data: BodyType<ApproveTableSessionJoinRequest>}> = (props) => {
+          const {sessionId,data} = props ?? {};
+
+          return  approveStaffTableSessionJoin(sessionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveStaffTableSessionJoinMutationResult = NonNullable<Awaited<ReturnType<typeof approveStaffTableSessionJoin>>>
+    export type ApproveStaffTableSessionJoinMutationBody = BodyType<ApproveTableSessionJoinRequest>
+    export type ApproveStaffTableSessionJoinMutationError = ErrorType<ApiErrorResponse>
+
+    /**
+ * @summary Approve a customer request to join a manual table
+ */
+export const useApproveStaffTableSessionJoin = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveStaffTableSessionJoin>>, TError,{sessionId: string;data: BodyType<ApproveTableSessionJoinRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveStaffTableSessionJoin>>,
+        TError,
+        {sessionId: string;data: BodyType<ApproveTableSessionJoinRequest>},
+        TContext
+      > => {
+      return useMutation(getApproveStaffTableSessionJoinMutationOptions(options));
+    }
+
 export const getVerifyPaymentUrl = (paymentId: string,) => {
 
 
@@ -1307,6 +1531,77 @@ export const useCreateOrder = <TError = ErrorType<ApiErrorResponse>,
         TContext
       > => {
       return useMutation(getCreateOrderMutationOptions(options));
+    }
+
+export const getCreateStaffOrderUrl = () => {
+
+
+
+
+  return `/api/v1/staff/orders`
+}
+
+/**
+ * @summary Create and submit an order for a waiter-controlled table
+ */
+export const createStaffOrder = async (createOrderRequest: CreateOrderRequest, options?: Parameters<typeof customFetch>[1]): Promise<OrderResponse> => {
+
+  return customFetch<OrderResponse>(getCreateStaffOrderUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createOrderRequest)
+  }
+);}
+
+
+
+
+
+export const getCreateStaffOrderMutationOptions = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createStaffOrder>>, TError,{data: BodyType<CreateOrderRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createStaffOrder>>, TError,{data: BodyType<CreateOrderRequest>}, TContext> => {
+
+const mutationKey = ['createStaffOrder'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createStaffOrder>>, {data: BodyType<CreateOrderRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createStaffOrder(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateStaffOrderMutationResult = NonNullable<Awaited<ReturnType<typeof createStaffOrder>>>
+    export type CreateStaffOrderMutationBody = BodyType<CreateOrderRequest>
+    export type CreateStaffOrderMutationError = ErrorType<ApiErrorResponse>
+
+    /**
+ * @summary Create and submit an order for a waiter-controlled table
+ */
+export const useCreateStaffOrder = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createStaffOrder>>, TError,{data: BodyType<CreateOrderRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createStaffOrder>>,
+        TError,
+        {data: BodyType<CreateOrderRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateStaffOrderMutationOptions(options));
     }
 
 export const getCreateOrderDraftUrl = () => {

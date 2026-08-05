@@ -44,6 +44,7 @@ function makeHarness(options?: {
     tableId: 'table-1',
     businessDayId: 'business-day-1',
     ownerCustomerSessionId: customerSessionId,
+    controllerType: 'customer',
     openedAt: '2026-08-04T10:00:00.000Z',
     status: 'active',
     runningTotalMinor: 0,
@@ -58,6 +59,8 @@ function makeHarness(options?: {
     createdAt: '2026-08-04T10:00:00.000Z',
     expiresAt: '2026-08-04T23:00:00.000Z',
     isTableOwner: true,
+    accessLevel: 'owner',
+    approvalStatus: 'approved',
     recoveryTokenHash: `hash:${token}`,
   };
   const menuItem: MenuItem = {

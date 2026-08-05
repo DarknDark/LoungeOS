@@ -13,25 +13,76 @@ sequenceDiagram
   S->>F: read table identity and lifecycle state
   F-->>S: available table
   S->>F: owner transaction
-  F-->>S: table occupied and session created
+  F-->>S: table active and customer session created
   S-->>API: scoped session + server-generated recovery token
   API-->>C: customer session token and recovery token
 ```
 
-## Guest joins an existing session
+## Waiter opens a manual table and approves a customer
 
 ```mermaid
 sequenceDiagram
-  participant G as Guest
+  participant W as Waiter
+  participant C as Customer
   participant API as API
   participant S as Session service
   participant F as Firestore
-  G->>API: open /customer/tables/{tableId} after staff enables split
-  API->>S: open/join with table identity and device id
-  S->>F: validate table/session
-  S->>F: participant transaction and consume split slot
-  F-->>S: contributor accepted
-  S-->>API: participant session token
+  W->>API: POST /staff/table-sessions/manual
+  API->>S: openManual(tableId, staff actor)
+  S->>F: staff session transaction
+  F-->>S: active staff-controlled session
+  C->>API: open/join with permanent table identity
+  API->>S: open/join(tableId, deviceId)
+  S->>F: create pending customer session
+  F-->>S: pending-approval session
+  S-->>C: read-only session + shared bill access
+  W->>API: POST /staff/table-sessions/{id}/join-requests
+  API->>S: approveJoin(customerSessionId, staff actor)
+  S->>F: approve customer session
+  F-->>S: approved temporary read-only session
+  S-->>C: approved status on next poll
+```
+
+## Permanent QR reuse after a turnover
+
+```mermaid
+sequenceDiagram
+  participant C as Customer
+  participant API as API
+  participant S as Session service
+  participant F as Firestore
+  C->>API: scan permanent QR containing clubId + tableId
+  API->>S: open(tableId, deviceId)
+  S->>F: read current table lifecycle
+  alt table available
+    S->>F: create customer-owned active session
+  else table active
+    S->>F: reject ordinary new owner join or create pending manual join
+  else table finishing
+    S-->>API: reject while waiter completes closure
+  end
+  S-->>C: scoped status and access level
+  Note over C,F: QR identity is stable; no QR secret is required for canonical authorization.
+```
+
+## Pay Now on an active waiter-controlled table
+
+```mermaid
+sequenceDiagram
+  participant W as Waiter
+  participant C as Customer
+  participant API as API
+  participant S as Session service
+  participant F as Firestore
+  C->>API: submit cash or till payment
+  API->>S: submitPayment(customer actor)
+  S->>F: create pending payment for current running balance
+  W->>API: verify payment
+  API->>S: verifyPayment(staff actor)
+  S->>F: mark payment verified and applied to running cycle
+  S->>F: reset runningTotalMinor; keep session active
+  F-->>C: next poll shows zero current balance and active table
+  Note over C,F: Historical applied payments remain excluded from later Pay Now cycles.
 ```
 
 ## Session recovery

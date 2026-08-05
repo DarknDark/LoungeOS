@@ -15,8 +15,8 @@ export type Club = {
 
 export type TableStatus =
   | 'available'
-  | 'occupied'
-  | 'finishing-up';
+  | 'active'
+  | 'finishing';
 
 export type Table = VersionedRecord & {
   id: EntityId;
@@ -44,12 +44,19 @@ export type TableSessionStatus =
   | 'closed'
   | 'expired';
 
+export type TableSessionControllerType = 'customer' | 'staff';
+export type CustomerAccessLevel = 'owner' | 'participant' | 'temporary';
+export type CustomerApprovalStatus = 'approved' | 'pending-approval';
+
 export type TableSession = VersionedRecord & {
   id: EntityId;
   clubId: ClubId;
   tableId: EntityId;
   businessDayId: EntityId;
-  ownerCustomerSessionId: EntityId;
+  /** Present for customer-owned sessions; omitted for waiter-controlled sessions. */
+  ownerCustomerSessionId?: EntityId;
+  controllerType: TableSessionControllerType;
+  controllerStaffId?: EntityId;
   openedAt: ISODateString;
   closedAt?: ISODateString;
   status: TableSessionStatus;
@@ -65,6 +72,11 @@ export type CustomerSession = VersionedRecord & {
   createdAt: ISODateString;
   expiresAt: ISODateString;
   isTableOwner: boolean;
+  accessLevel: CustomerAccessLevel;
+  approvalStatus: CustomerApprovalStatus;
+  approvalRequestedAt?: ISODateString;
+  approvedAt?: ISODateString;
+  approvedByStaffId?: EntityId;
   deviceId?: string;
   lastHeartbeatAt?: ISODateString;
   recoveryTokenHash?: string;
@@ -197,6 +209,7 @@ export type Order = VersionedRecord & {
   clubId: ClubId;
   tableSessionId: EntityId;
   customerSessionId: EntityId;
+  createdByStaffId?: EntityId;
   businessDayId: EntityId;
   status: OrderStatus;
   itemIds: EntityId[];
@@ -288,6 +301,7 @@ export type Payment = {
   verifiedByStaffId?: EntityId;
   createdAt: ISODateString;
   verifiedAt?: ISODateString;
+  appliedToRunningBalanceAt?: ISODateString;
 };
 
 export type PaymentTokenStatus = 'active' | 'redeemed' | 'expired' | 'revoked';

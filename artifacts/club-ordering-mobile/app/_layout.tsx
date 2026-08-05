@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -44,7 +45,10 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded && !fontError) return null;
+  // Expo web can keep the native font loader pending indefinitely in the
+  // proxied preview. Render with system fallbacks on web while preserving the
+  // splash/font gate for native builds.
+  if (Platform.OS !== 'web' && !fontsLoaded && !fontError) return null;
 
   return (
     <SafeAreaProvider>

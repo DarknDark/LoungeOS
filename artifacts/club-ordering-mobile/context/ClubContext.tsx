@@ -71,6 +71,8 @@ type StoredSession = {
   tableSessionId: string;
   customerSessionId: string;
   tableNumber?: number;
+  accessLevel?: 'owner' | 'participant' | 'temporary';
+  approvalStatus?: 'approved' | 'pending-approval';
 };
 
 type SecureSession = StoredSession & { recoveryToken: string };
@@ -103,6 +105,8 @@ type ClubContextValue = {
   cartCount: number;
   sessionActive: boolean;
   tableSessionStatus: 'created' | 'active' | 'splitting-bill' | 'awaiting-payment' | 'payment-pending' | 'completed' | 'closed' | 'expired';
+  customerAccessLevel: 'owner' | 'participant' | 'temporary';
+  customerApprovalStatus: 'approved' | 'pending-approval';
   isLoading: boolean;
   isSubmitting: boolean;
   isOnline: boolean;
@@ -264,6 +268,8 @@ async function saveSecureSession(access: TableSessionAccess, clubId: string): Pr
     customerSessionId: access.customerSession.id,
     recoveryToken: access.recoveryToken,
     tableNumber: undefined,
+    accessLevel: access.customerSession.accessLevel,
+    approvalStatus: access.customerSession.approvalStatus,
   };
   if (Platform.OS === 'web') {
     await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(session));
@@ -308,6 +314,10 @@ export function ClubProvider({ children }: PropsWithChildren) {
   const [runningBillMinor, setRunningBillMinor] = useState(0);
   const [tableSessionStatus, setTableSessionStatus] =
     useState<ClubContextValue['tableSessionStatus']>('active');
+  const [customerAccessLevel, setCustomerAccessLevel] =
+    useState<ClubContextValue['customerAccessLevel']>('owner');
+  const [customerApprovalStatus, setCustomerApprovalStatus] =
+    useState<ClubContextValue['customerApprovalStatus']>('approved');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
@@ -348,6 +358,8 @@ export function ClubProvider({ children }: PropsWithChildren) {
       );
       setRunningBillMinor(statusResponse.tableSession.runningTotalMinor);
       setTableSessionStatus(statusResponse.tableSession.status as ClubContextValue['tableSessionStatus']);
+       setCustomerAccessLevel(statusResponse.customerSession.accessLevel);
+       setCustomerApprovalStatus(statusResponse.customerSession.approvalStatus);
       setSession((current) => (current ? { ...current, tableNumber: undefined } : current));
       setIsOnline(true);
       setErrorMessage('');
@@ -432,11 +444,11 @@ export function ClubProvider({ children }: PropsWithChildren) {
           } catch (error) {
             setErrorMessage(friendlyError(error));
           }
-        } else if (link?.sessionId && link.qrToken) {
+        } else if (link?.sessionId) {
           try {
             const access = await joinCustomerTableSession(link.sessionId, {
               clubId: link.clubId,
-              qrToken: link.qrToken,
+              ...(link.qrToken ? { qrToken: link.qrToken } : {}),
               deviceId: await deviceId(),
             }, { responseType: 'json' });
             accessSession = await applyAccess(access, link.clubId);
@@ -531,6 +543,14 @@ export function ClubProvider({ children }: PropsWithChildren) {
       setErrorMessage('Scan the table QR code before sending an order.');
       return false;
     }
+    if (customerAccessLevel === 'temporary' || customerApprovalStatus !== 'approved') {
+      setErrorMessage(
+        customerApprovalStatus === 'pending-approval'
+          ? 'Your waiter must approve table access before you can continue.'
+          : 'Temporary table access is view-only.',
+      );
+      return false;
+    }
     const pending: PendingOrder = {
       idempotencyKey: newId('order'),
       payload: {
@@ -575,7 +595,7 @@ export function ClubProvider({ children }: PropsWithChildren) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [cart, menu, pendingOrders, persistQueue, refresh, session]);
+  }, [cart, customerAccessLevel, customerApprovalStatus, menu, pendingOrders, persistQueue, refresh, session]);
 
   const cancelOrder = useCallback(async (orderId: string) => {
     if (!session) return false;
@@ -594,6 +614,7 @@ export function ClubProvider({ children }: PropsWithChildren) {
 
   const requestClose = useCallback(async () => {
     if (!session) return false;
+    if (customerAccessLevel === 'temporary' || customerApprovalStatus !== 'approved') return false;
     try {
       const access = await requestCustomerTableSessionClose(session.tableSessionId, {
         headers: headersForSession(session),
@@ -607,7 +628,7 @@ export function ClubProvider({ children }: PropsWithChildren) {
       setErrorMessage(friendlyError(error));
       return false;
     }
-  }, [applyAccess, refresh, session]);
+  }, [applyAccess, customerAccessLevel, customerApprovalStatus, refresh, session]);
 
   const cancelClose = useCallback(async () => {
     if (!session) return false;
@@ -628,6 +649,7 @@ export function ClubProvider({ children }: PropsWithChildren) {
 
   const payBill = useCallback(async (method: 'mpesa' | 'cash' | 'till') => {
     if (!session) return false;
+    if (customerAccessLevel === 'temporary' || customerApprovalStatus !== 'approved') return false;
     try {
       await submitCustomerTableSessionPayment(
         session.tableSessionId,
@@ -644,7 +666,7 @@ export function ClubProvider({ children }: PropsWithChildren) {
       setErrorMessage(friendlyError(error));
       return false;
     }
-  }, [refresh, session]);
+  }, [customerAccessLevel, customerApprovalStatus, refresh, session]);
 
   const resetSession = useCallback(async () => {
     if (Platform.OS === 'web') {
@@ -661,6 +683,8 @@ export function ClubProvider({ children }: PropsWithChildren) {
     setPendingOrders([]);
     setRunningBillMinor(0);
     setSelectedMode('guest');
+    setCustomerAccessLevel('owner');
+    setCustomerApprovalStatus('approved');
   }, []);
 
   const value = useMemo<ClubContextValue>(() => ({
@@ -678,6 +702,8 @@ export function ClubProvider({ children }: PropsWithChildren) {
     cartCount: cart.reduce((sum, item) => sum + item.quantity, 0),
     sessionActive: Boolean(session),
     tableSessionStatus,
+    customerAccessLevel,
+    customerApprovalStatus,
     isLoading,
     isSubmitting,
     isOnline,
@@ -732,6 +758,8 @@ export function ClubProvider({ children }: PropsWithChildren) {
     songRequests,
     submitOrder,
     tableSessionStatus,
+    customerAccessLevel,
+    customerApprovalStatus,
     waiterCalls,
   ]);
 

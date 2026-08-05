@@ -54,6 +54,21 @@ export type TableSessionService = {
     deviceId?: string;
     now: string;
   }): Promise<TableSessionAccess>;
+  openManual(input: {
+    actor: RequestActor;
+    tableId: string;
+    now: string;
+  }): Promise<TableSession>;
+  approveJoin(input: {
+    actor: RequestActor;
+    tableSessionId: string;
+    customerSessionId: string;
+    now: string;
+  }): Promise<CustomerSession>;
+  listJoinRequests(input: {
+    actor: RequestActor;
+    tableSessionId: string;
+  }): Promise<CustomerSession[]>;
   requestClose(input: {
     actor: RequestActor;
     tableSessionId: string;
@@ -164,6 +179,19 @@ export type OrderService = {
     now: string;
   }): Promise<{ order: Order; items: OrderItem[] }>;
   create(input: {
+    actor: RequestActor;
+    tableSessionId: string;
+    items: Array<{
+      menuItemId: string;
+      quantity: number;
+      modifiers?: Array<{ modifierId: string; optionIds: string[] }>;
+      notes?: string;
+    }>;
+    notes?: string;
+    idempotencyKey: string;
+    now: string;
+  }): Promise<{ order: Order; items: OrderItem[] }>;
+  createForStaff(input: {
     actor: RequestActor;
     tableSessionId: string;
     items: Array<{

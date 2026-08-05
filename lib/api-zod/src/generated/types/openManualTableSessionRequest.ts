@@ -6,13 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CreateTableSessionRequest {
-  /** @minLength 1 */
-  clubId: string;
+export interface OpenManualTableSessionRequest {
   /** @minLength 1 */
   tableId: string;
-  /** @minLength 1 */
-  qrToken?: string;
-  /** @minLength 1 */
-  deviceId?: string;
 }

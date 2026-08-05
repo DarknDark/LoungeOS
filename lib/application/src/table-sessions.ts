@@ -108,14 +108,14 @@ function validateSettings(settings: ClubSettings): void {
 function notification(
   id: string,
   session: TableSession,
-  recipientId: string,
+  recipientId: string | undefined,
   message: string,
   now: string,
 ): Notification {
   return {
     id,
     clubId: session.clubId,
-    recipientId,
+    ...(recipientId ? { recipientId } : {}),
     priority: 'normal',
     category: 'session',
     message,
@@ -203,7 +203,7 @@ export function createTableSessionService(
   function assertTableCanOpen(table: Table): void {
     if (table.status !== 'available') {
       throw new TableSessionError(
-        table.status === 'occupied'
+        table.status === 'active'
           ? 'This table already has an active session. Please ask your waiter.'
           : 'This table is not accepting new customer sessions.',
         'TABLE_NOT_AVAILABLE',
@@ -216,6 +216,7 @@ export function createTableSessionService(
     tableSessionId: string,
     now: string,
     allowFinishing = false,
+    allowTemporaryReadOnly = false,
   ): Promise<{ session: TableSession; customer: CustomerSession }> {
     const session = await repos.tableSessions.getById(actor.clubId, tableSessionId);
     if (!session) {
@@ -236,6 +237,18 @@ export function createTableSessionService(
       !inputTokenMatches(customer.recoveryTokenHash, actor.customerSessionToken)
     ) {
       throw new TableSessionError('The customer session token is invalid.', 'ACCESS_DENIED');
+    }
+    if (!allowTemporaryReadOnly && customer.accessLevel === 'temporary') {
+      throw new TableSessionError(
+        'Temporary table access is read-only until your waiter changes it.',
+        'ACCESS_DENIED',
+      );
+    }
+    if (!allowTemporaryReadOnly && customer.approvalStatus !== 'approved') {
+      throw new TableSessionError(
+        'Your table access request is waiting for waiter approval.',
+        'ACCESS_DENIED',
+      );
     }
     if (session.status === 'closed' || session.status === 'completed') {
       throw new TableSessionError('The table session is closed.', 'SESSION_CLOSED');
@@ -366,6 +379,7 @@ export function createTableSessionService(
       tableId: input.table.id,
       businessDayId: businessDay.id,
       ownerCustomerSessionId: customerSessionId,
+      controllerType: 'customer',
       openedAt: input.now,
       status: 'active',
       runningTotalMinor: 0,
@@ -379,6 +393,8 @@ export function createTableSessionService(
       createdAt: input.now,
       expiresAt,
       isTableOwner: true,
+      accessLevel: 'owner',
+      approvalStatus: 'approved',
       deviceId: input.deviceId,
       lastHeartbeatAt: input.now,
       recoveryTokenHash: tokens.hash(recoveryToken),
@@ -474,6 +490,175 @@ export function createTableSessionService(
       });
     },
 
+    async openManual(input) {
+      if (input.actor.kind !== 'staff' && input.actor.kind !== 'system') {
+        throw new TableSessionError('Only staff can open a manual table.', 'ACCESS_DENIED');
+      }
+      const table = await tableById(input.actor.clubId, input.tableId);
+      assertTableCanOpen(table);
+      const settings = await settingsFor(input.actor.clubId);
+      const businessDay = await repos.businessDays.getActive(input.actor.clubId);
+      if (!businessDay || businessDay.status !== 'open') {
+        throw new TableSessionError(
+          'The club does not have an open business day.',
+          'CONFIGURATION_INVALID',
+        );
+      }
+      const session: TableSession = {
+        id: ids.next(),
+        clubId: input.actor.clubId,
+        tableId: table.id,
+        businessDayId: businessDay.id,
+        controllerType: 'staff',
+        controllerStaffId: input.actor.staffId ?? input.actor.id,
+        openedAt: input.now,
+        status: 'active',
+        runningTotalMinor: 0,
+        expiresAt: minDate(
+          addMinutes(input.now, settings.business.sessionTimeoutMinutes),
+          addMinutes(input.now, settings.business.maximumTableTimeMinutes),
+        ),
+        lastActivityAt: input.now,
+      };
+      try {
+        await repos.tableSessions.createStaffSession({
+          table,
+          session,
+          now: input.now,
+        });
+      } catch (error) {
+        if (error instanceof Error && error.message === 'TABLE_SESSION_OWNER_EXISTS') {
+          throw new TableSessionError(
+            'This table already has an active session.',
+            'OWNER_EXISTS',
+          );
+        }
+        throw error;
+      }
+      await repos.notifications.save(
+        notification(
+          `${session.id}:manual-started`,
+          session,
+          undefined,
+          'A waiter opened this table manually.',
+          input.now,
+        ),
+      );
+      await repos.serviceTimeline.append({
+        id: `${session.id}:timeline-manual-started`,
+        clubId: session.clubId,
+        tableSessionId: session.id,
+        type: 'manual-session-started',
+        message: 'Waiter opened a manual table session.',
+        sourceRecord: { type: 'tableSession', id: session.id },
+        occurredAt: input.now,
+      });
+      await recordAudit(
+        input.actor,
+        'manual-session-started',
+        'tableSession',
+        session.id,
+        input.now,
+        { tableId: session.tableId, staffId: session.controllerStaffId },
+      );
+      return session;
+    },
+
+    async approveJoin(input) {
+      if (input.actor.kind !== 'staff' && input.actor.kind !== 'system') {
+        throw new TableSessionError('Only staff can approve table access.', 'ACCESS_DENIED');
+      }
+      const session = await repos.tableSessions.getById(
+        input.actor.clubId,
+        input.tableSessionId,
+      );
+      if (!session) {
+        throw new TableSessionError('The table session was not found.', 'SESSION_NOT_FOUND');
+      }
+      if (
+        session.controllerType !== 'staff' ||
+        session.status !== 'active' ||
+        isExpired(input.now, session.expiresAt)
+      ) {
+        throw new TableSessionError(
+          'This table is not accepting customer approvals.',
+          'SESSION_NOT_ACTIVE',
+        );
+      }
+      const customer = await repos.customerSessions.getById(
+        input.actor.clubId,
+        input.customerSessionId,
+      );
+      if (!customer || customer.tableSessionId !== session.id) {
+        throw new TableSessionError(
+          'The customer session was not found.',
+          'CUSTOMER_SESSION_NOT_FOUND',
+        );
+      }
+      if (customer.approvalStatus !== 'pending-approval') {
+        throw new TableSessionError(
+          'This customer access request is no longer pending.',
+          'SESSION_NOT_ACTIVE',
+        );
+      }
+      const approved = {
+        ...customer,
+        accessLevel: 'temporary' as const,
+        approvalStatus: 'approved' as const,
+        approvedAt: input.now,
+        approvedByStaffId: input.actor.staffId ?? input.actor.id,
+        updatedAt: input.now,
+      };
+      await repos.tableSessions.approveCustomerSession({
+        session,
+        customerSession: approved,
+        now: input.now,
+      });
+      await repos.notifications.save(
+        notification(
+          `${customer.id}:join-approved`,
+          session,
+          customer.id,
+          'Your waiter approved table access. You can view the shared bill and request service.',
+          input.now,
+        ),
+      );
+      await recordAudit(
+        input.actor,
+        'customer-join-approved',
+        'customerSession',
+        customer.id,
+        input.now,
+        { tableSessionId: session.id },
+      );
+      return approved;
+    },
+
+    async listJoinRequests(input) {
+      if (input.actor.kind !== 'staff' && input.actor.kind !== 'system') {
+        throw new TableSessionError('Only staff can view table access requests.', 'ACCESS_DENIED');
+      }
+      const session = await repos.tableSessions.getById(
+        input.actor.clubId,
+        input.tableSessionId,
+      );
+      if (!session) {
+        throw new TableSessionError('The table session was not found.', 'SESSION_NOT_FOUND');
+      }
+      if (session.controllerType !== 'staff') {
+        throw new TableSessionError(
+          'Join approval is only available for waiter-controlled tables.',
+          'CONFIGURATION_INVALID',
+        );
+      }
+      return (
+        await repos.customerSessions.listForTableSession(
+          input.actor.clubId,
+          input.tableSessionId,
+        )
+      ).filter((customer) => customer.approvalStatus === 'pending-approval' && !customer.expiredAt);
+    },
+
     async createFromQr(input) {
       if (input.actor.kind !== 'customer') {
         throw new TableSessionError('Only a customer can create a table session.', 'ACCESS_DENIED');
@@ -499,9 +684,7 @@ export function createTableSessionService(
       if (!session) {
         throw new TableSessionError('The table session was not found.', 'SESSION_NOT_FOUND');
       }
-      const table = input.qrToken
-        ? await tableFor(input.actor.clubId, session.tableId, input.qrToken, input.now)
-        : await tableById(input.actor.clubId, session.tableId);
+      const table = await tableById(input.actor.clubId, session.tableId);
       if (
         session.status === 'closed' ||
         session.status === 'completed' ||
@@ -522,7 +705,13 @@ export function createTableSessionService(
           'SESSION_NOT_ACTIVE',
         );
       }
-      if (consumeSplitSlot && (table.status !== 'finishing-up' || session.status !== 'splitting-bill')) {
+      if (!consumeSplitSlot && session.controllerType === 'customer') {
+        throw new TableSessionError(
+          'This table already has an active tab. If you are seated here, please call your waiter.',
+          'TABLE_NOT_AVAILABLE',
+        );
+      }
+      if (consumeSplitSlot && (table.status !== 'finishing' || session.status !== 'splitting-bill')) {
         throw new TableSessionError(
           'This table is not accepting split-session joins.',
           'TABLE_NOT_AVAILABLE',
@@ -559,6 +748,11 @@ export function createTableSessionService(
         createdAt: input.now,
         expiresAt,
         isTableOwner: false,
+        accessLevel: session.controllerType === 'staff' ? 'temporary' : 'participant',
+        approvalStatus: session.controllerType === 'staff' ? 'pending-approval' : 'approved',
+        ...(session.controllerType === 'staff'
+          ? { approvalRequestedAt: input.now }
+          : {}),
         deviceId: input.deviceId,
         lastHeartbeatAt: input.now,
         recoveryTokenHash: tokens.hash(recoveryToken),
@@ -734,7 +928,7 @@ export function createTableSessionService(
       await repos.tableSessions.save(updatedSession);
       await repos.tables.save({
         ...table,
-        status: 'finishing-up',
+        status: 'finishing',
         splitSlotsRemaining: undefined,
         updatedAt: input.now,
       });
@@ -780,7 +974,7 @@ export function createTableSessionService(
         );
       }
       const table = await repos.tables.getById(input.actor.clubId, session.tableId);
-      if (!table || table.activeSessionId !== session.id || table.status !== 'finishing-up') {
+      if (!table || table.activeSessionId !== session.id || table.status !== 'finishing') {
         throw new TableSessionError('The table session is not finishing up.', 'SESSION_NOT_ACTIVE');
       }
       const updatedSession = {
@@ -792,7 +986,7 @@ export function createTableSessionService(
       await repos.tableSessions.save(updatedSession);
       await repos.tables.save({
         ...table,
-        status: 'occupied',
+        status: 'active',
         splitSlotsRemaining: undefined,
         updatedAt: input.now,
       });
@@ -831,6 +1025,7 @@ export function createTableSessionService(
         input.sessionId,
         new Date().toISOString(),
         true,
+        true,
       );
       return session;
     },
@@ -840,6 +1035,7 @@ export function createTableSessionService(
         input.actor,
         input.tableSessionId,
         input.now,
+        true,
         true,
       );
       return access(session, customer, '');
@@ -859,7 +1055,11 @@ export function createTableSessionService(
        if (session.status === 'closed' || session.status === 'expired') {
         return;
       }
-       if (session.status !== 'awaiting-payment' && session.status !== 'splitting-bill') {
+       if (
+         session.controllerType !== 'staff' &&
+         session.status !== 'awaiting-payment' &&
+         session.status !== 'splitting-bill'
+       ) {
          throw new TableSessionError(
            'The customer must request payment before the waiter can close the table.',
            'SESSION_NOT_ACTIVE',
@@ -869,10 +1069,13 @@ export function createTableSessionService(
       const payments = (
         await repos.payments.listForSession(input.actor.clubId, session.id)
       ).items;
-      const verifiedTotal = payments
+      const currentPayments = payments.filter(
+        (payment) => !payment.appliedToRunningBalanceAt,
+      );
+      const verifiedTotal = currentPayments
         .filter((payment) => payment.status === 'verified')
         .reduce((total, payment) => total + payment.amountMinor, 0);
-      const submittedTotal = payments
+      const submittedTotal = currentPayments
         .filter((payment) => payment.status === 'submitted')
         .reduce((total, payment) => total + payment.amountMinor, 0);
       if (submittedTotal > 0 || verifiedTotal < session.runningTotalMinor) {
@@ -975,7 +1178,11 @@ export function createTableSessionService(
         await repos.payments.listForSession(input.actor.clubId, session.id)
       ).items;
       const settledOrPending = payments
-        .filter((payment) => payment.status === 'verified' || payment.status === 'submitted')
+        .filter(
+          (payment) =>
+            !payment.appliedToRunningBalanceAt &&
+            (payment.status === 'verified' || payment.status === 'submitted'),
+        )
         .reduce((total, payment) => total + payment.amountMinor, 0);
       const amountMinor = session.runningTotalMinor - settledOrPending;
       if (amountMinor <= 0) {
@@ -1048,23 +1255,40 @@ export function createTableSessionService(
           'PAYMENT_PENDING',
         );
       }
+      const session = await repos.tableSessions.getById(
+        input.actor.clubId,
+        payment.tableSessionId,
+      );
+      if (!session) {
+        throw new TableSessionError('The table session was not found.', 'SESSION_NOT_FOUND');
+      }
+      const keepsTableActive =
+        session.controllerType === 'staff' && session.status === 'active';
       const verified: Payment = {
         ...payment,
         status: 'verified',
         verifiedByStaffId: input.actor.staffId ?? input.actor.id,
         verifiedAt: input.now,
+        ...(keepsTableActive ? { appliedToRunningBalanceAt: input.now } : {}),
       };
       await repos.payments.save(verified);
+      if (keepsTableActive) {
+        await repos.tableSessions.save({
+          ...session,
+          runningTotalMinor: 0,
+          lastActivityAt: input.now,
+          updatedAt: input.now,
+          version: (session.version ?? 0) + 1,
+        });
+      }
       await repos.notifications.save(
         notification(
           `${payment.id}:payment-verified`,
-          {
-            id: payment.tableSessionId,
-            clubId: payment.clubId,
-          } as TableSession,
-          (await repos.tableSessions.getById(input.actor.clubId, payment.tableSessionId))
-            ?.ownerCustomerSessionId ?? '',
-          'Payment verified by your waiter.',
+          session,
+          session.ownerCustomerSessionId,
+          keepsTableActive
+            ? 'Payment verified. The running bill was settled and the table remains active.'
+            : 'Payment verified by your waiter.',
           input.now,
         ),
       );
@@ -1105,7 +1329,7 @@ export function createTableSessionService(
       }
       if (
         table.activeSessionId !== session.id ||
-        table.status !== 'finishing-up' ||
+        table.status !== 'finishing' ||
         session.status !== 'awaiting-payment'
       ) {
         throw new TableSessionError(

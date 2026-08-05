@@ -12,6 +12,7 @@ export interface Order {
   clubId: string;
   tableSessionId: string;
   customerSessionId: string;
+  createdByStaffId?: string;
   status: OrderStatus;
   itemIds: string[];
   idempotencyKey: string;

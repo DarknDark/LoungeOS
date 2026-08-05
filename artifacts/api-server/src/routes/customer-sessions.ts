@@ -15,6 +15,10 @@ import {
   ValidateCustomerTableBody,
   ValidateCustomerTableHeader,
   ValidateCustomerTableParams,
+  OpenManualStaffTableSessionBody,
+  ListStaffTableSessionJoinRequestsParams,
+  ApproveStaffTableSessionJoinParams,
+  ApproveStaffTableSessionJoinBody,
 } from "@workspace/api-zod";
 import {
   FirebaseConfigurationError,
@@ -161,13 +165,21 @@ router.post(
 router.post("/v1/customer/table-sessions", async (req, res) => {
   const body = CreateCustomerTableSessionBody.parse(req.body);
   try {
-    const access = await getModule2TableSessionService().createFromQr({
-      actor: customerActor(req, body.clubId),
-      tableId: body.tableId,
-      qrToken: body.qrToken,
-      deviceId: body.deviceId,
-      now: now(),
-    });
+    const service = getModule2TableSessionService();
+    const access = body.qrToken
+      ? await service.createFromQr({
+          actor: customerActor(req, body.clubId),
+          tableId: body.tableId,
+          qrToken: body.qrToken,
+          deviceId: body.deviceId,
+          now: now(),
+        })
+      : await service.open({
+          actor: customerActor(req, body.clubId),
+          tableId: body.tableId,
+          deviceId: body.deviceId,
+          now: now(),
+        });
     res.status(201).json(responseBody(access));
   } catch (error) {
     sendError(res, error);
@@ -183,7 +195,7 @@ router.post(
       const access = await getModule2TableSessionService().join({
         actor: customerActor(req, body.clubId),
         tableSessionId: params.sessionId,
-        qrToken: body.qrToken,
+        ...(body.qrToken ? { qrToken: body.qrToken } : {}),
         deviceId: body.deviceId,
         now: now(),
       });
@@ -415,6 +427,149 @@ function hasTableManagementPermission(
     );
   }) && Boolean(identity.firebaseUid);
 }
+
+async function staffForRequest(
+  req: Parameters<RequestHandler>[0],
+  res: Parameters<RequestHandler>[1],
+  clubId: string,
+  identity: FirebaseStaffIdentity,
+) {
+  const infrastructure = await import("@workspace/infrastructure");
+  const clients = infrastructure.createFirebaseInfrastructure();
+  const repositories = infrastructure.createModule2Repositories(clients.firestore);
+  const staff = await repositories.staff.getByFirebaseUid(clubId, identity.firebaseUid);
+  if (!staff) {
+    res.status(403).json({
+      error: { code: "STAFF_NOT_FOUND", message: "Staff membership was not found." },
+    });
+    return null;
+  }
+  const roles = (
+    await Promise.all(
+      staff.roleIds.map((roleId) => repositories.roles.getById(clubId, roleId)),
+    )
+  ).filter((role): role is NonNullable<typeof role> => Boolean(role && role.active));
+  return { repositories, staff, roles };
+}
+
+function canManageTables(
+  staff: { roleIds: string[] },
+  roles: Array<{ id: string; name: string; permissions: string[]; active: boolean }>,
+): boolean {
+  return staff.roleIds.some((roleId) => {
+    const role = roles.find((candidate) => candidate.id === roleId);
+    return Boolean(
+      role &&
+        role.active &&
+        (role.name === "administrator" ||
+          role.permissions.includes("tables.release") ||
+          role.permissions.includes("settings.manage")),
+    );
+  });
+}
+
+router.post(
+  "/v1/staff/table-sessions/manual",
+  requireFirebaseStaff,
+  async (req, res) => {
+    const body = OpenManualStaffTableSessionBody.parse(req.body);
+    const clubId = headerValue(req, "X-Club-Id");
+    const identity = res.locals.firebaseStaff;
+    if (!clubId || !identity) {
+      res.status(400).json({
+        error: { code: "CLUB_ID_REQUIRED", message: "X-Club-Id is required." },
+      });
+      return;
+    }
+    try {
+      const context = await staffForRequest(req, res, clubId, identity);
+      if (!context) return;
+      if (!canManageTables(context.staff, context.roles)) {
+        res.status(403).json({
+          error: { code: "PERMISSION_DENIED", message: "Table management is not permitted." },
+        });
+        return;
+      }
+      const session = await getModule2TableSessionService().openManual({
+        actor: { kind: "staff", id: context.staff.id, staffId: context.staff.id, clubId },
+        tableId: body.tableId,
+        now: now(),
+      });
+      res.status(201).json(session);
+    } catch (error) {
+      sendError(res, error);
+    }
+  },
+);
+
+router.get(
+  "/v1/staff/table-sessions/:sessionId/join-requests",
+  requireFirebaseStaff,
+  async (req, res) => {
+    const params = ListStaffTableSessionJoinRequestsParams.parse(req.params);
+    const clubId = headerValue(req, "X-Club-Id");
+    const identity = res.locals.firebaseStaff;
+    if (!clubId || !identity) {
+      res.status(400).json({
+        error: { code: "CLUB_ID_REQUIRED", message: "X-Club-Id is required." },
+      });
+      return;
+    }
+    try {
+      const context = await staffForRequest(req, res, clubId, identity);
+      if (!context) return;
+      if (!canManageTables(context.staff, context.roles)) {
+        res.status(403).json({
+          error: { code: "PERMISSION_DENIED", message: "Table management is not permitted." },
+        });
+        return;
+      }
+      const requests = await getModule2TableSessionService().listJoinRequests({
+        actor: { kind: "staff", id: context.staff.id, staffId: context.staff.id, clubId },
+        tableSessionId: params.sessionId,
+      });
+      res.json(requests);
+    } catch (error) {
+      sendError(res, error);
+    }
+  },
+);
+
+router.post(
+  "/v1/staff/table-sessions/:sessionId/join-requests",
+  requireFirebaseStaff,
+  async (req, res) => {
+    const params = ApproveStaffTableSessionJoinParams.parse(req.params);
+    const body = ApproveStaffTableSessionJoinBody.parse(req.body);
+    const clubId = headerValue(req, "X-Club-Id");
+    const identity = res.locals.firebaseStaff;
+    if (!clubId || !identity) {
+      res.status(400).json({
+        error: { code: "CLUB_ID_REQUIRED", message: "X-Club-Id is required." },
+      });
+      return;
+    }
+    try {
+      const context = await staffForRequest(req, res, clubId, identity);
+      if (!context) return;
+      if (!canManageTables(context.staff, context.roles)) {
+        res.status(403).json({
+          error: { code: "PERMISSION_DENIED", message: "Table management is not permitted." },
+        });
+        return;
+      }
+      const customer = await getModule2TableSessionService().approveJoin({
+        actor: { kind: "staff", id: context.staff.id, staffId: context.staff.id, clubId },
+        tableSessionId: params.sessionId,
+        customerSessionId: body.customerSessionId,
+        now: now(),
+      });
+      res.json(customer);
+    } catch (error) {
+      sendError(res, error);
+    }
+  },
+);
 
 router.delete(
   "/v1/customer/table-sessions/:sessionId",

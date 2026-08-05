@@ -6,11 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface JoinTableSessionRequest {
+export interface ApproveTableSessionJoinRequest {
   /** @minLength 1 */
-  clubId: string;
-  /** @minLength 1 */
-  qrToken?: string;
-  /** @minLength 1 */
-  deviceId?: string;
+  customerSessionId: string;
 }

@@ -84,10 +84,22 @@ function makeHarness() {
           if (currentTable.activeSessionId) throw new Error('TABLE_SESSION_OWNER_EXISTS');
           tables.set(currentTable.id, {
             ...currentTable,
-            status: 'occupied',
+            status: 'active',
             activeSessionId: session.id,
           });
           sessions.set(session.id, session);
+          customers.set(customerSession.id, customerSession);
+        },
+        createStaffSession: async ({ table: currentTable, session }) => {
+          if (currentTable.activeSessionId) throw new Error('TABLE_SESSION_OWNER_EXISTS');
+          tables.set(currentTable.id, {
+            ...currentTable,
+            status: 'active',
+            activeSessionId: session.id,
+          });
+          sessions.set(session.id, session);
+        },
+        approveCustomerSession: async ({ customerSession }) => {
           customers.set(customerSession.id, customerSession);
         },
         createParticipantSession: async ({
@@ -244,7 +256,7 @@ test('opens an owner session from a permanent table identity', async () => {
   });
 
   assert.equal(access.customerSession.isTableOwner, true);
-  assert.equal(tables.get(tableId)?.status, 'occupied');
+  assert.equal(tables.get(tableId)?.status, 'active');
   assert.equal(tables.get(tableId)?.activeSessionId, access.tableSession.id);
   assert.notEqual(access.recoveryToken, 'qr-token');
 });
@@ -276,7 +288,7 @@ test('requires close request before opening split payment branches', async () =>
     now: '2026-08-04T12:06:00.000Z',
   });
   assert.equal(finishing.tableSession.status, 'awaiting-payment');
-  assert.equal(tables.get(tableId)?.status, 'finishing-up');
+  assert.equal(tables.get(tableId)?.status, 'finishing');
 
   await service.enablePaymentSplit({
     actor: { kind: 'staff', id: 'staff-1', staffId: 'staff-1', clubId },
@@ -284,7 +296,7 @@ test('requires close request before opening split payment branches', async () =>
     splitCount: 2,
     now: '2026-08-04T12:07:00.000Z',
   });
-  assert.equal(tables.get(tableId)?.status, 'finishing-up');
+  assert.equal(tables.get(tableId)?.status, 'finishing');
   assert.equal(sessions.get(owner.tableSession.id)?.status, 'splitting-bill');
 });
 
@@ -295,13 +307,6 @@ test('requires verified payment before closing and expires every customer sessio
     tableId,
     deviceId: 'owner-device',
     now: '2026-08-04T12:00:00.000Z',
-  });
-  const guest = await service.join({
-    actor: customerActor(),
-    tableSessionId: owner.tableSession.id,
-    qrToken: 'qr-token',
-    deviceId: 'guest-device',
-    now: '2026-08-04T12:01:00.000Z',
   });
   sessions.set(owner.tableSession.id, {
     ...owner.tableSession,
@@ -342,11 +347,50 @@ test('requires verified payment before closing and expires every customer sessio
   assert.equal(payments.get(payment.id)?.status, 'verified');
   assert.equal(sessions.get(owner.tableSession.id)?.status, 'closed');
   assert.ok(customers.get(owner.customerSession.id)?.expiredAt);
-  assert.ok(customers.get(guest.customerSession.id)?.expiredAt);
   assert.equal(tables.get(tableId)?.status, 'available');
 });
 
-test('supports duplicate-device protection and multi-device participants', async () => {
+test('manual tables require waiter approval and temporary access is read-only', async () => {
+  const { service } = makeHarness();
+  const manual = await service.openManual({
+    actor: { kind: 'staff', id: 'staff-1', staffId: 'staff-1', clubId },
+    tableId,
+    now: '2026-08-04T12:00:00.000Z',
+  });
+  const pending = await service.join({
+    actor: customerActor(),
+    tableSessionId: manual.id,
+    deviceId: 'guest-device',
+    now: '2026-08-04T12:02:00.000Z',
+  });
+  assert.equal(pending.customerSession.approvalStatus, 'pending-approval');
+  const pendingStatus = await service.getStatus({
+    actor: customerActor(pending.customerSession.id, pending.recoveryToken),
+    tableSessionId: manual.id,
+    now: '2026-08-04T12:03:00.000Z',
+  });
+  assert.equal(pendingStatus.customerSession.approvalStatus, 'pending-approval');
+  const approved = await service.approveJoin({
+    actor: { kind: 'staff', id: 'staff-1', staffId: 'staff-1', clubId },
+    tableSessionId: manual.id,
+    customerSessionId: pending.customerSession.id,
+    now: '2026-08-04T12:04:00.000Z',
+  });
+  assert.equal(approved.approvalStatus, 'approved');
+  await assert.rejects(
+    () =>
+      service.submitPayment({
+        actor: customerActor(pending.customerSession.id, pending.recoveryToken),
+        tableSessionId: manual.id,
+        method: 'cash',
+        now: '2026-08-04T12:05:00.000Z',
+      }),
+    (error: unknown) =>
+      error instanceof TableSessionError && error.code === 'ACCESS_DENIED',
+  );
+});
+
+test('customer-owned tables reject ordinary new joins', async () => {
   const { service } = makeHarness();
   const owner = await service.createFromQr({
     actor: customerActor(),
@@ -355,29 +399,17 @@ test('supports duplicate-device protection and multi-device participants', async
     deviceId: 'owner-device',
     now: '2026-08-04T12:00:00.000Z',
   });
-  const firstGuest = await service.join({
-    actor: customerActor(),
-    tableSessionId: owner.tableSession.id,
-    qrToken: 'qr-token',
-    deviceId: 'guest-device',
-    now: '2026-08-04T12:02:00.000Z',
-  });
-  const duplicateGuest = await service.join({
-    actor: customerActor(),
-    tableSessionId: owner.tableSession.id,
-    qrToken: 'qr-token',
-    deviceId: 'guest-device',
-    now: '2026-08-04T12:03:00.000Z',
-  });
-  const secondDevice = await service.join({
-    actor: customerActor(),
-    tableSessionId: owner.tableSession.id,
-    qrToken: 'qr-token',
-    deviceId: 'second-guest-device',
-    now: '2026-08-04T12:04:00.000Z',
-  });
-  assert.equal(duplicateGuest.customerSession.id, firstGuest.customerSession.id);
-  assert.notEqual(secondDevice.customerSession.id, firstGuest.customerSession.id);
+  await assert.rejects(
+    () =>
+      service.join({
+        actor: customerActor(),
+        tableSessionId: owner.tableSession.id,
+        deviceId: 'guest-device',
+        now: '2026-08-04T12:02:00.000Z',
+      }),
+    (error: unknown) =>
+      error instanceof TableSessionError && error.code === 'TABLE_NOT_AVAILABLE',
+  );
 });
 
 test('recovers after refresh and authorizes status with the recovered token', async () => {

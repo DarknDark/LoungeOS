@@ -38,9 +38,9 @@ clubs/{clubId}
 `splitSlotsRemaining`, `qrVersion`, `version`, `updatedAt`, and optional
 soft-delete fields.
 
-The canonical table lifecycle has exactly three states: `available`,
-`occupied`, and `finishing-up`. Customers can request or cancel closing while
-the table is occupied; only the waiter can confirm closure and return the
+The canonical table lifecycle has exactly three states: `available`, `active`,
+and `finishing`. Customers can request or cancel closing while the table is
+active; only the waiter can verify payment, confirm closure, and return the
 table to `available`. Split-payment metadata is transitional session data and
 must not introduce another table lifecycle state.
 
@@ -57,7 +57,25 @@ canonical customer-entry workflow.
 ### Customer session
 
 `id`, `clubId`, `tableSessionId`, `createdAt`, `expiresAt`, `expiredAt`,
-`isTableOwner`, `deviceId`, `lastHeartbeatAt`, and `recoveryTokenHash`.
+`isTableOwner`, `accessLevel`, `approvalStatus`, optional approval audit
+fields, `deviceId`, `lastHeartbeatAt`, and `recoveryTokenHash`.
+
+Customer sessions on waiter-controlled tables start as
+`pending-approval`. Pending and approved temporary sessions can read the
+shared running bill, but cannot order, pay, split, request closure, or claim
+ownership. Approval is a waiter action.
+
+Waiter-controlled sessions have `controllerType: staff`, no customer owner,
+and a `controllerStaffId`. Waiters can add orders through the shared ordering
+engine; this preserves pricing, idempotency, inventory, audit, timeline,
+notification, and event side effects.
+
+Cash and till payments remain pending until waiter verification. M-Pesa is
+explicitly unavailable until a real provider transport is connected. Verified
+payments on an active waiter-controlled table apply to the current running
+balance and reset that balance without closing the session, so repeated
+Pay Now cycles remain possible. Optional SMS cash receipts require a real
+provider and must never be represented as delivered by a fabricated transport.
 
 ### Audit log
 

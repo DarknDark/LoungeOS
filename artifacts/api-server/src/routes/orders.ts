@@ -17,6 +17,8 @@ import {
   UpdateOrderStatusBody,
   UpdateOrderStatusHeader,
   UpdateOrderStatusParams,
+  CreateStaffOrderBody,
+  CreateStaffOrderHeader,
 } from "@workspace/api-zod";
 import {
   FirebaseConfigurationError,
@@ -134,6 +136,34 @@ router.get("/v1/orders/menu", async (req, res) => {
   try {
     const headers = ListOrderMenuHeader.parse({ "X-Club-Id": req.header("X-Club-Id") });
     res.json(await getModule3OrderService().getMenu({ clubId: headers["X-Club-Id"] }));
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+router.post("/v1/staff/orders", requireFirebaseStaff, async (req, res) => {
+  try {
+    const headers = CreateStaffOrderHeader.parse({
+      "X-Club-Id": req.header("X-Club-Id"),
+      "Idempotency-Key": req.header("Idempotency-Key"),
+    });
+    const body = CreateStaffOrderBody.parse(req.body);
+    const actor = await staffActor(
+      req,
+      res,
+      headers["X-Club-Id"],
+      res.locals.firebaseStaff,
+    );
+    if (!actor) return;
+    const result = await getModule3OrderService().createForStaff({
+      actor,
+      tableSessionId: body.tableSessionId,
+      items: body.items,
+      notes: body.notes,
+      idempotencyKey: headers["Idempotency-Key"],
+      now: now(),
+    });
+    res.status(201).json(result);
   } catch (error) {
     sendError(res, error);
   }

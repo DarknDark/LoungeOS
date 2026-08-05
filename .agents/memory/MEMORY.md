@@ -8,3 +8,4 @@
 - [Mobile live ordering](mobile-live-integration.md) — customer mobile uses live sessions/orders with secure credentials; unsupported payment, staff, song, waiter, and client-realtime transports stay explicit.
 - [Payment settlement](payment-settlement.md) — cash/till Pay Now requests require waiter verification; M-Pesa stays explicitly unavailable without a real transport.
 - [Static Expo server security](static-server-security.md) — generated bundle serving uses explicit manifest allowlists and decoded path containment checks.
+- [Expo web font loading](expo-web-font-loading.md) — proxied web preview may keep native font loading pending; render with system fallback on web while retaining native font gating.

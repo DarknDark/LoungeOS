@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { TableSessionControllerType } from './tableSessionControllerType';
 import type { TableSessionStatus } from './tableSessionStatus';
 
 export interface TableSession {
@@ -12,7 +13,9 @@ export interface TableSession {
   clubId: string;
   tableId: string;
   businessDayId: string;
-  ownerCustomerSessionId: string;
+  ownerCustomerSessionId?: string;
+  controllerType: TableSessionControllerType;
+  controllerStaffId?: string;
   openedAt: Date;
   closedAt?: Date;
   status: TableSessionStatus;

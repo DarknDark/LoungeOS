@@ -155,6 +155,7 @@ export interface Order {
   clubId: string;
   tableSessionId: string;
   customerSessionId: string;
+  createdByStaffId?: string;
   status: OrderStatus;
   itemIds: string[];
   idempotencyKey: string;
@@ -190,13 +191,23 @@ export interface OpenTableSessionRequest {
   deviceId?: string;
 }
 
+export interface OpenManualTableSessionRequest {
+  /** @minLength 1 */
+  tableId: string;
+}
+
+export interface ApproveTableSessionJoinRequest {
+  /** @minLength 1 */
+  customerSessionId: string;
+}
+
 export interface CreateTableSessionRequest {
   /** @minLength 1 */
   clubId: string;
   /** @minLength 1 */
   tableId: string;
   /** @minLength 1 */
-  qrToken: string;
+  qrToken?: string;
   /** @minLength 1 */
   deviceId?: string;
 }
@@ -205,7 +216,7 @@ export interface JoinTableSessionRequest {
   /** @minLength 1 */
   clubId: string;
   /** @minLength 1 */
-  qrToken: string;
+  qrToken?: string;
   /** @minLength 1 */
   deviceId?: string;
 }
@@ -287,8 +298,8 @@ export type TableStatus = typeof TableStatus[keyof typeof TableStatus];
 
 export const TableStatus = {
   available: 'available',
-  occupied: 'occupied',
-  'finishing-up': 'finishing-up',
+  active: 'active',
+  finishing: 'finishing',
 } as const;
 
 export interface Table {
@@ -311,6 +322,14 @@ export interface TableValidationResponse {
   table: Table;
 }
 
+export type TableSessionControllerType = typeof TableSessionControllerType[keyof typeof TableSessionControllerType];
+
+
+export const TableSessionControllerType = {
+  customer: 'customer',
+  staff: 'staff',
+} as const;
+
 export type TableSessionStatus = typeof TableSessionStatus[keyof typeof TableSessionStatus];
 
 
@@ -330,7 +349,9 @@ export interface TableSession {
   clubId: string;
   tableId: string;
   businessDayId: string;
-  ownerCustomerSessionId: string;
+  ownerCustomerSessionId?: string;
+  controllerType: TableSessionControllerType;
+  controllerStaffId?: string;
   openedAt: string;
   closedAt?: string;
   status: TableSessionStatus;
@@ -340,6 +361,23 @@ export interface TableSession {
   lastActivityAt: string;
 }
 
+export type CustomerSessionAccessLevel = typeof CustomerSessionAccessLevel[keyof typeof CustomerSessionAccessLevel];
+
+
+export const CustomerSessionAccessLevel = {
+  owner: 'owner',
+  participant: 'participant',
+  temporary: 'temporary',
+} as const;
+
+export type CustomerSessionApprovalStatus = typeof CustomerSessionApprovalStatus[keyof typeof CustomerSessionApprovalStatus];
+
+
+export const CustomerSessionApprovalStatus = {
+  approved: 'approved',
+  'pending-approval': 'pending-approval',
+} as const;
+
 export interface CustomerSession {
   id: string;
   clubId: string;
@@ -347,6 +385,11 @@ export interface CustomerSession {
   createdAt: string;
   expiresAt: string;
   isTableOwner: boolean;
+  accessLevel: CustomerSessionAccessLevel;
+  approvalStatus: CustomerSessionApprovalStatus;
+  approvalRequestedAt?: string;
+  approvedAt?: string;
+  approvedByStaffId?: string;
   deviceId?: string;
   lastHeartbeatAt?: string;
   expiredAt?: string;

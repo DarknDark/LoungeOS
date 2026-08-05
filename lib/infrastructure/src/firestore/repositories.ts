@@ -287,7 +287,7 @@ export class FirestoreTableSessionRepository implements TableSessionRepository {
       }
       transaction.set(tableReference, {
         ...currentTable,
-        status: 'occupied',
+        status: 'active',
         activeSessionId: input.session.id,
         updatedAt: input.now,
       });
@@ -295,6 +295,99 @@ export class FirestoreTableSessionRepository implements TableSessionRepository {
       transaction.set(
         customerSessionCollection.doc(input.customerSession.id),
         input.customerSession,
+      );
+    });
+  }
+
+  async createStaffSession(input: {
+    table: Table;
+    session: TableSession;
+    now: string;
+  }): Promise<void> {
+    const tableReference = scopedCollection(
+      this.firestore,
+      input.table.clubId,
+      FIRESTORE_COLLECTIONS.tables,
+    ).doc(input.table.id);
+    const sessionCollection = scopedCollection(
+      this.firestore,
+      input.table.clubId,
+      FIRESTORE_COLLECTIONS.tableSessions,
+    );
+    await this.firestore.runTransaction(async (transaction: Transaction) => {
+      const tableSnapshot = await transaction.get(tableReference);
+      const currentTable = tableSnapshot.data() as Table | undefined;
+      if (!currentTable || currentTable.activeSessionId || currentTable.status !== 'available') {
+        throw new Error('TABLE_SESSION_OWNER_EXISTS');
+      }
+      const activeSnapshot = await transaction.get(
+        sessionCollection
+          .where('tableId', '==', input.table.id)
+          .where('status', 'in', [
+            'created',
+            'active',
+            'splitting-bill',
+            'awaiting-payment',
+          ])
+          .limit(1),
+      );
+      if (!activeSnapshot.empty) {
+        throw new Error('TABLE_SESSION_OWNER_EXISTS');
+      }
+      transaction.set(
+        tableReference,
+        {
+          ...currentTable,
+          status: 'active',
+          activeSessionId: input.session.id,
+          updatedAt: input.now,
+        },
+        { merge: true },
+      );
+      transaction.set(sessionCollection.doc(input.session.id), input.session);
+    });
+  }
+
+  async approveCustomerSession(input: {
+    session: TableSession;
+    customerSession: CustomerSession;
+    now: string;
+  }): Promise<void> {
+    const sessionReference = scopedCollection(
+      this.firestore,
+      input.session.clubId,
+      FIRESTORE_COLLECTIONS.tableSessions,
+    ).doc(input.session.id);
+    const customerReference = scopedCollection(
+      this.firestore,
+      input.session.clubId,
+      FIRESTORE_COLLECTIONS.customerSessions,
+    ).doc(input.customerSession.id);
+    await this.firestore.runTransaction(async (transaction: Transaction) => {
+      const [sessionSnapshot, customerSnapshot] = await Promise.all([
+        transaction.get(sessionReference),
+        transaction.get(customerReference),
+      ]);
+      const session = sessionSnapshot.data() as TableSession | undefined;
+      const customer = customerSnapshot.data() as CustomerSession | undefined;
+      if (
+        !session ||
+        !customer ||
+        session.controllerType !== 'staff' ||
+        customer.tableSessionId !== session.id ||
+        customer.approvalStatus !== 'pending-approval'
+      ) {
+        throw new Error('CUSTOMER_SESSION_NOT_APPROVABLE');
+      }
+      transaction.set(
+        customerReference,
+        {
+          approvalStatus: 'approved',
+          approvedAt: input.now,
+          approvedByStaffId: session.controllerStaffId,
+          updatedAt: input.now,
+        },
+        { merge: true },
       );
     });
   }
@@ -337,7 +430,7 @@ export class FirestoreTableSessionRepository implements TableSessionRepository {
       if (
         input.consumeSplitSlot &&
         (!currentTable ||
-          currentTable.status !== 'finishing-up' ||
+          currentTable.status !== 'finishing' ||
           (currentTable.splitSlotsRemaining ?? 0) <= 0)
       ) {
         throw new Error('TABLE_SESSION_NOT_ACTIVE');
@@ -363,7 +456,7 @@ export class FirestoreTableSessionRepository implements TableSessionRepository {
           tableReference,
           {
             ...currentTable,
-            status: 'finishing-up',
+            status: 'finishing',
             splitSlotsRemaining: remaining,
             updatedAt: input.now,
           },

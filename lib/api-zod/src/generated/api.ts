@@ -56,7 +56,7 @@ export const ValidateCustomerTableResponse = zod.object({
   "label": zod.string(),
   "capacity": zod.number().min(1).optional(),
   "qrVersion": zod.number().min(1),
-  "status": zod.enum(['available', 'occupied', 'finishing-up']),
+  "status": zod.enum(['available', 'active', 'finishing']),
   "activeSessionId": zod.string().optional(),
   "splitSlotsRemaining": zod.number().min(validateCustomerTableResponseTableSplitSlotsRemainingMin).optional()
 })
@@ -93,7 +93,9 @@ export const OpenCustomerTableSessionResponse = zod.object({
   "clubId": zod.string(),
   "tableId": zod.string(),
   "businessDayId": zod.string(),
-  "ownerCustomerSessionId": zod.string(),
+  "ownerCustomerSessionId": zod.string().optional(),
+  "controllerType": zod.enum(['customer', 'staff']),
+  "controllerStaffId": zod.string().optional(),
   "openedAt": zod.coerce.date(),
   "closedAt": zod.coerce.date().optional(),
   "status": zod.enum(['created', 'active', 'splitting-bill', 'awaiting-payment', 'payment-pending', 'completed', 'closed', 'expired']),
@@ -108,6 +110,11 @@ export const OpenCustomerTableSessionResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date(),
   "isTableOwner": zod.boolean(),
+  "accessLevel": zod.enum(['owner', 'participant', 'temporary']),
+  "approvalStatus": zod.enum(['approved', 'pending-approval']),
+  "approvalRequestedAt": zod.coerce.date().optional(),
+  "approvedAt": zod.coerce.date().optional(),
+  "approvedByStaffId": zod.string().optional(),
   "deviceId": zod.string().optional(),
   "lastHeartbeatAt": zod.coerce.date().optional(),
   "expiredAt": zod.coerce.date().optional()
@@ -128,7 +135,7 @@ export const OpenCustomerTableSessionResponse = zod.object({
 export const CreateCustomerTableSessionBody = zod.object({
   "clubId": zod.string().min(1),
   "tableId": zod.string().min(1),
-  "qrToken": zod.string().min(1),
+  "qrToken": zod.string().min(1).optional(),
   "deviceId": zod.string().min(1).optional()
 })
 
@@ -142,7 +149,9 @@ export const CreateCustomerTableSessionResponse = zod.object({
   "clubId": zod.string(),
   "tableId": zod.string(),
   "businessDayId": zod.string(),
-  "ownerCustomerSessionId": zod.string(),
+  "ownerCustomerSessionId": zod.string().optional(),
+  "controllerType": zod.enum(['customer', 'staff']),
+  "controllerStaffId": zod.string().optional(),
   "openedAt": zod.coerce.date(),
   "closedAt": zod.coerce.date().optional(),
   "status": zod.enum(['created', 'active', 'splitting-bill', 'awaiting-payment', 'payment-pending', 'completed', 'closed', 'expired']),
@@ -157,6 +166,11 @@ export const CreateCustomerTableSessionResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date(),
   "isTableOwner": zod.boolean(),
+  "accessLevel": zod.enum(['owner', 'participant', 'temporary']),
+  "approvalStatus": zod.enum(['approved', 'pending-approval']),
+  "approvalRequestedAt": zod.coerce.date().optional(),
+  "approvedAt": zod.coerce.date().optional(),
+  "approvedByStaffId": zod.string().optional(),
   "deviceId": zod.string().optional(),
   "lastHeartbeatAt": zod.coerce.date().optional(),
   "expiredAt": zod.coerce.date().optional()
@@ -182,7 +196,7 @@ export const JoinCustomerTableSessionParams = zod.object({
 
 export const JoinCustomerTableSessionBody = zod.object({
   "clubId": zod.string().min(1),
-  "qrToken": zod.string().min(1),
+  "qrToken": zod.string().min(1).optional(),
   "deviceId": zod.string().min(1).optional()
 })
 
@@ -196,7 +210,9 @@ export const JoinCustomerTableSessionResponse = zod.object({
   "clubId": zod.string(),
   "tableId": zod.string(),
   "businessDayId": zod.string(),
-  "ownerCustomerSessionId": zod.string(),
+  "ownerCustomerSessionId": zod.string().optional(),
+  "controllerType": zod.enum(['customer', 'staff']),
+  "controllerStaffId": zod.string().optional(),
   "openedAt": zod.coerce.date(),
   "closedAt": zod.coerce.date().optional(),
   "status": zod.enum(['created', 'active', 'splitting-bill', 'awaiting-payment', 'payment-pending', 'completed', 'closed', 'expired']),
@@ -211,6 +227,11 @@ export const JoinCustomerTableSessionResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date(),
   "isTableOwner": zod.boolean(),
+  "accessLevel": zod.enum(['owner', 'participant', 'temporary']),
+  "approvalStatus": zod.enum(['approved', 'pending-approval']),
+  "approvalRequestedAt": zod.coerce.date().optional(),
+  "approvedAt": zod.coerce.date().optional(),
+  "approvedByStaffId": zod.string().optional(),
   "deviceId": zod.string().optional(),
   "lastHeartbeatAt": zod.coerce.date().optional(),
   "expiredAt": zod.coerce.date().optional()
@@ -245,7 +266,9 @@ export const RecoverCustomerTableSessionResponse = zod.object({
   "clubId": zod.string(),
   "tableId": zod.string(),
   "businessDayId": zod.string(),
-  "ownerCustomerSessionId": zod.string(),
+  "ownerCustomerSessionId": zod.string().optional(),
+  "controllerType": zod.enum(['customer', 'staff']),
+  "controllerStaffId": zod.string().optional(),
   "openedAt": zod.coerce.date(),
   "closedAt": zod.coerce.date().optional(),
   "status": zod.enum(['created', 'active', 'splitting-bill', 'awaiting-payment', 'payment-pending', 'completed', 'closed', 'expired']),
@@ -260,6 +283,11 @@ export const RecoverCustomerTableSessionResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date(),
   "isTableOwner": zod.boolean(),
+  "accessLevel": zod.enum(['owner', 'participant', 'temporary']),
+  "approvalStatus": zod.enum(['approved', 'pending-approval']),
+  "approvalRequestedAt": zod.coerce.date().optional(),
+  "approvedAt": zod.coerce.date().optional(),
+  "approvedByStaffId": zod.string().optional(),
   "deviceId": zod.string().optional(),
   "lastHeartbeatAt": zod.coerce.date().optional(),
   "expiredAt": zod.coerce.date().optional()
@@ -297,7 +325,9 @@ export const HeartbeatCustomerTableSessionResponse = zod.object({
   "clubId": zod.string(),
   "tableId": zod.string(),
   "businessDayId": zod.string(),
-  "ownerCustomerSessionId": zod.string(),
+  "ownerCustomerSessionId": zod.string().optional(),
+  "controllerType": zod.enum(['customer', 'staff']),
+  "controllerStaffId": zod.string().optional(),
   "openedAt": zod.coerce.date(),
   "closedAt": zod.coerce.date().optional(),
   "status": zod.enum(['created', 'active', 'splitting-bill', 'awaiting-payment', 'payment-pending', 'completed', 'closed', 'expired']),
@@ -312,6 +342,11 @@ export const HeartbeatCustomerTableSessionResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date(),
   "isTableOwner": zod.boolean(),
+  "accessLevel": zod.enum(['owner', 'participant', 'temporary']),
+  "approvalStatus": zod.enum(['approved', 'pending-approval']),
+  "approvalRequestedAt": zod.coerce.date().optional(),
+  "approvedAt": zod.coerce.date().optional(),
+  "approvedByStaffId": zod.string().optional(),
   "deviceId": zod.string().optional(),
   "lastHeartbeatAt": zod.coerce.date().optional(),
   "expiredAt": zod.coerce.date().optional()
@@ -340,7 +375,9 @@ export const GetCustomerTableSessionStatusResponse = zod.object({
   "clubId": zod.string(),
   "tableId": zod.string(),
   "businessDayId": zod.string(),
-  "ownerCustomerSessionId": zod.string(),
+  "ownerCustomerSessionId": zod.string().optional(),
+  "controllerType": zod.enum(['customer', 'staff']),
+  "controllerStaffId": zod.string().optional(),
   "openedAt": zod.coerce.date(),
   "closedAt": zod.coerce.date().optional(),
   "status": zod.enum(['created', 'active', 'splitting-bill', 'awaiting-payment', 'payment-pending', 'completed', 'closed', 'expired']),
@@ -355,6 +392,11 @@ export const GetCustomerTableSessionStatusResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date(),
   "isTableOwner": zod.boolean(),
+  "accessLevel": zod.enum(['owner', 'participant', 'temporary']),
+  "approvalStatus": zod.enum(['approved', 'pending-approval']),
+  "approvalRequestedAt": zod.coerce.date().optional(),
+  "approvedAt": zod.coerce.date().optional(),
+  "approvedByStaffId": zod.string().optional(),
   "deviceId": zod.string().optional(),
   "lastHeartbeatAt": zod.coerce.date().optional(),
   "expiredAt": zod.coerce.date().optional()
@@ -403,7 +445,9 @@ export const RequestCustomerTableSessionCloseResponse = zod.object({
   "clubId": zod.string(),
   "tableId": zod.string(),
   "businessDayId": zod.string(),
-  "ownerCustomerSessionId": zod.string(),
+  "ownerCustomerSessionId": zod.string().optional(),
+  "controllerType": zod.enum(['customer', 'staff']),
+  "controllerStaffId": zod.string().optional(),
   "openedAt": zod.coerce.date(),
   "closedAt": zod.coerce.date().optional(),
   "status": zod.enum(['created', 'active', 'splitting-bill', 'awaiting-payment', 'payment-pending', 'completed', 'closed', 'expired']),
@@ -418,6 +462,11 @@ export const RequestCustomerTableSessionCloseResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date(),
   "isTableOwner": zod.boolean(),
+  "accessLevel": zod.enum(['owner', 'participant', 'temporary']),
+  "approvalStatus": zod.enum(['approved', 'pending-approval']),
+  "approvalRequestedAt": zod.coerce.date().optional(),
+  "approvedAt": zod.coerce.date().optional(),
+  "approvedByStaffId": zod.string().optional(),
   "deviceId": zod.string().optional(),
   "lastHeartbeatAt": zod.coerce.date().optional(),
   "expiredAt": zod.coerce.date().optional()
@@ -453,7 +502,9 @@ export const CancelCustomerTableSessionCloseResponse = zod.object({
   "clubId": zod.string(),
   "tableId": zod.string(),
   "businessDayId": zod.string(),
-  "ownerCustomerSessionId": zod.string(),
+  "ownerCustomerSessionId": zod.string().optional(),
+  "controllerType": zod.enum(['customer', 'staff']),
+  "controllerStaffId": zod.string().optional(),
   "openedAt": zod.coerce.date(),
   "closedAt": zod.coerce.date().optional(),
   "status": zod.enum(['created', 'active', 'splitting-bill', 'awaiting-payment', 'payment-pending', 'completed', 'closed', 'expired']),
@@ -468,6 +519,11 @@ export const CancelCustomerTableSessionCloseResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date(),
   "isTableOwner": zod.boolean(),
+  "accessLevel": zod.enum(['owner', 'participant', 'temporary']),
+  "approvalStatus": zod.enum(['approved', 'pending-approval']),
+  "approvalRequestedAt": zod.coerce.date().optional(),
+  "approvedAt": zod.coerce.date().optional(),
+  "approvedByStaffId": zod.string().optional(),
   "deviceId": zod.string().optional(),
   "lastHeartbeatAt": zod.coerce.date().optional(),
   "expiredAt": zod.coerce.date().optional()
@@ -518,6 +574,122 @@ export const SubmitCustomerTableSessionPaymentResponse = zod.object({
   "verifiedByStaffId": zod.string().optional(),
   "createdAt": zod.coerce.date(),
   "verifiedAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary Open a waiter-controlled table session
+ */
+
+
+
+export const OpenManualStaffTableSessionHeader = zod.object({
+  "X-Club-Id": zod.string().min(1)
+})
+
+
+
+
+export const OpenManualStaffTableSessionBody = zod.object({
+  "tableId": zod.string().min(1)
+})
+
+export const openManualStaffTableSessionResponseRunningTotalMinorMin = 0;
+
+
+
+export const OpenManualStaffTableSessionResponse = zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableId": zod.string(),
+  "businessDayId": zod.string(),
+  "ownerCustomerSessionId": zod.string().optional(),
+  "controllerType": zod.enum(['customer', 'staff']),
+  "controllerStaffId": zod.string().optional(),
+  "openedAt": zod.coerce.date(),
+  "closedAt": zod.coerce.date().optional(),
+  "status": zod.enum(['created', 'active', 'splitting-bill', 'awaiting-payment', 'payment-pending', 'completed', 'closed', 'expired']),
+  "runningTotalMinor": zod.number().min(openManualStaffTableSessionResponseRunningTotalMinorMin),
+  "expiresAt": zod.coerce.date(),
+  "lastActivityAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List pending customer requests to join a manual table
+ */
+
+
+
+export const ListStaffTableSessionJoinRequestsParams = zod.object({
+  "sessionId": zod.coerce.string().min(1)
+})
+
+
+
+
+export const ListStaffTableSessionJoinRequestsHeader = zod.object({
+  "X-Club-Id": zod.string().min(1)
+})
+
+export const ListStaffTableSessionJoinRequestsResponseItem = zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date(),
+  "isTableOwner": zod.boolean(),
+  "accessLevel": zod.enum(['owner', 'participant', 'temporary']),
+  "approvalStatus": zod.enum(['approved', 'pending-approval']),
+  "approvalRequestedAt": zod.coerce.date().optional(),
+  "approvedAt": zod.coerce.date().optional(),
+  "approvedByStaffId": zod.string().optional(),
+  "deviceId": zod.string().optional(),
+  "lastHeartbeatAt": zod.coerce.date().optional(),
+  "expiredAt": zod.coerce.date().optional()
+})
+export const ListStaffTableSessionJoinRequestsResponse = zod.array(ListStaffTableSessionJoinRequestsResponseItem)
+
+
+/**
+ * @summary Approve a customer request to join a manual table
+ */
+
+
+
+export const ApproveStaffTableSessionJoinParams = zod.object({
+  "sessionId": zod.coerce.string().min(1)
+})
+
+
+
+
+export const ApproveStaffTableSessionJoinHeader = zod.object({
+  "X-Club-Id": zod.string().min(1)
+})
+
+
+
+
+export const ApproveStaffTableSessionJoinBody = zod.object({
+  "customerSessionId": zod.string().min(1)
+})
+
+export const ApproveStaffTableSessionJoinResponse = zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date(),
+  "isTableOwner": zod.boolean(),
+  "accessLevel": zod.enum(['owner', 'participant', 'temporary']),
+  "approvalStatus": zod.enum(['approved', 'pending-approval']),
+  "approvalRequestedAt": zod.coerce.date().optional(),
+  "approvedAt": zod.coerce.date().optional(),
+  "approvedByStaffId": zod.string().optional(),
+  "deviceId": zod.string().optional(),
+  "lastHeartbeatAt": zod.coerce.date().optional(),
+  "expiredAt": zod.coerce.date().optional()
 })
 
 
@@ -663,6 +835,7 @@ export const ListOrdersResponse = zod.object({
   "clubId": zod.string(),
   "tableSessionId": zod.string(),
   "customerSessionId": zod.string(),
+  "createdByStaffId": zod.string().optional(),
   "status": zod.enum(['draft', 'submitted', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled']),
   "itemIds": zod.array(zod.string()),
   "idempotencyKey": zod.string(),
@@ -742,6 +915,82 @@ export const CreateOrderResponse = zod.object({
   "clubId": zod.string(),
   "tableSessionId": zod.string(),
   "customerSessionId": zod.string(),
+  "createdByStaffId": zod.string().optional(),
+  "status": zod.enum(['draft', 'submitted', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled']),
+  "itemIds": zod.array(zod.string()),
+  "idempotencyKey": zod.string(),
+  "subtotalMinor": zod.number(),
+  "taxMinor": zod.number(),
+  "serviceChargeMinor": zod.number(),
+  "discountMinor": zod.number(),
+  "totalMinor": zod.number(),
+  "notes": zod.string().optional(),
+  "version": zod.number().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().optional()
+}),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "menuItemId": zod.string(),
+  "nameSnapshot": zod.string(),
+  "unitPriceMinor": zod.number(),
+  "quantity": zod.number(),
+  "modifiers": zod.array(zod.object({
+  "modifierId": zod.string(),
+  "optionIds": zod.array(zod.string())
+})),
+  "notes": zod.string().optional(),
+  "lineSubtotalMinor": zod.number()
+}))
+})
+
+
+/**
+ * @summary Create and submit an order for a waiter-controlled table
+ */
+
+export const createStaffOrderHeaderIdempotencyKeyMax = 128;
+
+
+
+export const CreateStaffOrderHeader = zod.object({
+  "X-Club-Id": zod.string().min(1),
+  "Idempotency-Key": zod.string().min(1).max(createStaffOrderHeaderIdempotencyKeyMax)
+})
+
+
+
+export const createStaffOrderBodyItemsItemQuantityMax = 99;
+
+export const createStaffOrderBodyItemsItemNotesMax = 500;
+
+
+export const createStaffOrderBodyNotesMax = 500;
+
+
+
+export const CreateStaffOrderBody = zod.object({
+  "clubId": zod.string().min(1),
+  "tableSessionId": zod.string().min(1),
+  "items": zod.array(zod.object({
+  "menuItemId": zod.string(),
+  "quantity": zod.number().min(1).max(createStaffOrderBodyItemsItemQuantityMax),
+  "modifiers": zod.array(zod.object({
+  "modifierId": zod.string(),
+  "optionIds": zod.array(zod.string())
+})).optional(),
+  "notes": zod.string().max(createStaffOrderBodyItemsItemNotesMax).optional()
+})).min(1),
+  "notes": zod.string().max(createStaffOrderBodyNotesMax).optional()
+})
+
+export const CreateStaffOrderResponse = zod.object({
+  "order": zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "customerSessionId": zod.string(),
+  "createdByStaffId": zod.string().optional(),
   "status": zod.enum(['draft', 'submitted', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled']),
   "itemIds": zod.array(zod.string()),
   "idempotencyKey": zod.string(),
@@ -820,6 +1069,7 @@ export const CreateOrderDraftResponse = zod.object({
   "clubId": zod.string(),
   "tableSessionId": zod.string(),
   "customerSessionId": zod.string(),
+  "createdByStaffId": zod.string().optional(),
   "status": zod.enum(['draft', 'submitted', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled']),
   "itemIds": zod.array(zod.string()),
   "idempotencyKey": zod.string(),
@@ -876,6 +1126,7 @@ export const GetOrderResponse = zod.object({
   "clubId": zod.string(),
   "tableSessionId": zod.string(),
   "customerSessionId": zod.string(),
+  "createdByStaffId": zod.string().optional(),
   "status": zod.enum(['draft', 'submitted', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled']),
   "itemIds": zod.array(zod.string()),
   "idempotencyKey": zod.string(),
@@ -957,6 +1208,7 @@ export const UpdateDraftOrderResponse = zod.object({
   "clubId": zod.string(),
   "tableSessionId": zod.string(),
   "customerSessionId": zod.string(),
+  "createdByStaffId": zod.string().optional(),
   "status": zod.enum(['draft', 'submitted', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled']),
   "itemIds": zod.array(zod.string()),
   "idempotencyKey": zod.string(),
@@ -1021,6 +1273,7 @@ export const CancelOrderResponse = zod.object({
   "clubId": zod.string(),
   "tableSessionId": zod.string(),
   "customerSessionId": zod.string(),
+  "createdByStaffId": zod.string().optional(),
   "status": zod.enum(['draft', 'submitted', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled']),
   "itemIds": zod.array(zod.string()),
   "idempotencyKey": zod.string(),
@@ -1085,6 +1338,7 @@ export const UpdateOrderStatusResponse = zod.object({
   "clubId": zod.string(),
   "tableSessionId": zod.string(),
   "customerSessionId": zod.string(),
+  "createdByStaffId": zod.string().optional(),
   "status": zod.enum(['draft', 'submitted', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled']),
   "itemIds": zod.array(zod.string()),
   "idempotencyKey": zod.string(),
@@ -1149,6 +1403,7 @@ export const SubmitOrderResponse = zod.object({
   "clubId": zod.string(),
   "tableSessionId": zod.string(),
   "customerSessionId": zod.string(),
+  "createdByStaffId": zod.string().optional(),
   "status": zod.enum(['draft', 'submitted', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled']),
   "itemIds": zod.array(zod.string()),
   "idempotencyKey": zod.string(),
