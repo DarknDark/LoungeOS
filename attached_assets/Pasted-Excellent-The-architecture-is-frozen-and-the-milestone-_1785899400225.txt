@@ -1,0 +1,107 @@
+Excellent. The architecture is frozen, and the milestone is accepted.
+
+Begin implementation now.
+
+Implementation Rules
+Do not begin Module 4.
+Do not work on realtime, manual waiter mode, or ReceiptService.
+Do not expand scope.
+Work in small, atomic changes.
+After each change, compile, test, and verify before making the next change.
+If any unexpected production failure occurs, stop immediately, fix only that issue, verify the fix, then continue from the last successful checkpoint.
+Current Milestone
+Close Table Lifecycle
+
+Complete this milestone incrementally.
+
+Step 1 — Business Logic
+
+Implement the service responsible for closing a table.
+
+The operation must validate:
+
+No outstanding balance.
+All submitted payments have been verified.
+The table is in a state that can legally be closed.
+
+Do not modify any unrelated services.
+
+Verify this step with unit tests before continuing.
+
+Step 2 — Session Cleanup
+
+Extend the Close Table operation to:
+
+End every active customer session.
+End the active table session.
+Remove temporary customer dashboards.
+Remove pending join approvals.
+Remove split-payment tickets.
+Clear temporary payment state.
+
+Verify the resulting Firestore state before continuing.
+
+Step 3 — Audit & Timeline
+
+Extend the same transaction to:
+
+Write audit records.
+Write timeline events.
+Create any required notifications.
+
+Verify every document exists after the operation.
+
+Step 4 — Release the Table
+
+Complete the workflow by:
+
+Marking the table AVAILABLE.
+Releasing all active occupancy.
+Making the existing permanent QR immediately usable again.
+
+Do not:
+
+Rotate QR codes.
+Generate a new QR.
+Create another table.
+Modify permanent table identity.
+Final Verification
+
+Run only this smoke test:
+
+Scan permanent QR.
+Create customer session.
+Place order.
+Submit order.
+Customer presses Close Tab.
+Waiter verifies payment.
+Waiter presses Close Table.
+Customer sessions end.
+Table session ends.
+Table becomes AVAILABLE.
+Scan the same QR again.
+Verify a brand-new customer session is created successfully.
+Required Validation
+
+Before marking this milestone complete, run:
+
+Application tests
+API tests
+OpenAPI generation
+API typecheck
+Mobile typecheck
+Workflow restart
+API health check
+Live smoke test
+Completion Report
+
+When this milestone is finished, report only:
+
+Files changed
+API endpoints affected
+Database entities updated
+Tests added or updated
+Smoke-test results
+Remaining blockers (if any)
+
+Do not start the next milestone until this Close Table lifecycle has been fully implemented, tested, and verified.

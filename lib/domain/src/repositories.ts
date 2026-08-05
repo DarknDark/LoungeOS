@@ -57,6 +57,14 @@ export type TableSessionRepository = {
   getById(clubId: ClubId, sessionId: string): Promise<TableSession | null>;
   getActiveForTable(clubId: ClubId, tableId: string): Promise<TableSession | null>;
   save(session: TableSession): Promise<void>;
+  closeAfterVerifiedPayment?(input: {
+    session: TableSession;
+    table: Table;
+    notification: Notification;
+    timeline: ServiceTimelineEvent;
+    audit: AuditLog;
+    now: ISODateString;
+  }): Promise<void>;
   createOwnerSession(input: {
     table: Table;
     session: TableSession;

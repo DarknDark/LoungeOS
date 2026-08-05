@@ -1,3 +1,4 @@
+import { FieldValue } from 'firebase-admin/firestore';
 import type { Firestore, Query, Transaction } from 'firebase-admin/firestore';
 import {
   clubCollectionPath,
@@ -223,6 +224,149 @@ export class FirestoreTableSessionRepository implements TableSessionRepository {
     )
       .doc(session.id)
       .set(session, { merge: true });
+  }
+
+  async closeAfterVerifiedPayment(input: {
+    session: TableSession;
+    table: Table;
+    notification: Notification;
+    timeline: ServiceTimelineEvent;
+    audit: AuditLog;
+    now: string;
+  }): Promise<void> {
+    const tableReference = scopedCollection(
+      this.firestore,
+      input.table.clubId,
+      FIRESTORE_COLLECTIONS.tables,
+    ).doc(input.table.id);
+    const sessionReference = scopedCollection(
+      this.firestore,
+      input.session.clubId,
+      FIRESTORE_COLLECTIONS.tableSessions,
+    ).doc(input.session.id);
+    const customerCollection = scopedCollection(
+      this.firestore,
+      input.session.clubId,
+      FIRESTORE_COLLECTIONS.customerSessions,
+    );
+    const paymentCollection = scopedCollection(
+      this.firestore,
+      input.session.clubId,
+      FIRESTORE_COLLECTIONS.payments,
+    );
+    const paymentTokenCollection = scopedCollection(
+      this.firestore,
+      input.session.clubId,
+      FIRESTORE_COLLECTIONS.paymentTokens,
+    );
+    const notificationReference = scopedCollection(
+      this.firestore,
+      input.notification.clubId,
+      FIRESTORE_COLLECTIONS.notifications,
+    ).doc(input.notification.id);
+    const timelineReference = scopedCollection(
+      this.firestore,
+      input.timeline.clubId,
+      FIRESTORE_COLLECTIONS.serviceTimeline,
+    ).doc(input.timeline.id);
+    const auditReference = scopedCollection(
+      this.firestore,
+      input.audit.clubId,
+      FIRESTORE_COLLECTIONS.auditLogs,
+    ).doc(input.audit.id);
+
+    await this.firestore.runTransaction(async (transaction: Transaction) => {
+      const sessionSnapshot = await transaction.get(sessionReference);
+      const tableSnapshot = await transaction.get(tableReference);
+      const customerSnapshot = await transaction.get(
+        customerCollection.where('tableSessionId', '==', input.session.id),
+      );
+      const paymentSnapshot = await transaction.get(
+        paymentCollection.where('tableSessionId', '==', input.session.id),
+      );
+      const paymentTokenSnapshot = await transaction.get(
+        paymentTokenCollection.where('tableSessionId', '==', input.session.id),
+      );
+      const currentSession = documentWithId<TableSession>(
+        sessionSnapshot.id,
+        sessionSnapshot.data(),
+      );
+      const currentTable = documentWithId<Table>(tableSnapshot.id, tableSnapshot.data());
+
+      if (!currentSession || !currentTable) {
+        throw new Error('TABLE_SESSION_CLOSE_NOT_FOUND');
+      }
+      if (currentSession.status === 'closed' || currentSession.status === 'expired') {
+        return;
+      }
+      if (
+        currentSession.id !== input.session.id ||
+        currentTable.activeSessionId !== input.session.id ||
+        currentTable.id !== input.table.id
+      ) {
+        throw new Error('TABLE_SESSION_CLOSE_CONFLICT');
+      }
+
+      const payments = paymentSnapshot.docs
+        .map((document) => documentWithId<Payment>(document.id, document.data()))
+        .filter((payment): payment is Payment => Boolean(payment));
+      const currentPayments = payments.filter(
+        (payment) => !payment.appliedToRunningBalanceAt,
+      );
+      const submittedTotal = currentPayments
+        .filter((payment) => payment.status === 'submitted')
+        .reduce((total, payment) => total + payment.amountMinor, 0);
+      const verifiedTotal = currentPayments
+        .filter((payment) => payment.status === 'verified')
+        .reduce((total, payment) => total + payment.amountMinor, 0);
+      if (submittedTotal > 0 || verifiedTotal < currentSession.runningTotalMinor) {
+        throw new Error('PAYMENT_NOT_SETTLED');
+      }
+
+      transaction.set(
+        sessionReference,
+        {
+          ...currentSession,
+          status: 'closed',
+          closedAt: input.now,
+          lastActivityAt: input.now,
+          version: (currentSession.version ?? 0) + 1,
+        },
+        { merge: true },
+      );
+      for (const document of customerSnapshot.docs) {
+        const customer = document.data() as CustomerSession;
+        if (!customer.expiredAt) {
+          transaction.set(
+            customerCollection.doc(document.id),
+            { expiredAt: input.now, expiresAt: input.now },
+            { merge: true },
+          );
+        }
+      }
+      for (const document of paymentTokenSnapshot.docs) {
+        transaction.set(
+          paymentTokenCollection.doc(document.id),
+          { status: 'revoked', expiresAt: input.now },
+          { merge: true },
+        );
+      }
+      transaction.set(
+        tableReference,
+        {
+          ...currentTable,
+          status: 'available',
+          updatedAt: input.now,
+          version: (currentTable.version ?? 0) + 1,
+          activeSessionId: FieldValue.delete(),
+          splitSlotsRemaining: FieldValue.delete(),
+        },
+        { merge: true },
+      );
+      transaction.create(notificationReference, input.notification);
+      transaction.create(timelineReference, input.timeline);
+      transaction.create(auditReference, input.audit);
+    });
   }
 
   async saveIfVersion(session: TableSession, expectedVersion: number): Promise<void> {
