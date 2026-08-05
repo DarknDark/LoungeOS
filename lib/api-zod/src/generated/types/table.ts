@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { TableStatus } from './tableStatus';
 
 export interface Table {
   id: string;
@@ -16,6 +17,8 @@ export interface Table {
   capacity?: number;
   /** @minimum 1 */
   qrVersion: number;
-  status: string;
+  status: TableStatus;
   activeSessionId?: string;
+  /** @minimum 0 */
+  splitSlotsRemaining?: number;
 }

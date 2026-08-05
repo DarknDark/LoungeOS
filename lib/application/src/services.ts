@@ -37,12 +37,23 @@ export type RequestActor = {
 };
 
 export type TableSessionService = {
+  validateTable(input: {
+    clubId: string;
+    tableId: string;
+    now: string;
+  }): Promise<Table>;
   validateQr(input: {
     clubId: string;
     tableId: string;
     qrToken: string;
     now: string;
   }): Promise<Table>;
+  open(input: {
+    actor: RequestActor;
+    tableId: string;
+    deviceId?: string;
+    now: string;
+  }): Promise<TableSessionAccess>;
   createFromQr(input: {
     actor: RequestActor;
     tableId: string;
@@ -53,9 +64,10 @@ export type TableSessionService = {
   join(input: {
     actor: RequestActor;
     tableSessionId: string;
-    qrToken: string;
+    qrToken?: string;
     deviceId?: string;
     now: string;
+    consumeSplitSlot?: boolean;
   }): Promise<TableSessionAccess>;
   recover(input: {
     actor: RequestActor;
@@ -81,6 +93,12 @@ export type TableSessionService = {
   closeAfterVerifiedPayment(input: {
     actor: RequestActor;
     tableSessionId: string;
+    now: string;
+  }): Promise<void>;
+  enablePaymentSplit(input: {
+    actor: RequestActor;
+    tableSessionId: string;
+    splitCount: number;
     now: string;
   }): Promise<void>;
 };

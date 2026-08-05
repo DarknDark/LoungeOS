@@ -53,6 +53,31 @@ paths:
           $ref: "#/components/responses/ApiError"
         "404":
           $ref: "#/components/responses/ApiError"
+  /v1/customer/tables/{tableId}/open:
+    post:
+      operationId: openCustomerTableSession
+      tags: [customer-sessions]
+      summary: Open a customer session from a permanent table QR
+      description: Validates the table ID and opens a customer session without a secret QR token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpenTableSessionRequest"
+      parameters:
+        - $ref: "#/components/parameters/TableId"
+      responses:
+        "201":
+          description: Created customer table session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSessionAccess"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
   /v1/customer/table-sessions:
     post:
       operationId: createCustomerTableSession
@@ -169,6 +194,31 @@ paths:
         "401":
           $ref: "#/components/responses/ApiError"
         "403":
+          $ref: "#/components/responses/ApiError"
+  /v1/customer/table-sessions/{sessionId}/split:
+    post:
+      operationId: enableCustomerTableSessionSplit
+      tags: [customer-sessions]
+      summary: Enable a staff-controlled bill split
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - $ref: "#/components/parameters/ClubId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SplitTableSessionRequest"
+      responses:
+        "204":
+          description: Bill splitting enabled
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "409":
           $ref: "#/components/responses/ApiError"
   /v1/orders/menu:
     get:
@@ -668,6 +718,16 @@ components:
           type: string
           minLength: 1
       required: [qrToken]
+    OpenTableSessionRequest:
+      type: object
+      properties:
+        clubId:
+          type: string
+          minLength: 1
+        deviceId:
+          type: string
+          minLength: 1
+      required: [clubId]
     CreateTableSessionRequest:
       type: object
       properties:
@@ -723,6 +783,13 @@ components:
           type: string
           minLength: 1
       required: [clubId, customerSessionId]
+    SplitTableSessionRequest:
+      type: object
+      properties:
+        splitCount:
+          type: number
+          minimum: 1
+      required: [splitCount]
     TableValidationResponse:
       type: object
       properties:
@@ -748,8 +815,11 @@ components:
         label: { type: string }
         capacity: { type: number, minimum: 1 }
         qrVersion: { type: number, minimum: 1 }
-        status: { type: string }
+        status:
+          type: string
+          enum: [available, occupied, payment-split-open, payment-pending, cleaning, reserved, closed, ready-for-next-customer]
         activeSessionId: { type: string }
+        splitSlotsRemaining: { type: number, minimum: 0 }
       required: [id, clubId, number, label, qrVersion, status]
     TableSession:
       type: object

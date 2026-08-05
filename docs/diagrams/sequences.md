@@ -8,16 +8,14 @@ sequenceDiagram
   participant API as API
   participant S as TableSessionService
   participant F as Firestore
-  C->>API: validate QR
-  API->>S: validateQr(club, table, token)
-  S->>F: read table and QR hash
-  F-->>S: valid table
-  S-->>API: table context
-  C->>API: create session
-  API->>S: createFromQr
+  C->>API: open /customer/tables/{tableId}
+  API->>S: open(club, tableId, deviceId)
+  S->>F: read table identity and lifecycle state
+  F-->>S: available table
   S->>F: owner transaction
-  F-->>S: table locked and session created
-  S-->>API: scoped session + recovery token
+  F-->>S: table occupied and session created
+  S-->>API: scoped session + server-generated recovery token
+  API-->>C: customer session token and recovery token
 ```
 
 ## Guest joins an existing session
@@ -28,10 +26,10 @@ sequenceDiagram
   participant API as API
   participant S as Session service
   participant F as Firestore
-  G->>API: join with QR and device id
-  API->>S: join
+  G->>API: open /customer/tables/{tableId} after staff enables split
+  API->>S: open/join with table identity and device id
   S->>F: validate table/session
-  S->>F: participant transaction
+  S->>F: participant transaction and consume split slot
   F-->>S: contributor accepted
   S-->>API: participant session token
 ```

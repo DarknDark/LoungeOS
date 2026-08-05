@@ -34,3 +34,5 @@ export * from "./generated/types/tableValidationResponse";
 export * from "./generated/types/updateDraftOrderRequest";
 export * from "./generated/types/updateOrderStatusRequest";
 export * from "./generated/types/updateOrderStatusRequestStatus";
+export * from "./generated/types/openTableSessionRequest";
+export * from "./generated/types/splitTableSessionRequest";

@@ -27,11 +27,13 @@ import type {
   HealthStatus,
   HeartbeatRequest,
   JoinTableSessionRequest,
+  OpenTableSessionRequest,
   OrderListResponse,
   OrderMenuResponse,
   OrderResponse,
   QrValidationRequest,
   RecoverTableSessionRequest,
+  SplitTableSessionRequest,
   SubmitOrderBody,
   TableSessionAccess,
   TableValidationResponse,
@@ -214,6 +216,79 @@ export const useValidateCustomerTable = <TError = ErrorType<ApiErrorResponse>,
         TContext
       > => {
       return useMutation(getValidateCustomerTableMutationOptions(options));
+    }
+
+export const getOpenCustomerTableSessionUrl = (tableId: string,) => {
+
+
+
+
+  return `/api/v1/customer/tables/${tableId}/open`
+}
+
+/**
+ * Validates the table ID and opens a customer session without a secret QR token.
+ * @summary Open a customer session from a permanent table QR
+ */
+export const openCustomerTableSession = async (tableId: string,
+    openTableSessionRequest: OpenTableSessionRequest, options?: Parameters<typeof customFetch>[1]): Promise<TableSessionAccess> => {
+
+  return customFetch<TableSessionAccess>(getOpenCustomerTableSessionUrl(tableId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(openTableSessionRequest)
+  }
+);}
+
+
+
+
+
+export const getOpenCustomerTableSessionMutationOptions = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof openCustomerTableSession>>, TError,{tableId: string;data: BodyType<OpenTableSessionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof openCustomerTableSession>>, TError,{tableId: string;data: BodyType<OpenTableSessionRequest>}, TContext> => {
+
+const mutationKey = ['openCustomerTableSession'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof openCustomerTableSession>>, {tableId: string;data: BodyType<OpenTableSessionRequest>}> = (props) => {
+          const {tableId,data} = props ?? {};
+
+          return  openCustomerTableSession(tableId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type OpenCustomerTableSessionMutationResult = NonNullable<Awaited<ReturnType<typeof openCustomerTableSession>>>
+    export type OpenCustomerTableSessionMutationBody = BodyType<OpenTableSessionRequest>
+    export type OpenCustomerTableSessionMutationError = ErrorType<ApiErrorResponse>
+
+    /**
+ * @summary Open a customer session from a permanent table QR
+ */
+export const useOpenCustomerTableSession = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof openCustomerTableSession>>, TError,{tableId: string;data: BodyType<OpenTableSessionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof openCustomerTableSession>>,
+        TError,
+        {tableId: string;data: BodyType<OpenTableSessionRequest>},
+        TContext
+      > => {
+      return useMutation(getOpenCustomerTableSessionMutationOptions(options));
     }
 
 export const getCreateCustomerTableSessionUrl = () => {
@@ -648,6 +723,78 @@ export const useCloseCustomerTableSession = <TError = ErrorType<ApiErrorResponse
         TContext
       > => {
       return useMutation(getCloseCustomerTableSessionMutationOptions(options));
+    }
+
+export const getEnableCustomerTableSessionSplitUrl = (sessionId: string,) => {
+
+
+
+
+  return `/api/v1/customer/table-sessions/${sessionId}/split`
+}
+
+/**
+ * @summary Enable a staff-controlled bill split
+ */
+export const enableCustomerTableSessionSplit = async (sessionId: string,
+    splitTableSessionRequest: SplitTableSessionRequest, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getEnableCustomerTableSessionSplitUrl(sessionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(splitTableSessionRequest)
+  }
+);}
+
+
+
+
+
+export const getEnableCustomerTableSessionSplitMutationOptions = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enableCustomerTableSessionSplit>>, TError,{sessionId: string;data: BodyType<SplitTableSessionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof enableCustomerTableSessionSplit>>, TError,{sessionId: string;data: BodyType<SplitTableSessionRequest>}, TContext> => {
+
+const mutationKey = ['enableCustomerTableSessionSplit'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof enableCustomerTableSessionSplit>>, {sessionId: string;data: BodyType<SplitTableSessionRequest>}> = (props) => {
+          const {sessionId,data} = props ?? {};
+
+          return  enableCustomerTableSessionSplit(sessionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EnableCustomerTableSessionSplitMutationResult = NonNullable<Awaited<ReturnType<typeof enableCustomerTableSessionSplit>>>
+    export type EnableCustomerTableSessionSplitMutationBody = BodyType<SplitTableSessionRequest>
+    export type EnableCustomerTableSessionSplitMutationError = ErrorType<ApiErrorResponse>
+
+    /**
+ * @summary Enable a staff-controlled bill split
+ */
+export const useEnableCustomerTableSessionSplit = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enableCustomerTableSessionSplit>>, TError,{sessionId: string;data: BodyType<SplitTableSessionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof enableCustomerTableSessionSplit>>,
+        TError,
+        {sessionId: string;data: BodyType<SplitTableSessionRequest>},
+        TContext
+      > => {
+      return useMutation(getEnableCustomerTableSessionSplitMutationOptions(options));
     }
 
 export const getListOrderMenuUrl = () => {

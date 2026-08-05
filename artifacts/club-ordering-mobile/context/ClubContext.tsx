@@ -20,6 +20,7 @@ import {
   joinCustomerTableSession,
   listOrderMenu,
   listOrders,
+  openCustomerTableSession,
   recoverCustomerTableSession,
   submitOrder as submitOrderRequest,
   type Order as ApiOrder,
@@ -277,7 +278,12 @@ async function readInitialSessionLink(): Promise<{
   const parsed = new URL(url);
   const params = parsed.searchParams;
   const clubId = params.get('clubId') ?? clubSettings.clubId;
-  const tableId = params.get('tableId') ?? undefined;
+  const pathSegments = parsed.pathname.split('/').filter(Boolean);
+  const pathTableId =
+    pathSegments.length >= 2 && pathSegments[pathSegments.length - 2] === 'table'
+      ? decodeURIComponent(pathSegments[pathSegments.length - 1] ?? '')
+      : undefined;
+  const tableId = params.get('tableId') ?? pathTableId ?? undefined;
   const qrToken = params.get('qrToken') ?? undefined;
   const sessionId = params.get('sessionId') ?? undefined;
   if (!tableId && !sessionId) return null;
@@ -400,14 +406,19 @@ export function ClubProvider({ children }: PropsWithChildren) {
           }
         }
         let accessSession = stored;
-        if (link?.tableId && link.qrToken) {
+        if (link?.tableId) {
           try {
-            const access = await createCustomerTableSession({
+            const access = link.qrToken
+              ? await createCustomerTableSession({
               clubId: link.clubId,
               tableId: link.tableId,
               qrToken: link.qrToken,
               deviceId: await deviceId(),
-            }, { responseType: 'json' });
+              }, { responseType: 'json' })
+              : await openCustomerTableSession(link.tableId, {
+                clubId: link.clubId,
+                deviceId: await deviceId(),
+              }, { responseType: 'json' });
             accessSession = await applyAccess(access, link.clubId);
           } catch (error) {
             setErrorMessage(friendlyError(error));

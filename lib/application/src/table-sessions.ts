@@ -42,6 +42,7 @@ export class TableSessionError extends Error {
     message: string,
     readonly code:
       | 'INVALID_QR'
+      | 'TABLE_NOT_AVAILABLE'
       | 'TABLE_NOT_FOUND'
       | 'SESSION_NOT_FOUND'
       | 'SESSION_EXPIRED'
@@ -185,6 +186,28 @@ export function createTableSessionService(
     return table;
   }
 
+  async function tableById(
+    clubId: string,
+    tableId: string,
+  ): Promise<Table> {
+    const table = await repos.tables.getById(clubId, tableId);
+    if (!table) {
+      throw new TableSessionError('The requested table was not found.', 'TABLE_NOT_FOUND');
+    }
+    return table;
+  }
+
+  function assertTableCanOpen(table: Table): void {
+    if (table.status !== 'available') {
+      throw new TableSessionError(
+        table.status === 'occupied'
+          ? 'This table already has an active session. Please ask your waiter.'
+          : 'This table is not accepting new customer sessions.',
+        'TABLE_NOT_AVAILABLE',
+      );
+    }
+  }
+
   async function activeSession(
     actor: RequestActor,
     tableSessionId: string,
@@ -293,6 +316,113 @@ export function createTableSessionService(
     return Boolean(expectedHash && token && tokens.hash(token) === expectedHash);
   }
 
+  async function createOwnerSession(input: {
+    actor: RequestActor;
+    table: Table;
+    deviceId?: string;
+    now: string;
+  }): Promise<TableSessionAccess> {
+    const settings = await settingsFor(input.actor.clubId);
+    const existing = await repos.tableSessions.getActiveForTable(
+      input.actor.clubId,
+      input.table.id,
+    );
+    if (existing) {
+      throw new TableSessionError(
+        'This table already has an active session. Join it instead.',
+        'OWNER_EXISTS',
+      );
+    }
+    const sessionId = ids.next();
+    const customerSessionId = ids.next();
+    const recoveryToken = tokens.next();
+    const businessDay = await repos.businessDays.getActive(input.actor.clubId);
+    if (!businessDay || businessDay.status !== 'open') {
+      throw new TableSessionError(
+        'The club does not have an open business day.',
+        'CONFIGURATION_INVALID',
+      );
+    }
+    const expiresAt = minDate(
+      addMinutes(input.now, settings.business.sessionTimeoutMinutes),
+      addMinutes(input.now, settings.business.maximumTableTimeMinutes),
+    );
+    const session: TableSession = {
+      id: sessionId,
+      clubId: input.actor.clubId,
+      tableId: input.table.id,
+      businessDayId: businessDay.id,
+      ownerCustomerSessionId: customerSessionId,
+      openedAt: input.now,
+      status: 'active',
+      runningTotalMinor: 0,
+      expiresAt,
+      lastActivityAt: input.now,
+    };
+    const customer: CustomerSession = {
+      id: customerSessionId,
+      clubId: input.actor.clubId,
+      tableSessionId: sessionId,
+      createdAt: input.now,
+      expiresAt,
+      isTableOwner: true,
+      deviceId: input.deviceId,
+      lastHeartbeatAt: input.now,
+      recoveryTokenHash: tokens.hash(recoveryToken),
+    };
+    try {
+      await repos.tableSessions.createOwnerSession({
+        table: input.table,
+        session,
+        customerSession: customer,
+        now: input.now,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'TABLE_SESSION_OWNER_EXISTS') {
+        throw new TableSessionError(
+          'This table already has an active session. Join it instead.',
+          'OWNER_EXISTS',
+        );
+      }
+      throw error;
+    }
+    await repos.notifications.save(
+      notification(
+        `${session.id}:session-started`,
+        session,
+        customer.id,
+        'Session started.',
+        input.now,
+      ),
+    );
+    await repos.serviceTimeline.append({
+      id: `${session.id}:timeline-started`,
+      clubId: session.clubId,
+      tableSessionId: session.id,
+      type: 'session-started',
+      message: 'Your table session has started.',
+      sourceRecord: { type: 'tableSession', id: session.id },
+      occurredAt: input.now,
+    });
+    await recordAudit(
+      input.actor,
+      'session-started',
+      'tableSession',
+      session.id,
+      input.now,
+      { tableId: session.tableId, customerSessionId: customer.id },
+    );
+    await publishEvent({
+      clubId: session.clubId,
+      occurredAt: input.now,
+      actorId: input.actor.customerSessionId,
+      sourceRecord: { type: 'tableSession', id: session.id },
+      type: 'SessionStarted',
+      data: { tableId: session.tableId, customerSessionId: customer.id },
+    });
+    return access(session, customer, recoveryToken);
+  }
+
   async function access(
     session: TableSession,
     customer: CustomerSession,
@@ -302,119 +432,62 @@ export function createTableSessionService(
   }
 
   const service: TableSessionService = {
+    async validateTable(input) {
+      const table = await tableById(input.clubId, input.tableId);
+      if (table.status !== 'available' && table.status !== 'payment-split-open') {
+        throw new TableSessionError(
+          'This table is not accepting new customer sessions.',
+          'TABLE_NOT_AVAILABLE',
+        );
+      }
+      return table;
+    },
+
     async validateQr(input) {
       return tableFor(input.clubId, input.tableId, input.qrToken, input.now);
+    },
+
+    async open(input) {
+      if (input.actor.kind !== 'customer') {
+        throw new TableSessionError('Only a customer can create a table session.', 'ACCESS_DENIED');
+      }
+      const table = await tableById(input.actor.clubId, input.tableId);
+      if (table.status === 'payment-split-open' && table.activeSessionId) {
+        const session = await repos.tableSessions.getById(
+          input.actor.clubId,
+          table.activeSessionId,
+        );
+        if (!session) {
+          throw new TableSessionError('The table session was not found.', 'SESSION_NOT_FOUND');
+        }
+        return service.join({
+          actor: input.actor,
+          tableSessionId: session.id,
+          deviceId: input.deviceId,
+          now: input.now,
+          consumeSplitSlot: true,
+        });
+      }
+      assertTableCanOpen(table);
+      return createOwnerSession({
+        actor: input.actor,
+        table,
+        deviceId: input.deviceId,
+        now: input.now,
+      });
     },
 
     async createFromQr(input) {
       if (input.actor.kind !== 'customer') {
         throw new TableSessionError('Only a customer can create a table session.', 'ACCESS_DENIED');
       }
-      const settings = await settingsFor(input.actor.clubId);
       const table = await tableFor(
         input.actor.clubId,
         input.tableId,
         input.qrToken,
         input.now,
       );
-      const existing = await repos.tableSessions.getActiveForTable(
-        input.actor.clubId,
-        input.tableId,
-      );
-      if (existing) {
-        throw new TableSessionError(
-          'This table already has an active session. Join it instead.',
-          'OWNER_EXISTS',
-        );
-      }
-      const sessionId = ids.next();
-      const customerSessionId = ids.next();
-      const recoveryToken = tokens.next();
-      const businessDay = await repos.businessDays.getActive(input.actor.clubId);
-      if (!businessDay || businessDay.status !== 'open') {
-        throw new TableSessionError(
-          'The club does not have an open business day.',
-          'CONFIGURATION_INVALID',
-        );
-      }
-      const expiresAt = minDate(
-        addMinutes(input.now, settings.business.sessionTimeoutMinutes),
-        addMinutes(input.now, settings.business.maximumTableTimeMinutes),
-      );
-      const session: TableSession = {
-        id: sessionId,
-        clubId: input.actor.clubId,
-        tableId: input.tableId,
-        businessDayId: businessDay.id,
-        ownerCustomerSessionId: customerSessionId,
-        openedAt: input.now,
-        status: 'active',
-        runningTotalMinor: 0,
-        expiresAt,
-        lastActivityAt: input.now,
-      };
-      const customer: CustomerSession = {
-        id: customerSessionId,
-        clubId: input.actor.clubId,
-        tableSessionId: sessionId,
-        createdAt: input.now,
-        expiresAt,
-        isTableOwner: true,
-        deviceId: input.deviceId,
-        lastHeartbeatAt: input.now,
-        recoveryTokenHash: tokens.hash(recoveryToken),
-      };
-      try {
-        await repos.tableSessions.createOwnerSession({
-          table,
-          session,
-          customerSession: customer,
-          now: input.now,
-        });
-      } catch (error) {
-        if (error instanceof Error && error.message === 'TABLE_SESSION_OWNER_EXISTS') {
-          throw new TableSessionError(
-            'This table already has an active session. Join it instead.',
-            'OWNER_EXISTS',
-          );
-        }
-        throw error;
-      }
-      await repos.notifications.save(
-        notification(
-          `${session.id}:session-started`,
-          session,
-          customer.id,
-          'Session started.',
-          input.now,
-        ),
-      );
-      await repos.serviceTimeline.append({
-        id: `${session.id}:timeline-started`,
-        clubId: session.clubId,
-        tableSessionId: session.id,
-        type: 'session-started',
-        message: 'Your table session has started.',
-        sourceRecord: { type: 'tableSession', id: session.id },
-        occurredAt: input.now,
-      });
-      await recordAudit(
-        input.actor,
-        'session-started',
-        'tableSession',
-        session.id,
-        input.now,
-        { tableId: session.tableId, customerSessionId: customer.id },
-      );
-      await publishEvent({
-        clubId: session.clubId,
-        occurredAt: input.now,
-        actorId: input.actor.customerSessionId,
-        sourceRecord: { type: 'tableSession', id: session.id },
-        type: 'SessionStarted',
-        data: { tableId: session.tableId, customerSessionId: customer.id },
-      });
-      return access(session, customer, recoveryToken);
+      return createOwnerSession({ ...input, table });
     },
 
     async join(input) {
@@ -429,7 +502,9 @@ export function createTableSessionService(
       if (!session) {
         throw new TableSessionError('The table session was not found.', 'SESSION_NOT_FOUND');
       }
-      await tableFor(input.actor.clubId, session.tableId, input.qrToken, input.now);
+      const table = input.qrToken
+        ? await tableFor(input.actor.clubId, session.tableId, input.qrToken, input.now)
+        : await tableById(input.actor.clubId, session.tableId);
       if (
         session.status === 'closed' ||
         session.status === 'completed' ||
@@ -441,6 +516,13 @@ export function createTableSessionService(
           session.status === 'expired' || isExpired(input.now, session.expiresAt)
             ? 'SESSION_EXPIRED'
             : 'SESSION_CLOSED',
+        );
+      }
+      const consumeSplitSlot = input.consumeSplitSlot === true;
+      if (consumeSplitSlot && table.status !== 'payment-split-open') {
+        throw new TableSessionError(
+          'This table is not accepting split-session joins.',
+          'TABLE_NOT_AVAILABLE',
         );
       }
       const existingDevice = input.deviceId
@@ -483,6 +565,7 @@ export function createTableSessionService(
           session,
           customerSession: customer,
           maximumContributors: settings.business.maximumContributors,
+            consumeSplitSlot,
           now: input.now,
         });
       } catch (error) {
@@ -697,6 +780,76 @@ export function createTableSessionService(
         type: 'SessionClosed',
         data: { tableId: session.tableId },
       });
+    },
+
+    async enablePaymentSplit(input) {
+      if (input.actor.kind !== 'staff' && input.actor.kind !== 'system') {
+        throw new TableSessionError(
+          'Only authorized staff can enable bill splitting.',
+          'ACCESS_DENIED',
+        );
+      }
+      if (!Number.isInteger(input.splitCount) || input.splitCount < 1) {
+        throw new TableSessionError(
+          'Split count must be a positive integer.',
+          'CONFIGURATION_INVALID',
+        );
+      }
+      const session = await repos.tableSessions.getById(
+        input.actor.clubId,
+        input.tableSessionId,
+      );
+      if (!session) {
+        throw new TableSessionError('The table session was not found.', 'SESSION_NOT_FOUND');
+      }
+      const table = await repos.tables.getById(input.actor.clubId, session.tableId);
+      if (!table) {
+        throw new TableSessionError('The requested table was not found.', 'TABLE_NOT_FOUND');
+      }
+      if (table.activeSessionId !== session.id || session.status !== 'active') {
+        throw new TableSessionError(
+          'The table session is not accepting bill splitting.',
+          'SESSION_NOT_ACTIVE',
+        );
+      }
+      await repos.tables.save({
+        ...table,
+        status: 'payment-split-open',
+        splitSlotsRemaining: input.splitCount,
+        updatedAt: input.now,
+      });
+      await repos.tableSessions.save({
+        ...session,
+        status: 'splitting-bill',
+        lastActivityAt: input.now,
+        updatedAt: input.now,
+      });
+      await repos.notifications.save(
+        notification(
+          `${session.id}:split-open:${input.now}`,
+          session,
+          session.ownerCustomerSessionId,
+          `Bill splitting is open for ${input.splitCount} guest${input.splitCount === 1 ? '' : 's'}.`,
+          input.now,
+        ),
+      );
+      await repos.serviceTimeline.append({
+        id: `${session.id}:timeline-split-open:${input.now}`,
+        clubId: session.clubId,
+        tableSessionId: session.id,
+        type: 'payment-split-open',
+        message: `Bill splitting opened for ${input.splitCount} guest${input.splitCount === 1 ? '' : 's'}.`,
+        sourceRecord: { type: 'tableSession', id: session.id },
+        occurredAt: input.now,
+      });
+      await recordAudit(
+        input.actor,
+        'payment-split-opened',
+        'tableSession',
+        session.id,
+        input.now,
+        { tableId: table.id, splitCount: input.splitCount },
+      );
     },
   };
 

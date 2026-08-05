@@ -44,6 +44,8 @@ export const ValidateCustomerTableBody = zod.object({
 
 
 
+export const validateCustomerTableResponseTableSplitSlotsRemainingMin = 0;
+
 
 
 export const ValidateCustomerTableResponse = zod.object({
@@ -54,9 +56,63 @@ export const ValidateCustomerTableResponse = zod.object({
   "label": zod.string(),
   "capacity": zod.number().min(1).optional(),
   "qrVersion": zod.number().min(1),
-  "status": zod.string(),
-  "activeSessionId": zod.string().optional()
+  "status": zod.enum(['available', 'occupied', 'payment-split-open', 'payment-pending', 'cleaning', 'reserved', 'closed', 'ready-for-next-customer']),
+  "activeSessionId": zod.string().optional(),
+  "splitSlotsRemaining": zod.number().min(validateCustomerTableResponseTableSplitSlotsRemainingMin).optional()
 })
+})
+
+
+/**
+ * Validates the table ID and opens a customer session without a secret QR token.
+ * @summary Open a customer session from a permanent table QR
+ */
+
+
+
+export const OpenCustomerTableSessionParams = zod.object({
+  "tableId": zod.coerce.string().min(1)
+})
+
+
+
+
+
+export const OpenCustomerTableSessionBody = zod.object({
+  "clubId": zod.string().min(1),
+  "deviceId": zod.string().min(1).optional()
+})
+
+export const openCustomerTableSessionResponseTableSessionRunningTotalMinorMin = 0;
+
+
+
+export const OpenCustomerTableSessionResponse = zod.object({
+  "tableSession": zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableId": zod.string(),
+  "businessDayId": zod.string(),
+  "ownerCustomerSessionId": zod.string(),
+  "openedAt": zod.coerce.date(),
+  "closedAt": zod.coerce.date().optional(),
+  "status": zod.string(),
+  "runningTotalMinor": zod.number().min(openCustomerTableSessionResponseTableSessionRunningTotalMinorMin),
+  "expiresAt": zod.coerce.date(),
+  "lastActivityAt": zod.coerce.date()
+}),
+  "customerSession": zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date(),
+  "isTableOwner": zod.boolean(),
+  "deviceId": zod.string().optional(),
+  "lastHeartbeatAt": zod.coerce.date().optional(),
+  "expiredAt": zod.coerce.date().optional()
+}),
+  "recoveryToken": zod.string()
 })
 
 
@@ -318,6 +374,33 @@ export const CloseCustomerTableSessionParams = zod.object({
 })
 
 export const CloseCustomerTableSessionResponse = zod.void()
+
+
+/**
+ * @summary Enable a staff-controlled bill split
+ */
+
+
+
+export const EnableCustomerTableSessionSplitParams = zod.object({
+  "sessionId": zod.coerce.string().min(1)
+})
+
+
+
+
+export const EnableCustomerTableSessionSplitHeader = zod.object({
+  "X-Club-Id": zod.string().min(1)
+})
+
+
+
+
+export const EnableCustomerTableSessionSplitBody = zod.object({
+  "splitCount": zod.number().min(1)
+})
+
+export const EnableCustomerTableSessionSplitResponse = zod.void()
 
 
 /**

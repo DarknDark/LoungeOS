@@ -35,8 +35,12 @@ clubs/{clubId}
 ### Table
 
 `id`, `clubId`, `number`, `label`, `status`, `activeSessionId`,
-`qrTokenHash`, `qrTokenExpiresAt`, `version`, `updatedAt`, and optional
+`splitSlotsRemaining`, `qrVersion`, `version`, `updatedAt`, and optional
 soft-delete fields.
+
+Customer entry uses the permanent table ID embedded in the table QR. Secret
+QR token fields are legacy-only compatibility data and are not required by the
+canonical customer-entry workflow.
 
 ### Table session
 

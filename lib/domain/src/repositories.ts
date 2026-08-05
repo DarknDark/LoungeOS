@@ -71,6 +71,7 @@ export type TableSessionRepository = {
     session: TableSession;
     customerSession: CustomerSession;
     maximumContributors: number;
+    consumeSplitSlot?: boolean;
     now: ISODateString;
   }): Promise<void>;
 };

@@ -217,6 +217,50 @@ test('creates one owner and rejects a second owner', async () => {
   );
 });
 
+test('opens an owner session from a permanent table identity', async () => {
+  const { service, tables } = makeHarness();
+  const access = await service.open({
+    actor: customerActor(),
+    tableId,
+    deviceId: 'permanent-qr-device',
+    now: '2026-08-04T12:00:00.000Z',
+  });
+
+  assert.equal(access.customerSession.isTableOwner, true);
+  assert.equal(tables.get(tableId)?.status, 'occupied');
+  assert.equal(tables.get(tableId)?.activeSessionId, access.tableSession.id);
+  assert.notEqual(access.recoveryToken, 'qr-token');
+});
+
+test('opens split-mode guest sessions from the permanent table identity', async () => {
+  const { service, tables, sessions } = makeHarness();
+  const owner = await service.open({
+    actor: customerActor(),
+    tableId,
+    deviceId: 'owner-device',
+    now: '2026-08-04T12:00:00.000Z',
+  });
+
+  await service.enablePaymentSplit({
+    actor: { kind: 'staff', id: 'staff-1', staffId: 'staff-1', clubId },
+    tableSessionId: owner.tableSession.id,
+    splitCount: 2,
+    now: '2026-08-04T12:05:00.000Z',
+  });
+
+  const guest = await service.open({
+    actor: customerActor(),
+    tableId,
+    deviceId: 'guest-device',
+    now: '2026-08-04T12:06:00.000Z',
+  });
+
+  assert.equal(guest.customerSession.isTableOwner, false);
+  assert.equal(guest.tableSession.id, owner.tableSession.id);
+  assert.equal(tables.get(tableId)?.status, 'payment-split-open');
+  assert.equal(sessions.get(owner.tableSession.id)?.status, 'splitting-bill');
+});
+
 test('supports duplicate-device protection and multi-device participants', async () => {
   const { service } = makeHarness();
   const owner = await service.createFromQr({

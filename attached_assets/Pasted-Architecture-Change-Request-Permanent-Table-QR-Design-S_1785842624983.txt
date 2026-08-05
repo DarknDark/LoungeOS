@@ -1,0 +1,293 @@
+Architecture Change Request – Permanent Table QR Design
+
+Stop further smoke-test work and do not begin Module 4.
+
+We are making an intentional architecture improvement before continuing.
+
+Goal
+
+Replace the current expiring table QR-token architecture.
+
+Instead of storing a secret QR token for each table, every table will have one permanent QR that only identifies the table.
+
+Example:
+
+Table 1
+↓
+
+tableId = smoke-table-1
+
+or
+
+https://mamuslounge.com/table/smoke-table-1
+
+The QR is not a secret.
+
+It never changes during normal operation.
+
+It should only ever be replaced if the business intentionally renames/removes the table.
+
+New Architecture
+
+When a QR is scanned:
+
+Step 1
+
+Read the table ID.
+
+Example:
+
+tableId = smoke-table-1
+
+Step 2
+
+The server checks:
+
+Does this table exist?
+Is it active?
+Is it currently available?
+Is it accepting new customer sessions?
+
+Step 3
+
+If the table is available:
+
+Create
+
+Table Session (if one doesn't already exist)
+Customer Session
+Customer access token
+Recovery token
+Session expiry
+
+Return only the customer session information.
+
+The QR itself never changes.
+
+Remove QR Secrets
+
+Remove the requirement for:
+
+qrToken
+qrTokenHash
+qrTokenExpiresAt
+
+for customer entry.
+
+These should no longer be part of the customer-entry workflow.
+
+Customer access security must come from server-generated customer sessions rather than secret QR values.
+
+Table States
+
+A table should explicitly support these states:
+
+AVAILABLE
+
+OCCUPIED
+
+PAYMENT_SPLIT_OPEN
+
+CLOSED
+
+Meaning:
+
+AVAILABLE
+
+New customers may scan.
+
+OCCUPIED
+
+No new customer sessions may be created.
+
+Scanning should return:
+
+This table already has an active session.
+Please ask your waiter.
+
+PAYMENT_SPLIT_OPEN
+
+The waiter has enabled bill splitting.
+
+Example:
+
+Split Count = 2
+
+Exactly two additional customer scans are allowed.
+
+Each successful scan consumes one slot.
+
+Example:
+
+Remaining slots:
+
+2
+
+↓
+
+1
+
+↓
+
+0
+
+When zero is reached:
+
+Automatically return the table to
+
+OCCUPIED
+
+CLOSED
+
+After the waiter confirms payment and closes the table:
+
+End
+
+table session
+customer sessions
+payment tickets
+
+Return table to
+
+AVAILABLE
+
+without changing the QR.
+
+Customer Tokens
+
+The permanent QR should NEVER become the customer identity.
+
+Instead:
+
+Permanent QR
+
+↓
+
+Table ID
+
+↓
+
+Server validation
+
+↓
+
+Create customer session
+
+↓
+
+Generate secure customer token
+
+↓
+
+Return dashboard
+
+Every customer receives a unique secure session.
+
+Waiter Responsibilities
+
+Only staff can:
+
+Open table
+Enable payment split
+Set number of split slots
+Close table after payment
+
+Customers cannot reopen tables.
+
+Bill Splitting
+
+If waiter selects:
+
+Split bill
+
+Count = N
+
+Then:
+
+Allow exactly N additional QR scans.
+
+Each scan creates one linked customer session.
+
+After all slots are consumed:
+
+Close split mode automatically.
+
+No further joins allowed.
+
+Recovery
+
+Customer recovery should use the customer recovery token.
+
+Never regenerate or rotate the permanent QR.
+
+Data Migration
+
+Do NOT create duplicate clubs or duplicate tables.
+
+Migrate the existing seeded table to the new architecture.
+
+Preserve:
+
+club
+menu
+inventory
+historical orders
+sessions where applicable
+
+Remove only obsolete QR-token logic.
+
+API Changes
+
+Replace QR validation by secret token with validation by table ID.
+
+Example:
+
+Instead of
+
+POST /customer/tables/:tableId/validate
+{
+    qrToken: "..."
+}
+
+move toward
+
+POST /customer/tables/:tableId/open
+
+or an equivalent endpoint that validates the table state and creates a customer session.
+
+Do not break existing clients immediately.
+
+If necessary, keep the old endpoint temporarily as a compatibility layer while internally routing to the new architecture.
+
+Testing
+
+After implementation:
+
+Verify:
+
+Permanent QR works repeatedly.
+Same QR works after hundreds of table turnovers.
+Closing a table allows new customers immediately.
+Occupied tables reject new customers.
+Split mode allows exactly N joins.
+Historical orders remain intact.
+Existing security guarantees remain intact.
+No new QR generation is required during normal business.
+Important
+
+Do not begin Module 4.
+
+First complete this architectural refactor.
+
+Update all affected services, repositories, tests, API contracts, documentation, and smoke tests.
+
+When complete, provide:
+
+Files changed.
+Architecture decisions.
+Migration summary.
+Backward compatibility notes.
+Full verification report.
+Any risks introduced by the new permanent-QR architecture.
+
+This refactor becomes the new canonical QR design for LoungeOS going forward.

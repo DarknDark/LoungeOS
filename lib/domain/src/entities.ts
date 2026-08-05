@@ -16,6 +16,7 @@ export type Club = {
 export type TableStatus =
   | 'available'
   | 'occupied'
+  | 'payment-split-open'
   | 'payment-pending'
   | 'cleaning'
   | 'reserved'
@@ -29,10 +30,13 @@ export type Table = VersionedRecord & {
   label: string;
   capacity?: number;
   qrVersion: number;
+  /** @deprecated Legacy compatibility only; canonical entry uses tableId. */
   qrTokenHash?: string;
+  /** @deprecated Legacy compatibility only; canonical entry uses tableId. */
   qrTokenExpiresAt?: ISODateString;
   status: TableStatus;
   activeSessionId?: EntityId;
+  splitSlotsRemaining?: number;
 };
 
 export type TableSessionStatus =

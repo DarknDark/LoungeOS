@@ -94,8 +94,13 @@ function mergeHeaders(...sources: Array<HeadersInit | undefined>): Headers {
 }
 
 function requestKey(url: string, method: string, headers: Headers, body: BodyInit | null | undefined): string {
-  const headerKey = Array.from(headers.entries())
-    .filter(([key]) => key !== "authorization" && key !== "x-customer-session-token")
+  const headerEntries: Array<[string, string]> = [];
+  headers.forEach((value, key) => {
+    if (key !== "authorization" && key !== "x-customer-session-token") {
+      headerEntries.push([key, value]);
+    }
+  });
+  const headerKey = headerEntries
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([key, value]) => `${key}:${value}`)
     .join("|");

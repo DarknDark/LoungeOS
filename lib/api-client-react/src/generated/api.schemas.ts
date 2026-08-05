@@ -183,6 +183,13 @@ export interface QrValidationRequest {
   qrToken: string;
 }
 
+export interface OpenTableSessionRequest {
+  /** @minLength 1 */
+  clubId: string;
+  /** @minLength 1 */
+  deviceId?: string;
+}
+
 export interface CreateTableSessionRequest {
   /** @minLength 1 */
   clubId: string;
@@ -221,6 +228,25 @@ export interface HeartbeatRequest {
   customerSessionId: string;
 }
 
+export interface SplitTableSessionRequest {
+  /** @minimum 1 */
+  splitCount: number;
+}
+
+export type TableStatus = typeof TableStatus[keyof typeof TableStatus];
+
+
+export const TableStatus = {
+  available: 'available',
+  occupied: 'occupied',
+  'payment-split-open': 'payment-split-open',
+  'payment-pending': 'payment-pending',
+  cleaning: 'cleaning',
+  reserved: 'reserved',
+  closed: 'closed',
+  'ready-for-next-customer': 'ready-for-next-customer',
+} as const;
+
 export interface Table {
   id: string;
   clubId: string;
@@ -231,8 +257,10 @@ export interface Table {
   capacity?: number;
   /** @minimum 1 */
   qrVersion: number;
-  status: string;
+  status: TableStatus;
   activeSessionId?: string;
+  /** @minimum 0 */
+  splitSlotsRemaining?: number;
 }
 
 export interface TableValidationResponse {

@@ -2,6 +2,7 @@
 - [Expo SDK migration](expo-sdk-migration.md) — SDK 57 needs a fully aligned package graph and a non-default Metro build port in this workspace.
 - [Firebase preparation](firebase-preparation.md) — Firestore/Auth live verification is blocked until Firebase Admin Secrets are securely added.
 - [Firebase Firestore access](firebase-firestore-access.md) — Admin Auth can pass while Firestore RPCs remain denied; verify effective IAM and database alignment separately.
+- [Generated API codegen](generated-api-codegen.md) — Orval’s split Zod output needs deterministic barrel normalization to avoid runtime/type export collisions.
 - [Infrastructure hardening](infrastructure-hardening.md) — shared audit, notification, timeline, event, realtime, offline-sync, metrics, and locking primitives are provider-neutral.
 - [Ordering Engine](ordering-engine.md) — Module 3 uses Firebase tenant-scoped repositories with centralized pricing, idempotency, reservations, and shared lifecycle side effects.
 - [Mobile live ordering](mobile-live-integration.md) — customer mobile uses live sessions/orders with secure credentials; unsupported payment, staff, song, waiter, and client-realtime transports stay explicit.

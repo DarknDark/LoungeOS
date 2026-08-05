@@ -303,6 +303,7 @@ export class FirestoreTableSessionRepository implements TableSessionRepository {
     session: TableSession;
     customerSession: CustomerSession;
     maximumContributors: number;
+    consumeSplitSlot?: boolean;
     now: string;
   }): Promise<void> {
     const sessionReference = scopedCollection(
@@ -315,13 +316,29 @@ export class FirestoreTableSessionRepository implements TableSessionRepository {
       input.session.clubId,
       FIRESTORE_COLLECTIONS.customerSessions,
     );
+    const tableReference = scopedCollection(
+      this.firestore,
+      input.session.clubId,
+      FIRESTORE_COLLECTIONS.tables,
+    ).doc(input.session.tableId);
     await this.firestore.runTransaction(async (transaction: Transaction) => {
       const sessionSnapshot = await transaction.get(sessionReference);
       const currentSession = sessionSnapshot.data() as TableSession | undefined;
       if (
         !currentSession ||
-        currentSession.status !== 'active' ||
+        (currentSession.status !== 'active' &&
+          !(input.consumeSplitSlot && currentSession.status === 'splitting-bill')) ||
         new Date(currentSession.expiresAt).getTime() <= new Date(input.now).getTime()
+      ) {
+        throw new Error('TABLE_SESSION_NOT_ACTIVE');
+      }
+      const tableSnapshot = await transaction.get(tableReference);
+      const currentTable = tableSnapshot.data() as Table | undefined;
+      if (
+        input.consumeSplitSlot &&
+        (!currentTable ||
+          currentTable.status !== 'payment-split-open' ||
+          (currentTable.splitSlotsRemaining ?? 0) <= 0)
       ) {
         throw new Error('TABLE_SESSION_NOT_ACTIVE');
       }
@@ -340,6 +357,19 @@ export class FirestoreTableSessionRepository implements TableSessionRepository {
         customerSessionCollection.doc(input.customerSession.id),
         input.customerSession,
       );
+      if (input.consumeSplitSlot && currentTable) {
+        const remaining = (currentTable.splitSlotsRemaining ?? 0) - 1;
+        transaction.set(
+          tableReference,
+          {
+            ...currentTable,
+            status: remaining === 0 ? 'occupied' : 'payment-split-open',
+            splitSlotsRemaining: remaining,
+            updatedAt: input.now,
+          },
+          { merge: true },
+        );
+      }
       transaction.set(
         sessionReference,
         { lastActivityAt: input.now },
