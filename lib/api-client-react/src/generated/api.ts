@@ -38,6 +38,7 @@ import type {
   QrValidationRequest,
   RecoverTableSessionRequest,
   SplitTableSessionRequest,
+  StaffTableListResponse,
   SubmitOrderBody,
   SubmitPaymentRequest,
   TableSession,
@@ -1015,6 +1016,84 @@ export const useOpenManualStaffTableSession = <TError = ErrorType<ApiErrorRespon
       > => {
       return useMutation(getOpenManualStaffTableSessionMutationOptions(options));
     }
+
+export const getListStaffTablesUrl = () => {
+
+
+
+
+  return `/api/v1/staff/tables`
+}
+
+/**
+ * Returns permanent tables with their active session, shared orders, payments, and pending join requests.
+ * @summary List table states and live waiter operations
+ */
+export const listStaffTables = async ( options?: Parameters<typeof customFetch>[1]): Promise<StaffTableListResponse> => {
+
+  return customFetch<StaffTableListResponse>(getListStaffTablesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListStaffTablesQueryKey = () => {
+    return [
+    `/api/v1/staff/tables`
+    ] as const;
+    }
+
+
+export const getListStaffTablesQueryOptions = <TData = Awaited<ReturnType<typeof listStaffTables>>, TError = ErrorType<ApiErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStaffTables>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListStaffTablesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStaffTables>>> = ({ signal }) => listStaffTables({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStaffTables>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListStaffTablesQueryResult = NonNullable<Awaited<ReturnType<typeof listStaffTables>>>
+export type ListStaffTablesQueryError = ErrorType<ApiErrorResponse>
+
+
+/**
+ * @summary List table states and live waiter operations
+ */
+
+export function useListStaffTables<TData = Awaited<ReturnType<typeof listStaffTables>>, TError = ErrorType<ApiErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStaffTables>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListStaffTablesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListStaffTableSessionJoinRequestsUrl = (sessionId: string,) => {
 

@@ -616,6 +616,124 @@ export const OpenManualStaffTableSessionResponse = zod.object({
 
 
 /**
+ * Returns permanent tables with their active session, shared orders, payments, and pending join requests.
+ * @summary List table states and live waiter operations
+ */
+
+
+
+export const ListStaffTablesHeader = zod.object({
+  "X-Club-Id": zod.string().min(1)
+})
+
+
+
+
+export const listStaffTablesResponseTablesItemTableSplitSlotsRemainingMin = 0;
+
+export const listStaffTablesResponseTablesItemSessionOneRunningTotalMinorMin = 0;
+
+export const listStaffTablesResponseTablesItemPaymentsItemAmountMinorMin = 0;
+
+
+
+export const ListStaffTablesResponse = zod.object({
+  "tables": zod.array(zod.object({
+  "table": zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "number": zod.number().min(1),
+  "label": zod.string(),
+  "capacity": zod.number().min(1).optional(),
+  "qrVersion": zod.number().min(1),
+  "status": zod.enum(['available', 'active', 'finishing']),
+  "activeSessionId": zod.string().optional(),
+  "splitSlotsRemaining": zod.number().min(listStaffTablesResponseTablesItemTableSplitSlotsRemainingMin).optional()
+}),
+  "session": zod.union([zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableId": zod.string(),
+  "businessDayId": zod.string(),
+  "ownerCustomerSessionId": zod.string().optional(),
+  "controllerType": zod.enum(['customer', 'staff']),
+  "controllerStaffId": zod.string().optional(),
+  "openedAt": zod.coerce.date(),
+  "closedAt": zod.coerce.date().optional(),
+  "status": zod.enum(['created', 'active', 'splitting-bill', 'awaiting-payment', 'payment-pending', 'completed', 'closed', 'expired']),
+  "runningTotalMinor": zod.number().min(listStaffTablesResponseTablesItemSessionOneRunningTotalMinorMin),
+  "expiresAt": zod.coerce.date(),
+  "lastActivityAt": zod.coerce.date()
+}),zod.null()]),
+  "orders": zod.array(zod.object({
+  "order": zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "customerSessionId": zod.string(),
+  "createdByStaffId": zod.string().optional(),
+  "status": zod.enum(['draft', 'submitted', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled']),
+  "itemIds": zod.array(zod.string()),
+  "idempotencyKey": zod.string(),
+  "subtotalMinor": zod.number(),
+  "taxMinor": zod.number(),
+  "serviceChargeMinor": zod.number(),
+  "discountMinor": zod.number(),
+  "totalMinor": zod.number(),
+  "notes": zod.string().optional(),
+  "version": zod.number().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().optional()
+}),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "menuItemId": zod.string(),
+  "nameSnapshot": zod.string(),
+  "unitPriceMinor": zod.number(),
+  "quantity": zod.number(),
+  "modifiers": zod.array(zod.object({
+  "modifierId": zod.string(),
+  "optionIds": zod.array(zod.string())
+})),
+  "notes": zod.string().optional(),
+  "lineSubtotalMinor": zod.number()
+}))
+})),
+  "payments": zod.array(zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "businessDayId": zod.string(),
+  "method": zod.enum(['cash', 'till', 'mpesa']),
+  "amountMinor": zod.number().min(listStaffTablesResponseTablesItemPaymentsItemAmountMinorMin),
+  "currency": zod.string(),
+  "status": zod.enum(['pending', 'submitted', 'verified', 'rejected', 'expired']),
+  "providerReference": zod.string().optional(),
+  "verifiedByStaffId": zod.string().optional(),
+  "createdAt": zod.coerce.date(),
+  "verifiedAt": zod.coerce.date().optional()
+})),
+  "joinRequests": zod.array(zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date(),
+  "isTableOwner": zod.boolean(),
+  "accessLevel": zod.enum(['owner', 'participant', 'temporary']),
+  "approvalStatus": zod.enum(['approved', 'pending-approval']),
+  "approvalRequestedAt": zod.coerce.date().optional(),
+  "approvedAt": zod.coerce.date().optional(),
+  "approvedByStaffId": zod.string().optional(),
+  "deviceId": zod.string().optional(),
+  "lastHeartbeatAt": zod.coerce.date().optional(),
+  "expiredAt": zod.coerce.date().optional()
+}))
+}))
+})
+
+
+/**
  * @summary List pending customer requests to join a manual table
  */
 

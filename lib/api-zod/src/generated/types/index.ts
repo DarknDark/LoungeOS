@@ -42,6 +42,8 @@ export * from './paymentResponseStatus';
 export * from './qrValidationRequest';
 export * from './recoverTableSessionRequest';
 export * from './splitTableSessionRequest';
+export * from './staffTableListResponse';
+export * from './staffTableOperations';
 export * from './submitOrderBody';
 export * from './submitPaymentRequest';
 export * from './submitPaymentRequestMethod';

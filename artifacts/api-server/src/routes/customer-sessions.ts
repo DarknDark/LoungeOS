@@ -27,6 +27,7 @@ import {
 import { TableSessionError } from "@workspace/application";
 import { requireFirebaseStaff } from "../middlewares/firebase-staff";
 import { getModule2TableSessionService } from "../lib/module2";
+import { getModule3Repositories } from "../lib/module3";
 
 const router: IRouter = Router();
 const CUSTOMER_TOKEN_HEADER = "x-customer-session-token";
@@ -496,6 +497,72 @@ router.post(
         now: now(),
       });
       res.status(201).json(session);
+    } catch (error) {
+      sendError(res, error);
+    }
+  },
+);
+
+router.get(
+  "/v1/staff/tables",
+  requireFirebaseStaff,
+  async (req, res) => {
+    const clubId = headerValue(req, "X-Club-Id");
+    const identity = res.locals.firebaseStaff;
+    if (!clubId || !identity) {
+      res.status(400).json({
+        error: { code: "CLUB_ID_REQUIRED", message: "X-Club-Id is required." },
+      });
+      return;
+    }
+    try {
+      const context = await staffForRequest(req, res, clubId, identity);
+      if (!context) return;
+      if (!canManageTables(context.staff, context.roles)) {
+        res.status(403).json({
+          error: { code: "PERMISSION_DENIED", message: "Table management is not permitted." },
+        });
+        return;
+      }
+
+      const repositories = getModule3Repositories();
+      const tablePage = await repositories.tables.list(clubId);
+      const tables = await Promise.all(
+        tablePage.items.map(async (table) => {
+          const session = table.activeSessionId
+            ? await repositories.tableSessions.getById(clubId, table.activeSessionId)
+            : null;
+          if (!session) {
+            return {
+              table,
+              session: null,
+              orders: [],
+              payments: [],
+              joinRequests: [],
+            };
+          }
+          const [orderPage, payments, customers] = await Promise.all([
+            repositories.orders.listForSession(clubId, session.id),
+            repositories.payments.listForSession(clubId, session.id),
+            repositories.customerSessions.listForTableSession(clubId, session.id),
+          ]);
+          return {
+            table,
+            session,
+            orders: await Promise.all(
+              orderPage.items.map(async (order) => ({
+                order,
+                items: await repositories.orderItems.listForOrder(clubId, order.id),
+              })),
+            ),
+            payments: payments.items,
+            joinRequests: customers.filter(
+              (customer) => customer.approvalStatus === "pending-approval" && !customer.expiredAt,
+            ),
+          };
+        }),
+      );
+      res.json({ tables });
     } catch (error) {
       sendError(res, error);
     }

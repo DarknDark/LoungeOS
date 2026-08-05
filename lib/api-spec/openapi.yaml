@@ -290,6 +290,27 @@ paths:
           $ref: "#/components/responses/ApiError"
         "409":
           $ref: "#/components/responses/ApiError"
+  /v1/staff/tables:
+    get:
+      operationId: listStaffTables
+      tags: [customer-sessions]
+      summary: List table states and live waiter operations
+      description: Returns permanent tables with their active session, shared orders, payments, and pending join requests.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+      responses:
+        "200":
+          description: Current table operations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffTableListResponse"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
   /v1/staff/table-sessions/{sessionId}/join-requests:
     get:
       operationId: listStaffTableSessionJoinRequests
@@ -925,6 +946,36 @@ components:
           items:
             $ref: "#/components/schemas/OrderResponse"
       required: [orders]
+    StaffTableListResponse:
+      type: object
+      properties:
+        tables:
+          type: array
+          items:
+            $ref: "#/components/schemas/StaffTableOperations"
+      required: [tables]
+    StaffTableOperations:
+      type: object
+      properties:
+        table:
+          $ref: "#/components/schemas/Table"
+        session:
+          anyOf:
+            - $ref: "#/components/schemas/TableSession"
+            - type: "null"
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderResponse"
+        payments:
+          type: array
+          items:
+            $ref: "#/components/schemas/PaymentResponse"
+        joinRequests:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerSession"
+      required: [table, session, orders, payments, joinRequests]
     QrValidationRequest:
       type: object
       properties:

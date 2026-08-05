@@ -179,6 +179,152 @@ export interface OrderListResponse {
   orders: OrderResponse[];
 }
 
+export type TableStatus = typeof TableStatus[keyof typeof TableStatus];
+
+
+export const TableStatus = {
+  available: 'available',
+  active: 'active',
+  finishing: 'finishing',
+} as const;
+
+export interface Table {
+  id: string;
+  clubId: string;
+  /** @minimum 1 */
+  number: number;
+  label: string;
+  /** @minimum 1 */
+  capacity?: number;
+  /** @minimum 1 */
+  qrVersion: number;
+  status: TableStatus;
+  activeSessionId?: string;
+  /** @minimum 0 */
+  splitSlotsRemaining?: number;
+}
+
+export type TableSessionControllerType = typeof TableSessionControllerType[keyof typeof TableSessionControllerType];
+
+
+export const TableSessionControllerType = {
+  customer: 'customer',
+  staff: 'staff',
+} as const;
+
+export type TableSessionStatus = typeof TableSessionStatus[keyof typeof TableSessionStatus];
+
+
+export const TableSessionStatus = {
+  created: 'created',
+  active: 'active',
+  'splitting-bill': 'splitting-bill',
+  'awaiting-payment': 'awaiting-payment',
+  'payment-pending': 'payment-pending',
+  completed: 'completed',
+  closed: 'closed',
+  expired: 'expired',
+} as const;
+
+export interface TableSession {
+  id: string;
+  clubId: string;
+  tableId: string;
+  businessDayId: string;
+  ownerCustomerSessionId?: string;
+  controllerType: TableSessionControllerType;
+  controllerStaffId?: string;
+  openedAt: string;
+  closedAt?: string;
+  status: TableSessionStatus;
+  /** @minimum 0 */
+  runningTotalMinor: number;
+  expiresAt: string;
+  lastActivityAt: string;
+}
+
+export type PaymentResponseMethod = typeof PaymentResponseMethod[keyof typeof PaymentResponseMethod];
+
+
+export const PaymentResponseMethod = {
+  cash: 'cash',
+  till: 'till',
+  mpesa: 'mpesa',
+} as const;
+
+export type PaymentResponseStatus = typeof PaymentResponseStatus[keyof typeof PaymentResponseStatus];
+
+
+export const PaymentResponseStatus = {
+  pending: 'pending',
+  submitted: 'submitted',
+  verified: 'verified',
+  rejected: 'rejected',
+  expired: 'expired',
+} as const;
+
+export interface PaymentResponse {
+  id: string;
+  clubId: string;
+  tableSessionId: string;
+  businessDayId: string;
+  method: PaymentResponseMethod;
+  /** @minimum 0 */
+  amountMinor: number;
+  currency: string;
+  status: PaymentResponseStatus;
+  providerReference?: string;
+  verifiedByStaffId?: string;
+  createdAt: string;
+  verifiedAt?: string;
+}
+
+export type CustomerSessionAccessLevel = typeof CustomerSessionAccessLevel[keyof typeof CustomerSessionAccessLevel];
+
+
+export const CustomerSessionAccessLevel = {
+  owner: 'owner',
+  participant: 'participant',
+  temporary: 'temporary',
+} as const;
+
+export type CustomerSessionApprovalStatus = typeof CustomerSessionApprovalStatus[keyof typeof CustomerSessionApprovalStatus];
+
+
+export const CustomerSessionApprovalStatus = {
+  approved: 'approved',
+  'pending-approval': 'pending-approval',
+} as const;
+
+export interface CustomerSession {
+  id: string;
+  clubId: string;
+  tableSessionId: string;
+  createdAt: string;
+  expiresAt: string;
+  isTableOwner: boolean;
+  accessLevel: CustomerSessionAccessLevel;
+  approvalStatus: CustomerSessionApprovalStatus;
+  approvalRequestedAt?: string;
+  approvedAt?: string;
+  approvedByStaffId?: string;
+  deviceId?: string;
+  lastHeartbeatAt?: string;
+  expiredAt?: string;
+}
+
+export interface StaffTableOperations {
+  table: Table;
+  session: TableSession | null;
+  orders: OrderResponse[];
+  payments: PaymentResponse[];
+  joinRequests: CustomerSession[];
+}
+
+export interface StaffTableListResponse {
+  tables: StaffTableOperations[];
+}
+
 export interface QrValidationRequest {
   /** @minLength 1 */
   qrToken: string;
@@ -257,142 +403,8 @@ export interface SubmitPaymentRequest {
   method: SubmitPaymentRequestMethod;
 }
 
-export type PaymentResponseMethod = typeof PaymentResponseMethod[keyof typeof PaymentResponseMethod];
-
-
-export const PaymentResponseMethod = {
-  cash: 'cash',
-  till: 'till',
-  mpesa: 'mpesa',
-} as const;
-
-export type PaymentResponseStatus = typeof PaymentResponseStatus[keyof typeof PaymentResponseStatus];
-
-
-export const PaymentResponseStatus = {
-  pending: 'pending',
-  submitted: 'submitted',
-  verified: 'verified',
-  rejected: 'rejected',
-  expired: 'expired',
-} as const;
-
-export interface PaymentResponse {
-  id: string;
-  clubId: string;
-  tableSessionId: string;
-  businessDayId: string;
-  method: PaymentResponseMethod;
-  /** @minimum 0 */
-  amountMinor: number;
-  currency: string;
-  status: PaymentResponseStatus;
-  providerReference?: string;
-  verifiedByStaffId?: string;
-  createdAt: string;
-  verifiedAt?: string;
-}
-
-export type TableStatus = typeof TableStatus[keyof typeof TableStatus];
-
-
-export const TableStatus = {
-  available: 'available',
-  active: 'active',
-  finishing: 'finishing',
-} as const;
-
-export interface Table {
-  id: string;
-  clubId: string;
-  /** @minimum 1 */
-  number: number;
-  label: string;
-  /** @minimum 1 */
-  capacity?: number;
-  /** @minimum 1 */
-  qrVersion: number;
-  status: TableStatus;
-  activeSessionId?: string;
-  /** @minimum 0 */
-  splitSlotsRemaining?: number;
-}
-
 export interface TableValidationResponse {
   table: Table;
-}
-
-export type TableSessionControllerType = typeof TableSessionControllerType[keyof typeof TableSessionControllerType];
-
-
-export const TableSessionControllerType = {
-  customer: 'customer',
-  staff: 'staff',
-} as const;
-
-export type TableSessionStatus = typeof TableSessionStatus[keyof typeof TableSessionStatus];
-
-
-export const TableSessionStatus = {
-  created: 'created',
-  active: 'active',
-  'splitting-bill': 'splitting-bill',
-  'awaiting-payment': 'awaiting-payment',
-  'payment-pending': 'payment-pending',
-  completed: 'completed',
-  closed: 'closed',
-  expired: 'expired',
-} as const;
-
-export interface TableSession {
-  id: string;
-  clubId: string;
-  tableId: string;
-  businessDayId: string;
-  ownerCustomerSessionId?: string;
-  controllerType: TableSessionControllerType;
-  controllerStaffId?: string;
-  openedAt: string;
-  closedAt?: string;
-  status: TableSessionStatus;
-  /** @minimum 0 */
-  runningTotalMinor: number;
-  expiresAt: string;
-  lastActivityAt: string;
-}
-
-export type CustomerSessionAccessLevel = typeof CustomerSessionAccessLevel[keyof typeof CustomerSessionAccessLevel];
-
-
-export const CustomerSessionAccessLevel = {
-  owner: 'owner',
-  participant: 'participant',
-  temporary: 'temporary',
-} as const;
-
-export type CustomerSessionApprovalStatus = typeof CustomerSessionApprovalStatus[keyof typeof CustomerSessionApprovalStatus];
-
-
-export const CustomerSessionApprovalStatus = {
-  approved: 'approved',
-  'pending-approval': 'pending-approval',
-} as const;
-
-export interface CustomerSession {
-  id: string;
-  clubId: string;
-  tableSessionId: string;
-  createdAt: string;
-  expiresAt: string;
-  isTableOwner: boolean;
-  accessLevel: CustomerSessionAccessLevel;
-  approvalStatus: CustomerSessionApprovalStatus;
-  approvalRequestedAt?: string;
-  approvedAt?: string;
-  approvedByStaffId?: string;
-  deviceId?: string;
-  lastHeartbeatAt?: string;
-  expiredAt?: string;
 }
 
 export interface TableSessionAccess {
