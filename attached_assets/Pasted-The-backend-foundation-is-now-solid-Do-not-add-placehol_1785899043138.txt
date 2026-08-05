@@ -1,0 +1,285 @@
+The backend foundation is now solid. Do not add placeholder features or fake authentication. From this point onward, focus on making the application behave exactly like a real nightclub.
+
+1. Replace polling with realtime
+
+The waiter dashboard should update automatically.
+
+Whenever any of these happen:
+
+customer places order
+customer presses Pay Now
+customer presses Close Tab
+customer requests waiter
+customer requests a song
+payment is confirmed
+waiter closes table
+waiter reopens table
+
+the dashboard should update immediately without refreshing.
+
+If Firebase listeners are available for authenticated staff, use them.
+
+If not, use lightweight polling (3–5 seconds) until realtime is connected.
+
+2. Waiter Dashboard Layout
+
+Organize the dashboard into clear sections.
+
+Active Tables
+
+Show cards like:
+
+Table 1
+Running Bill: KSh 3,450
+Guests: 4
+Status: Dining
+
+Buttons
+
+Open
+Add Order
+View Bill
+Finishing Up
+
+Customer pressed Close Tab.
+
+Example
+
+Table 5
+
+Waiting for waiter
+
+Outstanding:
+KSh 2,100
+
+Payment:
+M-Pesa Submitted
+
+Buttons
+
+Verify Payment
+Collect Cash
+Close Table
+
+When Close Table succeeds:
+
+end customer session
+end table session
+clear temporary dashboard
+clear split-payment tickets
+clear join requests
+release table
+
+The QR immediately becomes available again.
+
+Join Requests
+Table 7
+
+2 guests waiting
+
+Buttons
+
+Approve
+
+Reject
+
+Payment Queue
+
+Show
+
+pending
+verified
+cash waiting
+Song Requests
+
+Newest first.
+
+Notifications
+
+Kitchen ready
+
+Waiter requested
+
+Bill paid
+
+etc.
+
+3. Manual Table Mode
+
+If customers never scan the QR:
+
+Waiter opens the table manually.
+
+Everything works exactly the same.
+
+Orders
+
+Kitchen
+
+Inventory
+
+Running bill
+
+Timeline
+
+Audit
+
+The only difference:
+
+Customer dashboard never exists.
+
+If the customer later scans the table QR:
+
+Do not make them owner.
+
+Instead show:
+
+This table is currently being managed by your waiter.
+
+Please call your waiter for access.
+
+The waiter receives
+
+Customer at Table 7 wants to view the running bill.
+
+Buttons
+
+Approve
+
+Reject
+
+If approved:
+
+Open a Temporary Dashboard.
+
+Temporary dashboard allows only:
+
+View running bill
+Request song
+Call waiter
+
+No ordering.
+
+No payment.
+
+No bill splitting.
+
+No becoming owner.
+
+When waiter closes table:
+
+Temporary dashboard disappears automatically.
+
+4. Pay Now
+
+Customer may pay without leaving.
+
+Workflow:
+
+Customer presses
+
+Pay Now
+
+They pay.
+
+Waiter verifies payment.
+
+Running balance becomes zero.
+
+Table remains ACTIVE.
+
+Customer keeps ordering.
+
+Later they can Pay Now again.
+
+Or eventually Close Tab.
+
+5. Close Tab
+
+Customer presses
+
+Close Tab
+
+Show
+
+You're almost done.
+
+A waiter is coming to complete your payment.
+
+Buttons
+
+Cancel
+
+Continue Payment
+
+If they cancel:
+
+Nothing changes.
+
+They continue ordering.
+
+6. SMS Receipt
+
+Design the system so receipt providers are pluggable.
+
+After payment confirmation:
+
+M-Pesa / Till
+
+Automatically send an SMS receipt to the payer's phone number (retrieved from the payment transaction).
+
+No prompt required.
+
+Cash
+
+Ask:
+
+Would you like your receipt by SMS?
+
+If yes:
+
+Collect phone number.
+
+Send receipt.
+
+Otherwise print if printing is available.
+
+Do not hardcode any SMS provider yet.
+
+Create a ReceiptService interface so Africa's Talking, Twilio, or another provider can be added later without changing business logic.
+
+7. Customer Ownership
+
+Keep the permanent QR philosophy.
+
+The QR identifies only the table.
+
+Never the customer.
+
+Scanning creates a new customer session.
+
+Ownership belongs to the active session, not the QR.
+
+The QR should live on the table for months or years and should not need to be reprinted after every customer.
+
+8. Before Building Anything Else
+
+Do not start Module 4.
+
+Finish and polish the complete table lifecycle first:
+
+Customer scan
+Manual waiter mode
+Owner mode
+Temporary dashboard
+Pay Now
+Close Tab
+Waiter verification
+Waiter Close Table
+Automatic table release
+Realtime updates
+Receipts
+
+Only after this entire workflow is stable, tested, and production-ready should development move on to the next module.
+
+This keeps the focus on delivering a polished, reliable experience before adding new features.
