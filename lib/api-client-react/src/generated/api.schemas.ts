@@ -233,18 +233,62 @@ export interface SplitTableSessionRequest {
   splitCount: number;
 }
 
+export type SubmitPaymentRequestMethod = typeof SubmitPaymentRequestMethod[keyof typeof SubmitPaymentRequestMethod];
+
+
+export const SubmitPaymentRequestMethod = {
+  cash: 'cash',
+  till: 'till',
+  mpesa: 'mpesa',
+} as const;
+
+export interface SubmitPaymentRequest {
+  method: SubmitPaymentRequestMethod;
+}
+
+export type PaymentResponseMethod = typeof PaymentResponseMethod[keyof typeof PaymentResponseMethod];
+
+
+export const PaymentResponseMethod = {
+  cash: 'cash',
+  till: 'till',
+  mpesa: 'mpesa',
+} as const;
+
+export type PaymentResponseStatus = typeof PaymentResponseStatus[keyof typeof PaymentResponseStatus];
+
+
+export const PaymentResponseStatus = {
+  pending: 'pending',
+  submitted: 'submitted',
+  verified: 'verified',
+  rejected: 'rejected',
+  expired: 'expired',
+} as const;
+
+export interface PaymentResponse {
+  id: string;
+  clubId: string;
+  tableSessionId: string;
+  businessDayId: string;
+  method: PaymentResponseMethod;
+  /** @minimum 0 */
+  amountMinor: number;
+  currency: string;
+  status: PaymentResponseStatus;
+  providerReference?: string;
+  verifiedByStaffId?: string;
+  createdAt: string;
+  verifiedAt?: string;
+}
+
 export type TableStatus = typeof TableStatus[keyof typeof TableStatus];
 
 
 export const TableStatus = {
   available: 'available',
   occupied: 'occupied',
-  'payment-split-open': 'payment-split-open',
-  'payment-pending': 'payment-pending',
-  cleaning: 'cleaning',
-  reserved: 'reserved',
-  closed: 'closed',
-  'ready-for-next-customer': 'ready-for-next-customer',
+  'finishing-up': 'finishing-up',
 } as const;
 
 export interface Table {
@@ -267,6 +311,20 @@ export interface TableValidationResponse {
   table: Table;
 }
 
+export type TableSessionStatus = typeof TableSessionStatus[keyof typeof TableSessionStatus];
+
+
+export const TableSessionStatus = {
+  created: 'created',
+  active: 'active',
+  'splitting-bill': 'splitting-bill',
+  'awaiting-payment': 'awaiting-payment',
+  'payment-pending': 'payment-pending',
+  completed: 'completed',
+  closed: 'closed',
+  expired: 'expired',
+} as const;
+
 export interface TableSession {
   id: string;
   clubId: string;
@@ -275,7 +333,7 @@ export interface TableSession {
   ownerCustomerSessionId: string;
   openedAt: string;
   closedAt?: string;
-  status: string;
+  status: TableSessionStatus;
   /** @minimum 0 */
   runningTotalMinor: number;
   expiresAt: string;

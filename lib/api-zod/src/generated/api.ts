@@ -56,7 +56,7 @@ export const ValidateCustomerTableResponse = zod.object({
   "label": zod.string(),
   "capacity": zod.number().min(1).optional(),
   "qrVersion": zod.number().min(1),
-  "status": zod.enum(['available', 'occupied', 'payment-split-open', 'payment-pending', 'cleaning', 'reserved', 'closed', 'ready-for-next-customer']),
+  "status": zod.enum(['available', 'occupied', 'finishing-up']),
   "activeSessionId": zod.string().optional(),
   "splitSlotsRemaining": zod.number().min(validateCustomerTableResponseTableSplitSlotsRemainingMin).optional()
 })
@@ -96,7 +96,7 @@ export const OpenCustomerTableSessionResponse = zod.object({
   "ownerCustomerSessionId": zod.string(),
   "openedAt": zod.coerce.date(),
   "closedAt": zod.coerce.date().optional(),
-  "status": zod.string(),
+  "status": zod.enum(['created', 'active', 'splitting-bill', 'awaiting-payment', 'payment-pending', 'completed', 'closed', 'expired']),
   "runningTotalMinor": zod.number().min(openCustomerTableSessionResponseTableSessionRunningTotalMinorMin),
   "expiresAt": zod.coerce.date(),
   "lastActivityAt": zod.coerce.date()
@@ -145,7 +145,7 @@ export const CreateCustomerTableSessionResponse = zod.object({
   "ownerCustomerSessionId": zod.string(),
   "openedAt": zod.coerce.date(),
   "closedAt": zod.coerce.date().optional(),
-  "status": zod.string(),
+  "status": zod.enum(['created', 'active', 'splitting-bill', 'awaiting-payment', 'payment-pending', 'completed', 'closed', 'expired']),
   "runningTotalMinor": zod.number().min(createCustomerTableSessionResponseTableSessionRunningTotalMinorMin),
   "expiresAt": zod.coerce.date(),
   "lastActivityAt": zod.coerce.date()
@@ -199,7 +199,7 @@ export const JoinCustomerTableSessionResponse = zod.object({
   "ownerCustomerSessionId": zod.string(),
   "openedAt": zod.coerce.date(),
   "closedAt": zod.coerce.date().optional(),
-  "status": zod.string(),
+  "status": zod.enum(['created', 'active', 'splitting-bill', 'awaiting-payment', 'payment-pending', 'completed', 'closed', 'expired']),
   "runningTotalMinor": zod.number().min(joinCustomerTableSessionResponseTableSessionRunningTotalMinorMin),
   "expiresAt": zod.coerce.date(),
   "lastActivityAt": zod.coerce.date()
@@ -248,7 +248,7 @@ export const RecoverCustomerTableSessionResponse = zod.object({
   "ownerCustomerSessionId": zod.string(),
   "openedAt": zod.coerce.date(),
   "closedAt": zod.coerce.date().optional(),
-  "status": zod.string(),
+  "status": zod.enum(['created', 'active', 'splitting-bill', 'awaiting-payment', 'payment-pending', 'completed', 'closed', 'expired']),
   "runningTotalMinor": zod.number().min(recoverCustomerTableSessionResponseTableSessionRunningTotalMinorMin),
   "expiresAt": zod.coerce.date(),
   "lastActivityAt": zod.coerce.date()
@@ -300,7 +300,7 @@ export const HeartbeatCustomerTableSessionResponse = zod.object({
   "ownerCustomerSessionId": zod.string(),
   "openedAt": zod.coerce.date(),
   "closedAt": zod.coerce.date().optional(),
-  "status": zod.string(),
+  "status": zod.enum(['created', 'active', 'splitting-bill', 'awaiting-payment', 'payment-pending', 'completed', 'closed', 'expired']),
   "runningTotalMinor": zod.number().min(heartbeatCustomerTableSessionResponseTableSessionRunningTotalMinorMin),
   "expiresAt": zod.coerce.date(),
   "lastActivityAt": zod.coerce.date()
@@ -343,7 +343,7 @@ export const GetCustomerTableSessionStatusResponse = zod.object({
   "ownerCustomerSessionId": zod.string(),
   "openedAt": zod.coerce.date(),
   "closedAt": zod.coerce.date().optional(),
-  "status": zod.string(),
+  "status": zod.enum(['created', 'active', 'splitting-bill', 'awaiting-payment', 'payment-pending', 'completed', 'closed', 'expired']),
   "runningTotalMinor": zod.number().min(getCustomerTableSessionStatusResponseTableSessionRunningTotalMinorMin),
   "expiresAt": zod.coerce.date(),
   "lastActivityAt": zod.coerce.date()
@@ -364,7 +364,7 @@ export const GetCustomerTableSessionStatusResponse = zod.object({
 
 
 /**
- * @summary Close a customer session
+ * @summary Confirm and close a table session (waiter only)
  */
 
 
@@ -374,6 +374,188 @@ export const CloseCustomerTableSessionParams = zod.object({
 })
 
 export const CloseCustomerTableSessionResponse = zod.void()
+
+
+/**
+ * @summary Request to close the current tab
+ */
+
+
+
+export const RequestCustomerTableSessionCloseParams = zod.object({
+  "sessionId": zod.coerce.string().min(1)
+})
+
+
+
+
+export const RequestCustomerTableSessionCloseHeader = zod.object({
+  "X-Club-Id": zod.string().min(1)
+})
+
+export const requestCustomerTableSessionCloseResponseTableSessionRunningTotalMinorMin = 0;
+
+
+
+export const RequestCustomerTableSessionCloseResponse = zod.object({
+  "tableSession": zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableId": zod.string(),
+  "businessDayId": zod.string(),
+  "ownerCustomerSessionId": zod.string(),
+  "openedAt": zod.coerce.date(),
+  "closedAt": zod.coerce.date().optional(),
+  "status": zod.enum(['created', 'active', 'splitting-bill', 'awaiting-payment', 'payment-pending', 'completed', 'closed', 'expired']),
+  "runningTotalMinor": zod.number().min(requestCustomerTableSessionCloseResponseTableSessionRunningTotalMinorMin),
+  "expiresAt": zod.coerce.date(),
+  "lastActivityAt": zod.coerce.date()
+}),
+  "customerSession": zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date(),
+  "isTableOwner": zod.boolean(),
+  "deviceId": zod.string().optional(),
+  "lastHeartbeatAt": zod.coerce.date().optional(),
+  "expiredAt": zod.coerce.date().optional()
+}),
+  "recoveryToken": zod.string()
+})
+
+
+/**
+ * @summary Cancel a close request before waiter confirmation
+ */
+
+
+
+export const CancelCustomerTableSessionCloseParams = zod.object({
+  "sessionId": zod.coerce.string().min(1)
+})
+
+
+
+
+export const CancelCustomerTableSessionCloseHeader = zod.object({
+  "X-Club-Id": zod.string().min(1)
+})
+
+export const cancelCustomerTableSessionCloseResponseTableSessionRunningTotalMinorMin = 0;
+
+
+
+export const CancelCustomerTableSessionCloseResponse = zod.object({
+  "tableSession": zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableId": zod.string(),
+  "businessDayId": zod.string(),
+  "ownerCustomerSessionId": zod.string(),
+  "openedAt": zod.coerce.date(),
+  "closedAt": zod.coerce.date().optional(),
+  "status": zod.enum(['created', 'active', 'splitting-bill', 'awaiting-payment', 'payment-pending', 'completed', 'closed', 'expired']),
+  "runningTotalMinor": zod.number().min(cancelCustomerTableSessionCloseResponseTableSessionRunningTotalMinorMin),
+  "expiresAt": zod.coerce.date(),
+  "lastActivityAt": zod.coerce.date()
+}),
+  "customerSession": zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date(),
+  "isTableOwner": zod.boolean(),
+  "deviceId": zod.string().optional(),
+  "lastHeartbeatAt": zod.coerce.date().optional(),
+  "expiredAt": zod.coerce.date().optional()
+}),
+  "recoveryToken": zod.string()
+})
+
+
+/**
+ * @summary Submit the outstanding balance for waiter verification
+ */
+
+
+
+export const SubmitCustomerTableSessionPaymentParams = zod.object({
+  "sessionId": zod.coerce.string().min(1)
+})
+
+
+
+
+
+
+export const SubmitCustomerTableSessionPaymentHeader = zod.object({
+  "X-Club-Id": zod.string().min(1),
+  "X-Customer-Session-Id": zod.string().min(1),
+  "X-Customer-Session-Token": zod.string().min(1)
+})
+
+export const SubmitCustomerTableSessionPaymentBody = zod.object({
+  "method": zod.enum(['cash', 'till', 'mpesa'])
+})
+
+export const submitCustomerTableSessionPaymentResponseAmountMinorMin = 0;
+
+
+
+export const SubmitCustomerTableSessionPaymentResponse = zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "businessDayId": zod.string(),
+  "method": zod.enum(['cash', 'till', 'mpesa']),
+  "amountMinor": zod.number().min(submitCustomerTableSessionPaymentResponseAmountMinorMin),
+  "currency": zod.string(),
+  "status": zod.enum(['pending', 'submitted', 'verified', 'rejected', 'expired']),
+  "providerReference": zod.string().optional(),
+  "verifiedByStaffId": zod.string().optional(),
+  "createdAt": zod.coerce.date(),
+  "verifiedAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary Verify a submitted payment
+ */
+
+
+
+export const VerifyPaymentParams = zod.object({
+  "paymentId": zod.coerce.string().min(1)
+})
+
+
+
+
+export const VerifyPaymentHeader = zod.object({
+  "X-Club-Id": zod.string().min(1)
+})
+
+export const verifyPaymentResponseAmountMinorMin = 0;
+
+
+
+export const VerifyPaymentResponse = zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "businessDayId": zod.string(),
+  "method": zod.enum(['cash', 'till', 'mpesa']),
+  "amountMinor": zod.number().min(verifyPaymentResponseAmountMinorMin),
+  "currency": zod.string(),
+  "status": zod.enum(['pending', 'submitted', 'verified', 'rejected', 'expired']),
+  "providerReference": zod.string().optional(),
+  "verifiedByStaffId": zod.string().optional(),
+  "createdAt": zod.coerce.date(),
+  "verifiedAt": zod.coerce.date().optional()
+})
 
 
 /**

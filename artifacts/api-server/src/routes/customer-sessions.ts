@@ -10,6 +10,8 @@ import {
   OpenCustomerTableSessionBody,
   EnableCustomerTableSessionSplitBody,
   RecoverCustomerTableSessionBody,
+  SubmitCustomerTableSessionPaymentBody,
+  VerifyPaymentParams,
   ValidateCustomerTableBody,
   ValidateCustomerTableHeader,
   ValidateCustomerTableParams,
@@ -38,18 +40,22 @@ function errorStatus(error: unknown): number {
     case "TABLE_NOT_FOUND":
     case "TABLE_NOT_AVAILABLE":
     case "CONFIGURATION_INVALID":
+    case "PAYMENT_TRANSPORT_UNAVAILABLE":
       return 400;
     case "SESSION_NOT_FOUND":
       return 404;
     case "OWNER_EXISTS":
     case "CONTRIBUTOR_LIMIT":
     case "SESSION_NOT_ACTIVE":
+    case "PAYMENT_PENDING":
+    case "PAYMENT_NOT_SETTLED":
       return 409;
     case "SESSION_EXPIRED":
     case "SESSION_CLOSED":
     case "ACCESS_DENIED":
     case "CUSTOMER_SESSION_NOT_FOUND":
-      return error.code === "ACCESS_DENIED" ? 401 : 409;
+    case "PAYMENT_NOT_FOUND":
+      return error.code === "ACCESS_DENIED" ? 401 : error.code === "PAYMENT_NOT_FOUND" ? 404 : 409;
   }
   return 500;
 }
@@ -240,6 +246,136 @@ router.get(
         now: now(),
       });
       res.json(responseBody(access));
+    } catch (error) {
+      sendError(res, error);
+    }
+  },
+);
+
+router.post(
+  "/v1/customer/table-sessions/:sessionId/close",
+  async (req, res) => {
+    const params = CloseCustomerTableSessionParams.parse(req.params);
+    const clubId = headerValue(req, "X-Club-Id");
+    if (!clubId) {
+      res.status(400).json({
+        error: { code: "CLUB_ID_REQUIRED", message: "X-Club-Id is required." },
+      });
+      return;
+    }
+    try {
+      const access = await getModule2TableSessionService().requestClose({
+        actor: customerActor(req, clubId),
+        tableSessionId: params.sessionId,
+        now: now(),
+      });
+      res.json(responseBody(access));
+    } catch (error) {
+      sendError(res, error);
+    }
+  },
+);
+
+router.post(
+  "/v1/customer/table-sessions/:sessionId/cancel-close",
+  async (req, res) => {
+    const params = CloseCustomerTableSessionParams.parse(req.params);
+    const clubId = headerValue(req, "X-Club-Id");
+    if (!clubId) {
+      res.status(400).json({
+        error: { code: "CLUB_ID_REQUIRED", message: "X-Club-Id is required." },
+      });
+      return;
+    }
+    try {
+      const access = await getModule2TableSessionService().cancelClose({
+        actor: customerActor(req, clubId),
+        tableSessionId: params.sessionId,
+        now: now(),
+      });
+      res.json(responseBody(access));
+    } catch (error) {
+      sendError(res, error);
+    }
+  },
+);
+
+router.post(
+  "/v1/customer/table-sessions/:sessionId/payments",
+  async (req, res) => {
+    const params = CloseCustomerTableSessionParams.parse(req.params);
+    const body = SubmitCustomerTableSessionPaymentBody.parse(req.body);
+    const clubId = headerValue(req, "X-Club-Id");
+    if (!clubId) {
+      res.status(400).json({
+        error: { code: "CLUB_ID_REQUIRED", message: "X-Club-Id is required." },
+      });
+      return;
+    }
+    try {
+      const payment = await getModule2TableSessionService().submitPayment({
+        actor: customerActor(req, clubId),
+        tableSessionId: params.sessionId,
+        method: body.method,
+        now: now(),
+      });
+      res.status(201).json(payment);
+    } catch (error) {
+      sendError(res, error);
+    }
+  },
+);
+
+router.post(
+  "/v1/payments/:paymentId/verify",
+  requireFirebaseStaff,
+  async (req, res) => {
+    const params = VerifyPaymentParams.parse(req.params);
+    const clubId = headerValue(req, "X-Club-Id");
+    const identity = res.locals.firebaseStaff;
+    if (!clubId || !identity) {
+      res.status(400).json({
+        error: { code: "CLUB_ID_REQUIRED", message: "X-Club-Id is required." },
+      });
+      return;
+    }
+    try {
+      const infrastructure = await import("@workspace/infrastructure");
+      const clients = infrastructure.createFirebaseInfrastructure();
+      const repositories = infrastructure.createModule2Repositories(clients.firestore);
+      const staff = await repositories.staff.getByFirebaseUid(clubId, identity.firebaseUid);
+      if (!staff) {
+        res.status(403).json({
+          error: { code: "STAFF_NOT_FOUND", message: "Staff membership was not found." },
+        });
+        return;
+      }
+      const roles = (
+        await Promise.all(
+          staff.roleIds.map((roleId) => repositories.roles.getById(clubId, roleId)),
+        )
+      ).filter((role): role is NonNullable<typeof role> => Boolean(role && role.active));
+      const canVerify = roles.some(
+        (role) =>
+          role.name === "administrator" || role.permissions.includes("payments.verify"),
+      );
+      if (!canVerify) {
+        res.status(403).json({
+          error: { code: "PERMISSION_DENIED", message: "Payment verification is not permitted." },
+        });
+        return;
+      }
+      const payment = await getModule2TableSessionService().verifyPayment({
+        actor: {
+          kind: "staff",
+          id: staff.id,
+          staffId: staff.id,
+          clubId,
+        },
+        paymentId: params.paymentId,
+        now: now(),
+      });
+      res.json(payment);
     } catch (error) {
       sendError(res, error);
     }

@@ -38,6 +38,12 @@ clubs/{clubId}
 `splitSlotsRemaining`, `qrVersion`, `version`, `updatedAt`, and optional
 soft-delete fields.
 
+The canonical table lifecycle has exactly three states: `available`,
+`occupied`, and `finishing-up`. Customers can request or cancel closing while
+the table is occupied; only the waiter can confirm closure and return the
+table to `available`. Split-payment metadata is transitional session data and
+must not introduce another table lifecycle state.
+
 Customer entry uses the permanent table ID embedded in the table QR. Secret
 QR token fields are legacy-only compatibility data and are not required by the
 canonical customer-entry workflow.

@@ -78,6 +78,7 @@ export type TableSessionRepository = {
 
 export type CustomerSessionRepository = {
   getById(clubId: ClubId, sessionId: string): Promise<CustomerSession | null>;
+  listForTableSession(clubId: ClubId, tableSessionId: string): Promise<CustomerSession[]>;
   getByDeviceId(
     clubId: ClubId,
     tableSessionId: string,

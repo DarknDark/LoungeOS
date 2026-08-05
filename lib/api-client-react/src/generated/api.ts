@@ -31,10 +31,12 @@ import type {
   OrderListResponse,
   OrderMenuResponse,
   OrderResponse,
+  PaymentResponse,
   QrValidationRequest,
   RecoverTableSessionRequest,
   SplitTableSessionRequest,
   SubmitOrderBody,
+  SubmitPaymentRequest,
   TableSessionAccess,
   TableValidationResponse,
   UpdateDraftOrderRequest,
@@ -663,7 +665,7 @@ export const getCloseCustomerTableSessionUrl = (sessionId: string,) => {
 }
 
 /**
- * @summary Close a customer session
+ * @summary Confirm and close a table session (waiter only)
  */
 export const closeCustomerTableSession = async (sessionId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
 
@@ -712,7 +714,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CloseCustomerTableSessionMutationError = ErrorType<ApiErrorResponse>
 
     /**
- * @summary Close a customer session
+ * @summary Confirm and close a table session (waiter only)
  */
 export const useCloseCustomerTableSession = <TError = ErrorType<ApiErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeCustomerTableSession>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -723,6 +725,291 @@ export const useCloseCustomerTableSession = <TError = ErrorType<ApiErrorResponse
         TContext
       > => {
       return useMutation(getCloseCustomerTableSessionMutationOptions(options));
+    }
+
+export const getRequestCustomerTableSessionCloseUrl = (sessionId: string,) => {
+
+
+
+
+  return `/api/v1/customer/table-sessions/${sessionId}/close`
+}
+
+/**
+ * @summary Request to close the current tab
+ */
+export const requestCustomerTableSessionClose = async (sessionId: string, options?: Parameters<typeof customFetch>[1]): Promise<TableSessionAccess> => {
+
+  return customFetch<TableSessionAccess>(getRequestCustomerTableSessionCloseUrl(sessionId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRequestCustomerTableSessionCloseMutationOptions = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestCustomerTableSessionClose>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestCustomerTableSessionClose>>, TError,{sessionId: string}, TContext> => {
+
+const mutationKey = ['requestCustomerTableSessionClose'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestCustomerTableSessionClose>>, {sessionId: string}> = (props) => {
+          const {sessionId} = props ?? {};
+
+          return  requestCustomerTableSessionClose(sessionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestCustomerTableSessionCloseMutationResult = NonNullable<Awaited<ReturnType<typeof requestCustomerTableSessionClose>>>
+
+    export type RequestCustomerTableSessionCloseMutationError = ErrorType<ApiErrorResponse>
+
+    /**
+ * @summary Request to close the current tab
+ */
+export const useRequestCustomerTableSessionClose = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestCustomerTableSessionClose>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestCustomerTableSessionClose>>,
+        TError,
+        {sessionId: string},
+        TContext
+      > => {
+      return useMutation(getRequestCustomerTableSessionCloseMutationOptions(options));
+    }
+
+export const getCancelCustomerTableSessionCloseUrl = (sessionId: string,) => {
+
+
+
+
+  return `/api/v1/customer/table-sessions/${sessionId}/cancel-close`
+}
+
+/**
+ * @summary Cancel a close request before waiter confirmation
+ */
+export const cancelCustomerTableSessionClose = async (sessionId: string, options?: Parameters<typeof customFetch>[1]): Promise<TableSessionAccess> => {
+
+  return customFetch<TableSessionAccess>(getCancelCustomerTableSessionCloseUrl(sessionId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCancelCustomerTableSessionCloseMutationOptions = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelCustomerTableSessionClose>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelCustomerTableSessionClose>>, TError,{sessionId: string}, TContext> => {
+
+const mutationKey = ['cancelCustomerTableSessionClose'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelCustomerTableSessionClose>>, {sessionId: string}> = (props) => {
+          const {sessionId} = props ?? {};
+
+          return  cancelCustomerTableSessionClose(sessionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelCustomerTableSessionCloseMutationResult = NonNullable<Awaited<ReturnType<typeof cancelCustomerTableSessionClose>>>
+
+    export type CancelCustomerTableSessionCloseMutationError = ErrorType<ApiErrorResponse>
+
+    /**
+ * @summary Cancel a close request before waiter confirmation
+ */
+export const useCancelCustomerTableSessionClose = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelCustomerTableSessionClose>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelCustomerTableSessionClose>>,
+        TError,
+        {sessionId: string},
+        TContext
+      > => {
+      return useMutation(getCancelCustomerTableSessionCloseMutationOptions(options));
+    }
+
+export const getSubmitCustomerTableSessionPaymentUrl = (sessionId: string,) => {
+
+
+
+
+  return `/api/v1/customer/table-sessions/${sessionId}/payments`
+}
+
+/**
+ * @summary Submit the outstanding balance for waiter verification
+ */
+export const submitCustomerTableSessionPayment = async (sessionId: string,
+    submitPaymentRequest: SubmitPaymentRequest, options?: Parameters<typeof customFetch>[1]): Promise<PaymentResponse> => {
+
+  return customFetch<PaymentResponse>(getSubmitCustomerTableSessionPaymentUrl(sessionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(submitPaymentRequest)
+  }
+);}
+
+
+
+
+
+export const getSubmitCustomerTableSessionPaymentMutationOptions = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitCustomerTableSessionPayment>>, TError,{sessionId: string;data: BodyType<SubmitPaymentRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitCustomerTableSessionPayment>>, TError,{sessionId: string;data: BodyType<SubmitPaymentRequest>}, TContext> => {
+
+const mutationKey = ['submitCustomerTableSessionPayment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitCustomerTableSessionPayment>>, {sessionId: string;data: BodyType<SubmitPaymentRequest>}> = (props) => {
+          const {sessionId,data} = props ?? {};
+
+          return  submitCustomerTableSessionPayment(sessionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitCustomerTableSessionPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof submitCustomerTableSessionPayment>>>
+    export type SubmitCustomerTableSessionPaymentMutationBody = BodyType<SubmitPaymentRequest>
+    export type SubmitCustomerTableSessionPaymentMutationError = ErrorType<ApiErrorResponse>
+
+    /**
+ * @summary Submit the outstanding balance for waiter verification
+ */
+export const useSubmitCustomerTableSessionPayment = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitCustomerTableSessionPayment>>, TError,{sessionId: string;data: BodyType<SubmitPaymentRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitCustomerTableSessionPayment>>,
+        TError,
+        {sessionId: string;data: BodyType<SubmitPaymentRequest>},
+        TContext
+      > => {
+      return useMutation(getSubmitCustomerTableSessionPaymentMutationOptions(options));
+    }
+
+export const getVerifyPaymentUrl = (paymentId: string,) => {
+
+
+
+
+  return `/api/v1/payments/${paymentId}/verify`
+}
+
+/**
+ * @summary Verify a submitted payment
+ */
+export const verifyPayment = async (paymentId: string, options?: Parameters<typeof customFetch>[1]): Promise<PaymentResponse> => {
+
+  return customFetch<PaymentResponse>(getVerifyPaymentUrl(paymentId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getVerifyPaymentMutationOptions = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyPayment>>, TError,{paymentId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyPayment>>, TError,{paymentId: string}, TContext> => {
+
+const mutationKey = ['verifyPayment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyPayment>>, {paymentId: string}> = (props) => {
+          const {paymentId} = props ?? {};
+
+          return  verifyPayment(paymentId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof verifyPayment>>>
+
+    export type VerifyPaymentMutationError = ErrorType<ApiErrorResponse>
+
+    /**
+ * @summary Verify a submitted payment
+ */
+export const useVerifyPayment = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyPayment>>, TError,{paymentId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyPayment>>,
+        TError,
+        {paymentId: string},
+        TContext
+      > => {
+      return useMutation(getVerifyPaymentMutationOptions(options));
     }
 
 export const getEnableCustomerTableSessionSplitUrl = (sessionId: string,) => {

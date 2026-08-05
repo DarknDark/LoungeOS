@@ -6,4 +6,5 @@
 - [Infrastructure hardening](infrastructure-hardening.md) — shared audit, notification, timeline, event, realtime, offline-sync, metrics, and locking primitives are provider-neutral.
 - [Ordering Engine](ordering-engine.md) — Module 3 uses Firebase tenant-scoped repositories with centralized pricing, idempotency, reservations, and shared lifecycle side effects.
 - [Mobile live ordering](mobile-live-integration.md) — customer mobile uses live sessions/orders with secure credentials; unsupported payment, staff, song, waiter, and client-realtime transports stay explicit.
+- [Payment settlement](payment-settlement.md) — cash/till Pay Now requests require waiter verification; M-Pesa stays explicitly unavailable without a real transport.
 - [Static Expo server security](static-server-security.md) — generated bundle serving uses explicit manifest allowlists and decoded path containment checks.

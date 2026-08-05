@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { TableSessionStatus } from './tableSessionStatus';
 
 export interface TableSession {
   id: string;
@@ -14,7 +15,7 @@ export interface TableSession {
   ownerCustomerSessionId: string;
   openedAt: Date;
   closedAt?: Date;
-  status: string;
+  status: TableSessionStatus;
   /** @minimum 0 */
   runningTotalMinor: number;
   expiresAt: Date;

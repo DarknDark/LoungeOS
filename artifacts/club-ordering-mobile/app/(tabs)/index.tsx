@@ -287,6 +287,9 @@ export default function HomeScreen() {
     requestSong,
     callWaiter,
     payBill,
+    requestClose,
+    cancelClose,
+    tableSessionStatus,
     markOrderStatus,
     markOrderPaid,
     cancelOrder,
@@ -548,12 +551,78 @@ export default function HomeScreen() {
           ))}
         <View style={styles.paymentCard}>
           <View style={styles.paymentHeader}><View><Text style={styles.paymentTitle}>Ready to settle?</Text><Text style={styles.paymentSubtitle}>Choose how you’d like to pay.</Text></View><Icon name="lock-closed-outline" size={19} color={colors.light.mutedForeground} /></View>
-          <Pressable onPress={() => { buzz(); payBill('mpesa'); }} style={styles.paymentOption}>
+          <Pressable
+            onPress={() => {
+              buzz();
+              void payBill('mpesa').then((paid) => {
+                if (paid) setFeedback('M-Pesa payment request submitted');
+              });
+            }}
+            style={[styles.paymentOption, styles.disabledPaymentOption]}
+          >
             <View style={[styles.paymentIcon, styles.mpesaIcon]}><Text style={styles.mpesaText}>M</Text></View>
             <View style={styles.paymentCopy}><Text style={styles.paymentName}>M-Pesa</Text><Text style={styles.paymentDescription}>Not connected yet</Text></View>
             <Icon name="chevron-forward" size={18} color={colors.light.mutedForeground} />
           </Pressable>
-          <View style={styles.cashNote}><Icon name="cash-outline" size={18} color={colors.light.primary} /><Text style={styles.cashNoteText}>Paying cash? Ask your waiter to close the bill.</Text></View>
+          <Pressable
+            onPress={() => {
+              buzz();
+              void payBill('cash').then((paid) => {
+                if (paid) setFeedback('Cash payment submitted for waiter verification');
+              });
+            }}
+            style={styles.paymentOption}
+          >
+            <View style={[styles.paymentIcon, styles.cashIcon]}><Icon name="cash-outline" size={18} color={colors.light.primaryForeground} /></View>
+            <View style={styles.paymentCopy}><Text style={styles.paymentName}>Cash</Text><Text style={styles.paymentDescription}>Submit for waiter verification</Text></View>
+            <Icon name="chevron-forward" size={18} color={colors.light.mutedForeground} />
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              buzz();
+              void payBill('till').then((paid) => {
+                if (paid) setFeedback('Till payment submitted for waiter verification');
+              });
+            }}
+            style={styles.paymentOption}
+          >
+            <View style={[styles.paymentIcon, styles.tillIcon]}><Text style={styles.tillText}>T</Text></View>
+            <View style={styles.paymentCopy}><Text style={styles.paymentName}>Till</Text><Text style={styles.paymentDescription}>Submit after paying at the till</Text></View>
+            <Icon name="chevron-forward" size={18} color={colors.light.mutedForeground} />
+          </Pressable>
+          {tableSessionStatus === 'active' ? (
+            <Pressable
+              onPress={() => {
+                buzz();
+                void requestClose().then((closed) => {
+                  if (closed) setFeedback('Close request sent to your waiter');
+                });
+              }}
+              style={styles.primaryButton}
+            >
+              <Text style={styles.primaryButtonText}>Close My Tab</Text>
+              <Icon name="arrow-forward" size={17} color={colors.light.background} />
+            </Pressable>
+          ) : tableSessionStatus === 'awaiting-payment' || tableSessionStatus === 'splitting-bill' ? (
+            <View style={styles.finishingCard}>
+              <View style={styles.finishingHeader}>
+                <Icon name="time-outline" size={18} color={colors.light.primary} />
+                <Text style={styles.finishingTitle}>Finishing up</Text>
+              </View>
+              <Text style={styles.finishingCopy}>Ordering is paused while your waiter confirms payment.</Text>
+              <Pressable
+                onPress={() => {
+                  buzz();
+                  void cancelClose().then((cancelled) => {
+                    if (cancelled) setFeedback('Close request cancelled');
+                  });
+                }}
+                style={styles.outlineButton}
+              >
+                <Text style={styles.outlineActionText}>Cancel Close</Text>
+              </Pressable>
+            </View>
+          ) : null}
         </View>
         {feedback ? <View style={styles.feedbackBar}><Icon name="checkmark-circle" size={17} color={colors.light.primary} /><Text style={styles.feedbackText}>{feedback}</Text></View> : null}
       </ScrollView>
@@ -714,6 +783,11 @@ const styles = StyleSheet.create({
   checkoutAmount: { color: colors.light.foreground, fontSize: 16, fontWeight: '700' },
   primaryButton: { minHeight: 52, borderRadius: 16, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: colors.light.primary },
   primaryButtonText: { color: colors.light.primaryForeground, fontSize: 14, fontWeight: '800' },
+  finishingCard: { marginTop: 14, borderRadius: 16, padding: 15, gap: 10, backgroundColor: colors.light.secondary, borderWidth: 1, borderColor: colors.light.border },
+  finishingHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  finishingTitle: { color: colors.light.foreground, fontSize: 14, fontWeight: '800' },
+  finishingCopy: { color: colors.light.mutedForeground, fontSize: 13, lineHeight: 19 },
+  outlineButton: { minHeight: 44, borderRadius: 13, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.light.border, backgroundColor: colors.light.background },
   requestHero: { padding: 20, borderRadius: 22, backgroundColor: '#241819', borderWidth: 1, borderColor: '#54302a', alignItems: 'flex-start' },
   vinyl: { width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', backgroundColor: '#3e2522', borderWidth: 1, borderColor: '#765044', marginBottom: 18 },
   inputLabel: { color: colors.light.primary, fontSize: 10, fontWeight: '800', letterSpacing: 1.4, marginBottom: -10 },
@@ -747,9 +821,13 @@ const styles = StyleSheet.create({
   paymentTitle: { color: colors.light.foreground, fontSize: 15, fontWeight: '700' },
   paymentSubtitle: { color: colors.light.mutedForeground, fontSize: 11, marginTop: 3 },
   paymentOption: { flexDirection: 'row', alignItems: 'center', gap: 11, padding: 12, borderRadius: 14, backgroundColor: colors.light.secondary },
+  disabledPaymentOption: { opacity: 0.62 },
   paymentIcon: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   mpesaIcon: { backgroundColor: '#76bc45' },
   mpesaText: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  cashIcon: { backgroundColor: colors.light.primary },
+  tillIcon: { backgroundColor: colors.light.foreground },
+  tillText: { color: colors.light.background, fontSize: 16, fontWeight: '800' },
   paymentCopy: { flex: 1 },
   paymentName: { color: colors.light.foreground, fontSize: 13, fontWeight: '700' },
   paymentDescription: { color: colors.light.mutedForeground, fontSize: 10, marginTop: 2 },

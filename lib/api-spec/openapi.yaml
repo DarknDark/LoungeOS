@@ -185,7 +185,7 @@ paths:
     delete:
       operationId: closeCustomerTableSession
       tags: [customer-sessions]
-      summary: Close a customer session
+      summary: Confirm and close a table session (waiter only)
       parameters:
         - $ref: "#/components/parameters/SessionId"
       responses:
@@ -194,6 +194,103 @@ paths:
         "401":
           $ref: "#/components/responses/ApiError"
         "403":
+          $ref: "#/components/responses/ApiError"
+  /v1/customer/table-sessions/{sessionId}/close:
+    post:
+      operationId: requestCustomerTableSessionClose
+      tags: [customer-sessions]
+      summary: Request to close the current tab
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - $ref: "#/components/parameters/ClubId"
+      responses:
+        "200":
+          description: Table session moved to finishing up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSessionAccess"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/customer/table-sessions/{sessionId}/cancel-close:
+    post:
+      operationId: cancelCustomerTableSessionClose
+      tags: [customer-sessions]
+      summary: Cancel a close request before waiter confirmation
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - $ref: "#/components/parameters/ClubId"
+      responses:
+        "200":
+          description: Table session returned to occupied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSessionAccess"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/customer/table-sessions/{sessionId}/payments:
+    post:
+      operationId: submitCustomerTableSessionPayment
+      tags: [customer-sessions]
+      summary: Submit the outstanding balance for waiter verification
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/CustomerSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionTokenHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitPaymentRequest"
+      responses:
+        "201":
+          description: Payment submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/payments/{paymentId}/verify:
+    post:
+      operationId: verifyPayment
+      tags: [customer-sessions]
+      summary: Verify a submitted payment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/ClubId"
+      responses:
+        "200":
+          description: Verified payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "404":
+          $ref: "#/components/responses/ApiError"
+        "409":
           $ref: "#/components/responses/ApiError"
   /v1/customer/table-sessions/{sessionId}/split:
     post:
@@ -790,6 +887,34 @@ components:
           type: number
           minimum: 1
       required: [splitCount]
+    SubmitPaymentRequest:
+      type: object
+      properties:
+        method:
+          type: string
+          enum: [cash, till, mpesa]
+      required: [method]
+    PaymentResponse:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        tableSessionId: { type: string }
+        businessDayId: { type: string }
+        method:
+          type: string
+          enum: [cash, till, mpesa]
+        amountMinor: { type: number, minimum: 0 }
+        currency: { type: string }
+        status:
+          type: string
+          enum: [pending, submitted, verified, rejected, expired]
+        providerReference: { type: string }
+        verifiedByStaffId: { type: string }
+        createdAt: { type: string, format: date-time }
+        verifiedAt: { type: string, format: date-time }
+      required:
+        [id, clubId, tableSessionId, businessDayId, method, amountMinor, currency, status, createdAt]
     TableValidationResponse:
       type: object
       properties:
@@ -817,7 +942,7 @@ components:
         qrVersion: { type: number, minimum: 1 }
         status:
           type: string
-          enum: [available, occupied, payment-split-open, payment-pending, cleaning, reserved, closed, ready-for-next-customer]
+          enum: [available, occupied, finishing-up]
         activeSessionId: { type: string }
         splitSlotsRemaining: { type: number, minimum: 0 }
       required: [id, clubId, number, label, qrVersion, status]
@@ -831,7 +956,9 @@ components:
         ownerCustomerSessionId: { type: string }
         openedAt: { type: string, format: date-time }
         closedAt: { type: string, format: date-time }
-        status: { type: string }
+        status:
+          type: string
+          enum: [created, active, splitting-bill, awaiting-payment, payment-pending, completed, closed, expired]
         runningTotalMinor: { type: number, minimum: 0 }
         expiresAt: { type: string, format: date-time }
         lastActivityAt: { type: string, format: date-time }

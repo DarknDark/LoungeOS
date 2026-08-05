@@ -24,6 +24,7 @@ import {
   type OrderItem,
   type InventoryItem,
   type InventoryReservation,
+  type Payment,
 } from '@workspace/domain';
 import type {
   BusinessDayRepository,
@@ -44,6 +45,7 @@ import type {
   OrderItemRepository,
   InventoryRepository,
   InventoryReservationRepository,
+  PaymentRepository,
   AuditRepository,
   RealtimeChange,
   RealtimeRepository,
@@ -201,7 +203,6 @@ export class FirestoreTableSessionRepository implements TableSessionRepository {
         'active',
         'splitting-bill',
         'awaiting-payment',
-        'payment-pending',
       ])
       .limit(1)
       .get();
@@ -278,7 +279,6 @@ export class FirestoreTableSessionRepository implements TableSessionRepository {
             'active',
             'splitting-bill',
             'awaiting-payment',
-            'payment-pending',
           ])
           .limit(1),
       );
@@ -337,7 +337,7 @@ export class FirestoreTableSessionRepository implements TableSessionRepository {
       if (
         input.consumeSplitSlot &&
         (!currentTable ||
-          currentTable.status !== 'payment-split-open' ||
+          currentTable.status !== 'finishing-up' ||
           (currentTable.splitSlotsRemaining ?? 0) <= 0)
       ) {
         throw new Error('TABLE_SESSION_NOT_ACTIVE');
@@ -363,7 +363,7 @@ export class FirestoreTableSessionRepository implements TableSessionRepository {
           tableReference,
           {
             ...currentTable,
-            status: remaining === 0 ? 'occupied' : 'payment-split-open',
+            status: 'finishing-up',
             splitSlotsRemaining: remaining,
             updatedAt: input.now,
           },
@@ -417,6 +417,22 @@ export class FirestoreCustomerSessionRepository
     return document && !isDeleted(data)
       ? documentWithId<CustomerSession>(document.id, data)
       : null;
+  }
+
+  async listForTableSession(
+    clubId: string,
+    tableSessionId: string,
+  ): Promise<CustomerSession[]> {
+    const snapshot = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.customerSessions,
+    )
+      .where('tableSessionId', '==', tableSessionId)
+      .get();
+    return snapshot.docs
+      .map((document) => documentWithId<CustomerSession>(document.id, document.data()))
+      .filter((session): session is CustomerSession => Boolean(session));
   }
 
   async save(session: CustomerSession): Promise<void> {
@@ -888,6 +904,39 @@ export class FirestoreInventoryRepository implements InventoryRepository {
       .limit(limitFor(query) + 1)
       .get();
     return pageFromSnapshot(snapshot, limitFor(query));
+  }
+}
+
+export class FirestorePaymentRepository implements PaymentRepository {
+  constructor(private readonly firestore: Firestore) {}
+
+  async getById(clubId: string, paymentId: string): Promise<Payment | null> {
+    const document = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.payments,
+    ).doc(paymentId).get();
+    return documentWithId<Payment>(document.id, document.data());
+  }
+
+  async save(payment: Payment): Promise<void> {
+    await scopedCollection(
+      this.firestore,
+      payment.clubId,
+      FIRESTORE_COLLECTIONS.payments,
+    ).doc(payment.id).set(payment, { merge: true });
+  }
+
+  async listForSession(clubId: string, tableSessionId: string): Promise<Page<Payment>> {
+    const snapshot = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.payments,
+    )
+      .where('tableSessionId', '==', tableSessionId)
+      .orderBy('createdAt', 'asc')
+      .get();
+    return pageFromSnapshot<Payment>(snapshot, 100);
   }
 }
 
@@ -1371,6 +1420,7 @@ export type Module2Repositories = Pick<
    | 'orderItems'
    | 'inventory'
    | 'inventoryReservations'
+  | 'payments'
 >;
 
 export function createModule2Repositories(firestore: Firestore): Module2Repositories {
@@ -1396,5 +1446,6 @@ export function createModule2Repositories(firestore: Firestore): Module2Reposito
     orderItems: new FirestoreOrderItemRepository(firestore),
     inventory: new FirestoreInventoryRepository(firestore),
     inventoryReservations: new FirestoreInventoryReservationRepository(firestore),
+    payments: new FirestorePaymentRepository(firestore),
   };
 }

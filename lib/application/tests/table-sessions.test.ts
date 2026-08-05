@@ -5,6 +5,7 @@ import {
   type BusinessDay,
   type CustomerSession,
   type Notification,
+  type Payment,
   type ServiceTimelineEvent,
   type Table,
   type TableSession,
@@ -41,6 +42,7 @@ function makeHarness() {
   const tables = new Map([[table.id, table]]);
   const sessions = new Map<string, TableSession>();
   const customers = new Map<string, CustomerSession>();
+  const payments = new Map<string, Payment>();
   const notifications: Notification[] = [];
   const timeline: ServiceTimelineEvent[] = [];
   const settings = {
@@ -71,7 +73,7 @@ function makeHarness() {
           [...sessions.values()].find(
             (candidate) =>
               candidate.tableId === requestedTableId &&
-              ['created', 'active', 'splitting-bill', 'awaiting-payment', 'payment-pending'].includes(
+              ['created', 'active', 'splitting-bill', 'awaiting-payment'].includes(
                 candidate.status,
               ),
           ) ?? null,
@@ -105,6 +107,10 @@ function makeHarness() {
       },
       customerSessions: {
         getById: async (_clubId, sessionId) => customers.get(sessionId) ?? null,
+        listForTableSession: async (_clubId, tableSessionId) =>
+          [...customers.values()].filter(
+            (candidate) => candidate.tableSessionId === tableSessionId,
+          ),
         getByDeviceId: async (_clubId, tableSessionId, deviceId) =>
           [...customers.values()].find(
             (candidate) =>
@@ -147,6 +153,17 @@ function makeHarness() {
         append: async () => undefined,
         list: async () => ({ items: [] }),
       },
+      payments: {
+        getById: async (_clubId, paymentId) => payments.get(paymentId) ?? null,
+        save: async (payment) => {
+          payments.set(payment.id, payment);
+        },
+        listForSession: async (_clubId, tableSessionId) => ({
+          items: [...payments.values()].filter(
+            (payment) => payment.tableSessionId === tableSessionId,
+          ),
+        }),
+      },
     },
     ids: { next: () => `id-${++id}` },
     tokens: {
@@ -155,7 +172,7 @@ function makeHarness() {
     },
   });
 
-  return { service, tables, sessions, customers, notifications, timeline };
+  return { service, tables, sessions, customers, payments, notifications, timeline };
 }
 
 function customerActor(
@@ -232,7 +249,7 @@ test('opens an owner session from a permanent table identity', async () => {
   assert.notEqual(access.recoveryToken, 'qr-token');
 });
 
-test('opens split-mode guest sessions from the permanent table identity', async () => {
+test('requires close request before opening split payment branches', async () => {
   const { service, tables, sessions } = makeHarness();
   const owner = await service.open({
     actor: customerActor(),
@@ -241,24 +258,92 @@ test('opens split-mode guest sessions from the permanent table identity', async 
     now: '2026-08-04T12:00:00.000Z',
   });
 
+  await assert.rejects(
+    () =>
+      service.enablePaymentSplit({
+        actor: { kind: 'staff', id: 'staff-1', staffId: 'staff-1', clubId },
+        tableSessionId: owner.tableSession.id,
+        splitCount: 2,
+        now: '2026-08-04T12:05:00.000Z',
+      }),
+    (error: unknown) =>
+      error instanceof TableSessionError && error.code === 'SESSION_NOT_ACTIVE',
+  );
+
+  const finishing = await service.requestClose({
+    actor: customerActor(owner.customerSession.id, owner.recoveryToken),
+    tableSessionId: owner.tableSession.id,
+    now: '2026-08-04T12:06:00.000Z',
+  });
+  assert.equal(finishing.tableSession.status, 'awaiting-payment');
+  assert.equal(tables.get(tableId)?.status, 'finishing-up');
+
   await service.enablePaymentSplit({
     actor: { kind: 'staff', id: 'staff-1', staffId: 'staff-1', clubId },
     tableSessionId: owner.tableSession.id,
     splitCount: 2,
-    now: '2026-08-04T12:05:00.000Z',
+    now: '2026-08-04T12:07:00.000Z',
   });
+  assert.equal(tables.get(tableId)?.status, 'finishing-up');
+  assert.equal(sessions.get(owner.tableSession.id)?.status, 'splitting-bill');
+});
 
-  const guest = await service.open({
+test('requires verified payment before closing and expires every customer session', async () => {
+  const { service, sessions, customers, payments, tables } = makeHarness();
+  const owner = await service.open({
     actor: customerActor(),
     tableId,
+    deviceId: 'owner-device',
+    now: '2026-08-04T12:00:00.000Z',
+  });
+  const guest = await service.join({
+    actor: customerActor(),
+    tableSessionId: owner.tableSession.id,
+    qrToken: 'qr-token',
     deviceId: 'guest-device',
+    now: '2026-08-04T12:01:00.000Z',
+  });
+  sessions.set(owner.tableSession.id, {
+    ...owner.tableSession,
+    runningTotalMinor: 1000,
+  });
+  await service.requestClose({
+    actor: customerActor(owner.customerSession.id, owner.recoveryToken),
+    tableSessionId: owner.tableSession.id,
+    now: '2026-08-04T12:02:00.000Z',
+  });
+  const payment = await service.submitPayment({
+    actor: customerActor(owner.customerSession.id, owner.recoveryToken),
+    tableSessionId: owner.tableSession.id,
+    method: 'cash',
+    now: '2026-08-04T12:03:00.000Z',
+  });
+  await assert.rejects(
+    () =>
+      service.closeAfterVerifiedPayment({
+        actor: { kind: 'staff', id: 'staff-1', staffId: 'staff-1', clubId },
+        tableSessionId: owner.tableSession.id,
+        now: '2026-08-04T12:04:00.000Z',
+      }),
+    (error: unknown) =>
+      error instanceof TableSessionError && error.code === 'PAYMENT_NOT_SETTLED',
+  );
+  assert.equal(payments.get(payment.id)?.status, 'submitted');
+  await service.verifyPayment({
+    actor: { kind: 'staff', id: 'staff-1', staffId: 'staff-1', clubId },
+    paymentId: payment.id,
+    now: '2026-08-04T12:05:00.000Z',
+  });
+  await service.closeAfterVerifiedPayment({
+    actor: { kind: 'staff', id: 'staff-1', staffId: 'staff-1', clubId },
+    tableSessionId: owner.tableSession.id,
     now: '2026-08-04T12:06:00.000Z',
   });
-
-  assert.equal(guest.customerSession.isTableOwner, false);
-  assert.equal(guest.tableSession.id, owner.tableSession.id);
-  assert.equal(tables.get(tableId)?.status, 'payment-split-open');
-  assert.equal(sessions.get(owner.tableSession.id)?.status, 'splitting-bill');
+  assert.equal(payments.get(payment.id)?.status, 'verified');
+  assert.equal(sessions.get(owner.tableSession.id)?.status, 'closed');
+  assert.ok(customers.get(owner.customerSession.id)?.expiredAt);
+  assert.ok(customers.get(guest.customerSession.id)?.expiredAt);
+  assert.equal(tables.get(tableId)?.status, 'available');
 });
 
 test('supports duplicate-device protection and multi-device participants', async () => {

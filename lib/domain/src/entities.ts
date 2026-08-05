@@ -16,12 +16,7 @@ export type Club = {
 export type TableStatus =
   | 'available'
   | 'occupied'
-  | 'payment-split-open'
-  | 'payment-pending'
-  | 'cleaning'
-  | 'reserved'
-  | 'closed'
-  | 'ready-for-next-customer';
+  | 'finishing-up';
 
 export type Table = VersionedRecord & {
   id: EntityId;
@@ -277,7 +272,7 @@ export type SongRequest = {
   skipReason?: string;
 };
 
-export type PaymentMethod = 'mpesa' | 'cash';
+export type PaymentMethod = 'mpesa' | 'cash' | 'till';
 export type PaymentStatus = 'pending' | 'submitted' | 'verified' | 'rejected' | 'expired';
 
 export type Payment = {

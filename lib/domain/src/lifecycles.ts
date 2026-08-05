@@ -10,9 +10,9 @@ export const TABLE_SESSION_TRANSITIONS: Record<
   readonly TableSessionStatus[]
 > = {
   created: ['active', 'expired', 'closed'],
-  active: ['splitting-bill', 'awaiting-payment', 'payment-pending', 'expired', 'closed'],
+  active: ['awaiting-payment', 'expired', 'closed'],
   'splitting-bill': ['awaiting-payment', 'active', 'expired', 'closed'],
-  'awaiting-payment': ['payment-pending', 'active', 'completed', 'expired', 'closed'],
+  'awaiting-payment': ['splitting-bill', 'active', 'completed', 'expired', 'closed'],
   'payment-pending': ['awaiting-payment', 'completed', 'expired', 'closed'],
   completed: ['closed'],
   closed: [],

@@ -2,6 +2,7 @@ import type {
   CustomerSession,
   DomainEvent,
   Notification,
+  Payment,
   Table,
   TableSession,
 } from '@workspace/domain';
@@ -31,6 +32,7 @@ export type TableSessionServiceDependencies = {
     | 'notifications'
     | 'serviceTimeline'
     | 'audit'
+     | 'payments'
   >;
   ids: { next(): string };
   tokens: { next(): string; hash(value: string): string };
@@ -52,7 +54,11 @@ export class TableSessionError extends Error {
       | 'OWNER_EXISTS'
       | 'CONTRIBUTOR_LIMIT'
       | 'SESSION_NOT_ACTIVE'
-      | 'CONFIGURATION_INVALID',
+      | 'CONFIGURATION_INVALID'
+      | 'PAYMENT_TRANSPORT_UNAVAILABLE'
+      | 'PAYMENT_NOT_FOUND'
+      | 'PAYMENT_PENDING'
+      | 'PAYMENT_NOT_SETTLED',
   ) {
     super(message);
     this.name = 'TableSessionError';
@@ -180,9 +186,6 @@ export function createTableSessionService(
     if (table.qrTokenExpiresAt && isExpired(now, table.qrTokenExpiresAt)) {
       throw new TableSessionError('The table QR token has expired.', 'INVALID_QR');
     }
-    if (table.status === 'closed' || table.status === 'cleaning') {
-      throw new TableSessionError('The table is not currently available.', 'INVALID_QR');
-    }
     return table;
   }
 
@@ -212,6 +215,7 @@ export function createTableSessionService(
     actor: RequestActor,
     tableSessionId: string,
     now: string,
+    allowFinishing = false,
   ): Promise<{ session: TableSession; customer: CustomerSession }> {
     const session = await repos.tableSessions.getById(actor.clubId, tableSessionId);
     if (!session) {
@@ -235,6 +239,15 @@ export function createTableSessionService(
     }
     if (session.status === 'closed' || session.status === 'completed') {
       throw new TableSessionError('The table session is closed.', 'SESSION_CLOSED');
+    }
+    if (
+      !allowFinishing &&
+      session.status !== 'active'
+    ) {
+      throw new TableSessionError(
+        'The table session is not accepting this operation.',
+        'SESSION_NOT_ACTIVE',
+      );
     }
     if (
       session.status === 'expired' ||
@@ -434,7 +447,7 @@ export function createTableSessionService(
   const service: TableSessionService = {
     async validateTable(input) {
       const table = await tableById(input.clubId, input.tableId);
-      if (table.status !== 'available' && table.status !== 'payment-split-open') {
+      if (table.status !== 'available') {
         throw new TableSessionError(
           'This table is not accepting new customer sessions.',
           'TABLE_NOT_AVAILABLE',
@@ -452,22 +465,6 @@ export function createTableSessionService(
         throw new TableSessionError('Only a customer can create a table session.', 'ACCESS_DENIED');
       }
       const table = await tableById(input.actor.clubId, input.tableId);
-      if (table.status === 'payment-split-open' && table.activeSessionId) {
-        const session = await repos.tableSessions.getById(
-          input.actor.clubId,
-          table.activeSessionId,
-        );
-        if (!session) {
-          throw new TableSessionError('The table session was not found.', 'SESSION_NOT_FOUND');
-        }
-        return service.join({
-          actor: input.actor,
-          tableSessionId: session.id,
-          deviceId: input.deviceId,
-          now: input.now,
-          consumeSplitSlot: true,
-        });
-      }
       assertTableCanOpen(table);
       return createOwnerSession({
         actor: input.actor,
@@ -519,7 +516,13 @@ export function createTableSessionService(
         );
       }
       const consumeSplitSlot = input.consumeSplitSlot === true;
-      if (consumeSplitSlot && table.status !== 'payment-split-open') {
+      if (!consumeSplitSlot && session.status !== 'active') {
+        throw new TableSessionError(
+          'This table is finishing up and is not accepting new guests.',
+          'SESSION_NOT_ACTIVE',
+        );
+      }
+      if (consumeSplitSlot && (table.status !== 'finishing-up' || session.status !== 'splitting-bill')) {
         throw new TableSessionError(
           'This table is not accepting split-session joins.',
           'TABLE_NOT_AVAILABLE',
@@ -642,6 +645,7 @@ export function createTableSessionService(
         },
         session.id,
         input.now,
+        true,
       );
       const restored = {
         ...customer,
@@ -682,6 +686,7 @@ export function createTableSessionService(
         input.actor,
         input.tableSessionId,
         input.now,
+        true,
       );
       const settings = await settingsFor(input.actor.clubId);
       const expiresAt = minDate(
@@ -703,8 +708,130 @@ export function createTableSessionService(
       return access(updatedSession, updatedCustomer, '');
     },
 
+    async requestClose(input) {
+      const { session, customer } = await activeSession(
+        input.actor,
+        input.tableSessionId,
+        input.now,
+        true,
+      );
+      if (session.status !== 'active') {
+        throw new TableSessionError(
+          'This table is already finishing up.',
+          'SESSION_NOT_ACTIVE',
+        );
+      }
+      const table = await repos.tables.getById(input.actor.clubId, session.tableId);
+      if (!table || table.activeSessionId !== session.id) {
+        throw new TableSessionError('The table session is not active.', 'SESSION_NOT_ACTIVE');
+      }
+      const updatedSession = {
+        ...session,
+        status: 'awaiting-payment' as const,
+        lastActivityAt: input.now,
+        updatedAt: input.now,
+      };
+      await repos.tableSessions.save(updatedSession);
+      await repos.tables.save({
+        ...table,
+        status: 'finishing-up',
+        splitSlotsRemaining: undefined,
+        updatedAt: input.now,
+      });
+      await repos.notifications.save(
+        notification(
+          `${session.id}:finishing-up`,
+          session,
+          session.ownerCustomerSessionId,
+          'Your table is finishing up. A waiter will confirm payment.',
+          input.now,
+        ),
+      );
+      await repos.serviceTimeline.append({
+        id: `${session.id}:timeline-finishing-up`,
+        clubId: session.clubId,
+        tableSessionId: session.id,
+        type: 'finishing-up',
+        message: 'Customer requested to close the tab.',
+        sourceRecord: { type: 'tableSession', id: session.id },
+        occurredAt: input.now,
+      });
+      await recordAudit(
+        input.actor,
+        'close-requested',
+        'tableSession',
+        session.id,
+        input.now,
+        { tableId: session.tableId },
+      );
+      return access(updatedSession, customer, '');
+    },
+
+    async cancelClose(input) {
+      const { session, customer } = await activeSession(
+        input.actor,
+        input.tableSessionId,
+        input.now,
+      );
+      if (session.status !== 'awaiting-payment' && session.status !== 'splitting-bill') {
+        throw new TableSessionError(
+          'This table is not waiting to be closed.',
+          'SESSION_NOT_ACTIVE',
+        );
+      }
+      const table = await repos.tables.getById(input.actor.clubId, session.tableId);
+      if (!table || table.activeSessionId !== session.id || table.status !== 'finishing-up') {
+        throw new TableSessionError('The table session is not finishing up.', 'SESSION_NOT_ACTIVE');
+      }
+      const updatedSession = {
+        ...session,
+        status: 'active' as const,
+        lastActivityAt: input.now,
+        updatedAt: input.now,
+      };
+      await repos.tableSessions.save(updatedSession);
+      await repos.tables.save({
+        ...table,
+        status: 'occupied',
+        splitSlotsRemaining: undefined,
+        updatedAt: input.now,
+      });
+      await repos.notifications.save(
+        notification(
+          `${session.id}:finishing-up-cancelled`,
+          session,
+          session.ownerCustomerSessionId,
+          'Close request cancelled. Ordering is open again.',
+          input.now,
+        ),
+      );
+      await repos.serviceTimeline.append({
+        id: `${session.id}:timeline-finishing-up-cancelled`,
+        clubId: session.clubId,
+        tableSessionId: session.id,
+        type: 'finishing-up-cancelled',
+        message: 'Customer cancelled the close request.',
+        sourceRecord: { type: 'tableSession', id: session.id },
+        occurredAt: input.now,
+      });
+      await recordAudit(
+        input.actor,
+        'close-request-cancelled',
+        'tableSession',
+        session.id,
+        input.now,
+        { tableId: session.tableId },
+      );
+      return access(updatedSession, customer, '');
+    },
+
     async getCustomerSession(input) {
-      const { session } = await activeSession(input.actor, input.sessionId, new Date().toISOString());
+      const { session } = await activeSession(
+        input.actor,
+        input.sessionId,
+        new Date().toISOString(),
+        true,
+      );
       return session;
     },
 
@@ -713,6 +840,7 @@ export function createTableSessionService(
         input.actor,
         input.tableSessionId,
         input.now,
+        true,
       );
       return access(session, customer, '');
     },
@@ -728,22 +856,61 @@ export function createTableSessionService(
       if (!session) {
         throw new TableSessionError('The table session was not found.', 'SESSION_NOT_FOUND');
       }
-      if (session.status === 'closed' || session.status === 'expired') {
+       if (session.status === 'closed' || session.status === 'expired') {
         return;
       }
+       if (session.status !== 'awaiting-payment' && session.status !== 'splitting-bill') {
+         throw new TableSessionError(
+           'The customer must request payment before the waiter can close the table.',
+           'SESSION_NOT_ACTIVE',
+         );
+       }
       assertTableSessionTransition(session.status, 'closed');
+      const payments = (
+        await repos.payments.listForSession(input.actor.clubId, session.id)
+      ).items;
+      const verifiedTotal = payments
+        .filter((payment) => payment.status === 'verified')
+        .reduce((total, payment) => total + payment.amountMinor, 0);
+      const submittedTotal = payments
+        .filter((payment) => payment.status === 'submitted')
+        .reduce((total, payment) => total + payment.amountMinor, 0);
+      if (submittedTotal > 0 || verifiedTotal < session.runningTotalMinor) {
+        throw new TableSessionError(
+          'All payment branches must be verified before the table can close.',
+          'PAYMENT_NOT_SETTLED',
+        );
+      }
+      if (verifiedTotal > session.runningTotalMinor) {
+        throw new TableSessionError(
+          'Verified payments exceed the current table balance.',
+          'PAYMENT_NOT_SETTLED',
+        );
+      }
       await repos.tableSessions.save({
         ...session,
         status: 'closed',
         closedAt: input.now,
         lastActivityAt: input.now,
       });
+      const customerSessions = await repos.customerSessions.listForTableSession(
+        input.actor.clubId,
+        session.id,
+      );
+      await Promise.all(
+        customerSessions
+          .filter((customer) => !customer.expiredAt)
+          .map((customer) =>
+            repos.customerSessions.expire(input.actor.clubId, customer.id, input.now),
+          ),
+      );
       const table = await repos.tables.getById(input.actor.clubId, session.tableId);
       if (table) {
         await repos.tables.save({
           ...table,
           status: 'available',
           activeSessionId: undefined,
+          splitSlotsRemaining: undefined,
         });
       }
       await repos.notifications.save(
@@ -782,6 +949,136 @@ export function createTableSessionService(
       });
     },
 
+    async submitPayment(input) {
+      if (input.actor.kind !== 'customer') {
+        throw new TableSessionError(
+          'Only a customer can submit a Pay Now request.',
+          'ACCESS_DENIED',
+        );
+      }
+      if (input.method === 'mpesa') {
+        throw new TableSessionError(
+          'M-Pesa payment transport is not connected.',
+          'PAYMENT_TRANSPORT_UNAVAILABLE',
+        );
+      }
+      if (input.method !== 'cash' && input.method !== 'till') {
+        throw new TableSessionError('The selected payment method is not supported.', 'CONFIGURATION_INVALID');
+      }
+      const { session } = await activeSession(
+        input.actor,
+        input.tableSessionId,
+        input.now,
+        true,
+      );
+      const payments = (
+        await repos.payments.listForSession(input.actor.clubId, session.id)
+      ).items;
+      const settledOrPending = payments
+        .filter((payment) => payment.status === 'verified' || payment.status === 'submitted')
+        .reduce((total, payment) => total + payment.amountMinor, 0);
+      const amountMinor = session.runningTotalMinor - settledOrPending;
+      if (amountMinor <= 0) {
+        throw new TableSessionError(
+          'There is no outstanding balance to pay.',
+          'PAYMENT_PENDING',
+        );
+      }
+      if (payments.some((payment) => payment.status === 'submitted')) {
+        throw new TableSessionError(
+          'A payment is already waiting for waiter verification.',
+          'PAYMENT_PENDING',
+        );
+      }
+      const payment: Payment = {
+        id: ids.next(),
+        clubId: session.clubId,
+        tableSessionId: session.id,
+        businessDayId: session.businessDayId,
+        method: input.method,
+        amountMinor,
+        currency: (await settingsFor(input.actor.clubId)).general.currency.code,
+        status: 'submitted',
+        createdAt: input.now,
+      };
+      await repos.payments.save(payment);
+      await repos.notifications.save(
+        notification(
+          `${payment.id}:payment-submitted`,
+          session,
+          session.ownerCustomerSessionId,
+          `Payment submitted for ${amountMinor} minor units. A waiter will verify it.`,
+          input.now,
+        ),
+      );
+      await repos.serviceTimeline.append({
+        id: `${payment.id}:timeline-submitted`,
+        clubId: session.clubId,
+        tableSessionId: session.id,
+        type: 'payment-submitted',
+        message: `A ${input.method} payment was submitted.`,
+        sourceRecord: { type: 'payment', id: payment.id },
+        occurredAt: input.now,
+      });
+      await recordAudit(
+        input.actor,
+        'payment-submitted',
+        'payment',
+        payment.id,
+        input.now,
+        { tableSessionId: session.id, method: input.method, amountMinor },
+      );
+      return payment;
+    },
+
+    async verifyPayment(input) {
+      if (input.actor.kind !== 'staff' && input.actor.kind !== 'system') {
+        throw new TableSessionError(
+          'Only authorized staff can verify a payment.',
+          'ACCESS_DENIED',
+        );
+      }
+      const payment = await repos.payments.getById(input.actor.clubId, input.paymentId);
+      if (!payment) {
+        throw new TableSessionError('The payment was not found.', 'PAYMENT_NOT_FOUND');
+      }
+      if (payment.status !== 'submitted') {
+        throw new TableSessionError(
+          'Only submitted payments can be verified.',
+          'PAYMENT_PENDING',
+        );
+      }
+      const verified: Payment = {
+        ...payment,
+        status: 'verified',
+        verifiedByStaffId: input.actor.staffId ?? input.actor.id,
+        verifiedAt: input.now,
+      };
+      await repos.payments.save(verified);
+      await repos.notifications.save(
+        notification(
+          `${payment.id}:payment-verified`,
+          {
+            id: payment.tableSessionId,
+            clubId: payment.clubId,
+          } as TableSession,
+          (await repos.tableSessions.getById(input.actor.clubId, payment.tableSessionId))
+            ?.ownerCustomerSessionId ?? '',
+          'Payment verified by your waiter.',
+          input.now,
+        ),
+      );
+      await recordAudit(
+        input.actor,
+        'payment-verified',
+        'payment',
+        payment.id,
+        input.now,
+        { tableSessionId: payment.tableSessionId, amountMinor: payment.amountMinor },
+      );
+      return verified;
+    },
+
     async enablePaymentSplit(input) {
       if (input.actor.kind !== 'staff' && input.actor.kind !== 'system') {
         throw new TableSessionError(
@@ -806,15 +1103,18 @@ export function createTableSessionService(
       if (!table) {
         throw new TableSessionError('The requested table was not found.', 'TABLE_NOT_FOUND');
       }
-      if (table.activeSessionId !== session.id || session.status !== 'active') {
+      if (
+        table.activeSessionId !== session.id ||
+        table.status !== 'finishing-up' ||
+        session.status !== 'awaiting-payment'
+      ) {
         throw new TableSessionError(
-          'The table session is not accepting bill splitting.',
+          'Split bills are available after the customer requests to close the tab.',
           'SESSION_NOT_ACTIVE',
         );
       }
       await repos.tables.save({
         ...table,
-        status: 'payment-split-open',
         splitSlotsRemaining: input.splitCount,
         updatedAt: input.now,
       });
@@ -837,8 +1137,8 @@ export function createTableSessionService(
         id: `${session.id}:timeline-split-open:${input.now}`,
         clubId: session.clubId,
         tableSessionId: session.id,
-        type: 'payment-split-open',
-        message: `Bill splitting opened for ${input.splitCount} guest${input.splitCount === 1 ? '' : 's'}.`,
+          type: 'payment-split-open',
+          message: `Bill splitting opened for ${input.splitCount} payment branch${input.splitCount === 1 ? '' : 'es'}.`,
         sourceRecord: { type: 'tableSession', id: session.id },
         occurredAt: input.now,
       });

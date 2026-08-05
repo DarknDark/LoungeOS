@@ -21,6 +21,9 @@ import {
   listOrderMenu,
   listOrders,
   openCustomerTableSession,
+  requestCustomerTableSessionClose,
+  cancelCustomerTableSessionClose,
+  submitCustomerTableSessionPayment,
   recoverCustomerTableSession,
   submitOrder as submitOrderRequest,
   type Order as ApiOrder,
@@ -99,6 +102,7 @@ type ClubContextValue = {
   billTotal: number;
   cartCount: number;
   sessionActive: boolean;
+  tableSessionStatus: 'created' | 'active' | 'splitting-bill' | 'awaiting-payment' | 'payment-pending' | 'completed' | 'closed' | 'expired';
   isLoading: boolean;
   isSubmitting: boolean;
   isOnline: boolean;
@@ -111,7 +115,9 @@ type ClubContextValue = {
   submitOrder: () => Promise<boolean>;
   requestSong: (song: string, artist: string) => void;
   callWaiter: () => void;
-  payBill: (method: 'mpesa' | 'cash') => void;
+  payBill: (method: 'mpesa' | 'cash' | 'till') => Promise<boolean>;
+  requestClose: () => Promise<boolean>;
+  cancelClose: () => Promise<boolean>;
   markOrderStatus: (orderId: string, status: OrderStatus) => void;
   markOrderPaid: (orderId: string) => void;
   cancelOrder: (orderId: string) => Promise<boolean>;
@@ -300,6 +306,8 @@ export function ClubProvider({ children }: PropsWithChildren) {
   const [waiterCalls, setWaiterCalls] = useState<WaiterCall[]>([]);
   const [selectedMode, setSelectedMode] = useState<StaffMode>('guest');
   const [runningBillMinor, setRunningBillMinor] = useState(0);
+  const [tableSessionStatus, setTableSessionStatus] =
+    useState<ClubContextValue['tableSessionStatus']>('active');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
@@ -339,6 +347,7 @@ export function ClubProvider({ children }: PropsWithChildren) {
         orderResponse.orders.map((order, index) => orderFromResponse(order, menuById, index + 1)),
       );
       setRunningBillMinor(statusResponse.tableSession.runningTotalMinor);
+      setTableSessionStatus(statusResponse.tableSession.status as ClubContextValue['tableSessionStatus']);
       setSession((current) => (current ? { ...current, tableNumber: undefined } : current));
       setIsOnline(true);
       setErrorMessage('');
@@ -583,6 +592,60 @@ export function ClubProvider({ children }: PropsWithChildren) {
     }
   }, [refresh, session]);
 
+  const requestClose = useCallback(async () => {
+    if (!session) return false;
+    try {
+      const access = await requestCustomerTableSessionClose(session.tableSessionId, {
+        headers: headersForSession(session),
+        responseType: 'json',
+      });
+      await applyAccess(access, session.clubId);
+      setTableSessionStatus(access.tableSession.status as ClubContextValue['tableSessionStatus']);
+      await refresh();
+      return true;
+    } catch (error) {
+      setErrorMessage(friendlyError(error));
+      return false;
+    }
+  }, [applyAccess, refresh, session]);
+
+  const cancelClose = useCallback(async () => {
+    if (!session) return false;
+    try {
+      const access = await cancelCustomerTableSessionClose(session.tableSessionId, {
+        headers: headersForSession(session),
+        responseType: 'json',
+      });
+      await applyAccess(access, session.clubId);
+      setTableSessionStatus(access.tableSession.status as ClubContextValue['tableSessionStatus']);
+      await refresh();
+      return true;
+    } catch (error) {
+      setErrorMessage(friendlyError(error));
+      return false;
+    }
+  }, [applyAccess, refresh, session]);
+
+  const payBill = useCallback(async (method: 'mpesa' | 'cash' | 'till') => {
+    if (!session) return false;
+    try {
+      await submitCustomerTableSessionPayment(
+        session.tableSessionId,
+        { method },
+        {
+          headers: headersForSession(session),
+          responseType: 'json',
+        },
+      );
+      setErrorMessage('');
+      await refresh();
+      return true;
+    } catch (error) {
+      setErrorMessage(friendlyError(error));
+      return false;
+    }
+  }, [refresh, session]);
+
   const resetSession = useCallback(async () => {
     if (Platform.OS === 'web') {
       await AsyncStorage.removeItem(SESSION_KEY);
@@ -614,6 +677,7 @@ export function ClubProvider({ children }: PropsWithChildren) {
     billTotal: displayAmount(runningBillMinor),
     cartCount: cart.reduce((sum, item) => sum + item.quantity, 0),
     sessionActive: Boolean(session),
+    tableSessionStatus,
     isLoading,
     isSubmitting,
     isOnline,
@@ -628,7 +692,9 @@ export function ClubProvider({ children }: PropsWithChildren) {
     submitOrder,
     requestSong: () => setErrorMessage('Song requests are not connected to the live service yet.'),
     callWaiter: () => setErrorMessage('Waiter calls are not connected to the live service yet.'),
-    payBill: () => setErrorMessage('Payments are not connected to the live service yet.'),
+    payBill,
+    requestClose,
+    cancelClose,
     markOrderStatus: () => setErrorMessage('Staff authentication is required to update order status.'),
     markOrderPaid: () => setErrorMessage('Payments are not connected to the live service yet.'),
     cancelOrder,
@@ -647,6 +713,7 @@ export function ClubProvider({ children }: PropsWithChildren) {
     addToCart,
     cancelOrder,
     cart,
+    cancelClose,
     errorMessage,
     featureFlags,
     isLoading,
@@ -659,10 +726,12 @@ export function ClubProvider({ children }: PropsWithChildren) {
     refresh,
     resetSession,
     runningBillMinor,
+    requestClose,
     selectedMode,
     session,
     songRequests,
     submitOrder,
+    tableSessionStatus,
     waiterCalls,
   ]);
 

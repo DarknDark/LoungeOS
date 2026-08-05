@@ -54,6 +54,16 @@ export type TableSessionService = {
     deviceId?: string;
     now: string;
   }): Promise<TableSessionAccess>;
+  requestClose(input: {
+    actor: RequestActor;
+    tableSessionId: string;
+    now: string;
+  }): Promise<TableSessionAccess>;
+  cancelClose(input: {
+    actor: RequestActor;
+    tableSessionId: string;
+    now: string;
+  }): Promise<TableSessionAccess>;
   createFromQr(input: {
     actor: RequestActor;
     tableId: string;
@@ -101,6 +111,17 @@ export type TableSessionService = {
     splitCount: number;
     now: string;
   }): Promise<void>;
+  submitPayment(input: {
+    actor: RequestActor;
+    tableSessionId: string;
+    method: Payment['method'];
+    now: string;
+  }): Promise<Payment>;
+  verifyPayment(input: {
+    actor: RequestActor;
+    paymentId: string;
+    now: string;
+  }): Promise<Payment>;
 };
 
 export type TableSessionAccess = {

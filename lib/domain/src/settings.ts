@@ -50,7 +50,7 @@ export type ClubSettings = {
     mpesaPaybillNumber?: string;
     merchantName?: string;
     paymentInstructions?: string;
-    supportedMethods: Array<'mpesa' | 'cash'>;
+    supportedMethods: Array<'mpesa' | 'cash' | 'till'>;
   };
   themes: {
     mode: ThemeSettings['mode'];
@@ -204,7 +204,7 @@ export const DEFAULT_CLUB_SETTINGS: ClubSettings = {
     songRequestsEnabled: true,
   },
   payments: {
-    supportedMethods: ['mpesa', 'cash'],
+    supportedMethods: ['mpesa', 'cash', 'till'],
   },
   themes: {
     mode: 'dark',

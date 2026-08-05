@@ -12,10 +12,5 @@ export type TableStatus = typeof TableStatus[keyof typeof TableStatus];
 export const TableStatus = {
   available: 'available',
   occupied: 'occupied',
-  'payment-split-open': 'payment-split-open',
-  'payment-pending': 'payment-pending',
-  cleaning: 'cleaning',
-  reserved: 'reserved',
-  closed: 'closed',
-  'ready-for-next-customer': 'ready-for-next-customer',
+  'finishing-up': 'finishing-up',
 } as const;
