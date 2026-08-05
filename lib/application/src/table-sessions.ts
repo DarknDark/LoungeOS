@@ -3,6 +3,7 @@ import type {
   DomainEvent,
   Notification,
   Payment,
+  ServiceTimelineEvent,
   Table,
   TableSession,
 } from '@workspace/domain';
@@ -1123,20 +1124,22 @@ export function createTableSessionService(
       if (!session) {
         throw new TableSessionError('The table session was not found.', 'SESSION_NOT_FOUND');
       }
-       if (session.status === 'closed' || session.status === 'expired') {
+      if (session.status === 'closed' || session.status === 'expired') {
         return;
       }
-       if (
-         session.controllerType !== 'staff' &&
-         session.status !== 'awaiting-payment' &&
-         session.status !== 'splitting-bill'
-       ) {
-         throw new TableSessionError(
-           'The customer must request payment before the waiter can close the table.',
-           'SESSION_NOT_ACTIVE',
-         );
-       }
+      if (
+        session.controllerType !== 'staff' &&
+        session.status !== 'awaiting-payment' &&
+        session.status !== 'splitting-bill'
+      ) {
+        throw new TableSessionError(
+          'The customer must request payment before the waiter can close the table.',
+          'SESSION_NOT_ACTIVE',
+        );
+      }
       assertTableSessionTransition(session.status, 'closed');
+
+      // Business validation: payment state must be fully settled.
       const payments = (
         await repos.payments.listForSession(input.actor.clubId, session.id)
       ).items;
@@ -1161,42 +1164,27 @@ export function createTableSessionService(
           'PAYMENT_NOT_SETTLED',
         );
       }
-      await repos.tableSessions.save({
+
+      const table = await repos.tables.getById(input.actor.clubId, session.tableId);
+      if (!table) {
+        throw new TableSessionError('The requested table was not found.', 'TABLE_NOT_FOUND');
+      }
+
+      // Build all side-effect records as pure values before any writes.
+      const closedSession: TableSession = {
         ...session,
         status: 'closed',
         closedAt: input.now,
         lastActivityAt: input.now,
-      });
-      const customerSessions = await repos.customerSessions.listForTableSession(
-        input.actor.clubId,
-        session.id,
+      };
+      const notifRecord = notification(
+        `${session.id}:session-closed`,
+        session,
+        session.ownerCustomerSessionId,
+        'Session closed.',
+        input.now,
       );
-      await Promise.all(
-        customerSessions
-          .filter((customer) => !customer.expiredAt)
-          .map((customer) =>
-            repos.customerSessions.expire(input.actor.clubId, customer.id, input.now),
-          ),
-      );
-      const table = await repos.tables.getById(input.actor.clubId, session.tableId);
-      if (table) {
-        await repos.tables.save({
-          ...table,
-          status: 'available',
-          activeSessionId: undefined,
-          splitSlotsRemaining: undefined,
-        });
-      }
-      await repos.notifications.save(
-        notification(
-          `${session.id}:session-closed`,
-          session,
-          session.ownerCustomerSessionId,
-          'Session closed.',
-          input.now,
-        ),
-      );
-      await repos.serviceTimeline.append({
+      const timelineRecord: ServiceTimelineEvent = {
         id: `${session.id}:timeline-closed`,
         clubId: session.clubId,
         tableSessionId: session.id,
@@ -1204,15 +1192,61 @@ export function createTableSessionService(
         message: 'Your table session has closed.',
         sourceRecord: { type: 'tableSession', id: session.id },
         occurredAt: input.now,
-      });
-      await recordAudit(
-        input.actor,
-        'session-closed',
-        'tableSession',
-        session.id,
-        input.now,
-        { tableId: session.tableId },
-      );
+      };
+      const actorId = input.actor.id ?? input.actor.staffId;
+      const auditRecord: AuditLog = {
+        id: ids.next(),
+        clubId: session.clubId,
+        ...(actorId ? { actorId } : {}),
+        actorType: input.actor.kind,
+        action: 'table-closed',
+        resourceType: 'tableSession',
+        resourceId: session.id,
+        timestamp: input.now,
+        metadata: { tableId: session.tableId },
+        createdAt: input.now,
+      };
+
+      if (repos.tableSessions.closeAfterVerifiedPayment) {
+        // Atomic path: all cleanup writes in a single Firestore transaction.
+        // The repository verifies integrity and atomically closes the session,
+        // expires all customer sessions, revokes payment tokens, resets the
+        // table to available, and appends the notification, timeline event,
+        // and audit record.
+        await repos.tableSessions.closeAfterVerifiedPayment({
+          session: closedSession,
+          table,
+          notification: notifRecord,
+          timeline: timelineRecord,
+          audit: auditRecord,
+          now: input.now,
+        });
+      } else {
+        // Fallback path: individual writes used in test environments that do
+        // not implement the atomic repository method.
+        await repos.tableSessions.save(closedSession);
+        const customerSessions = await repos.customerSessions.listForTableSession(
+          input.actor.clubId,
+          session.id,
+        );
+        await Promise.all(
+          customerSessions
+            .filter((customer) => !customer.expiredAt)
+            .map((customer) =>
+              repos.customerSessions.expire(input.actor.clubId, customer.id, input.now),
+            ),
+        );
+        await repos.tables.save({
+          ...table,
+          status: 'available',
+          activeSessionId: undefined,
+          splitSlotsRemaining: undefined,
+        });
+        await repos.notifications.save(notifRecord);
+        await repos.serviceTimeline.append(timelineRecord);
+        await repos.audit.append(auditRecord);
+      }
+
       await publishEvent({
         clubId: session.clubId,
         occurredAt: input.now,

@@ -466,6 +466,57 @@ test('recovers after refresh and authorizes status with the recovered token', as
   assert.equal(status.customerSession.id, owner.customerSession.id);
 });
 
+test('permanent QR is reusable immediately after the waiter closes the table', async () => {
+  const { service, tables, sessions, customers } = makeHarness();
+
+  // First customer scans the permanent QR and opens a session.
+  const first = await service.createFromQr({
+    actor: customerActor(),
+    tableId,
+    qrToken: 'qr-token',
+    deviceId: 'device-first',
+    now: '2026-08-04T12:00:00.000Z',
+  });
+  assert.equal(tables.get(tableId)?.status, 'active');
+  assert.equal(tables.get(tableId)?.activeSessionId, first.tableSession.id);
+
+  // Customer signals they are ready to pay (running total is 0, so no payment needed).
+  await service.requestClose({
+    actor: customerActor(first.customerSession.id, first.recoveryToken),
+    tableSessionId: first.tableSession.id,
+    now: '2026-08-04T12:05:00.000Z',
+  });
+  assert.equal(sessions.get(first.tableSession.id)?.status, 'awaiting-payment');
+
+  // Waiter closes the table. Running total is 0 so payment verification passes immediately.
+  await service.closeAfterVerifiedPayment({
+    actor: { kind: 'staff', id: 'staff-1', staffId: 'staff-1', clubId },
+    tableSessionId: first.tableSession.id,
+    now: '2026-08-04T12:06:00.000Z',
+  });
+
+  assert.equal(sessions.get(first.tableSession.id)?.status, 'closed');
+  assert.ok(customers.get(first.customerSession.id)?.expiredAt);
+  assert.equal(tables.get(tableId)?.status, 'available');
+  assert.equal(tables.get(tableId)?.activeSessionId, undefined);
+
+  // The same permanent QR must be scannable by the next customer immediately —
+  // no QR rotation, no regeneration.
+  const second = await service.createFromQr({
+    actor: customerActor(),
+    tableId,
+    qrToken: 'qr-token',
+    deviceId: 'device-second',
+    now: '2026-08-04T12:07:00.000Z',
+  });
+
+  assert.equal(second.customerSession.isTableOwner, true);
+  assert.notEqual(second.tableSession.id, first.tableSession.id);
+  assert.equal(second.tableSession.tableId, tableId);
+  assert.equal(tables.get(tableId)?.status, 'active');
+  assert.equal(tables.get(tableId)?.activeSessionId, second.tableSession.id);
+});
+
 test('heartbeat refreshes inactivity expiry and expiration releases the table', async () => {
   const { service, tables, notifications, timeline } = makeHarness();
   const owner = await service.createFromQr({
