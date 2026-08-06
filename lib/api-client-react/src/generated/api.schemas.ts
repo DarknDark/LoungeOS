@@ -190,6 +190,116 @@ export interface Staff {
   photoUrl?: string;
 }
 
+export type RolePermissionsItem = typeof RolePermissionsItem[keyof typeof RolePermissionsItem];
+
+
+export const RolePermissionsItem = {
+  tablesread: 'tables.read',
+  tablesrelease: 'tables.release',
+  ordersread: 'orders.read',
+  ordersmanage: 'orders.manage',
+  ticketsmanage: 'tickets.manage',
+  paymentsverify: 'payments.verify',
+  songsmanage: 'songs.manage',
+  inventoryread: 'inventory.read',
+  inventorymanage: 'inventory.manage',
+  settingsmanage: 'settings.manage',
+  staffmanage: 'staff.manage',
+  reportsread: 'reports.read',
+  'business-daysmanage': 'business-days.manage',
+} as const;
+
+export interface Role {
+  id: string;
+  clubId?: string;
+  /** @minLength 1 */
+  name: string;
+  permissions: RolePermissionsItem[];
+  active: boolean;
+}
+
+export interface CreateStaffRequest {
+  /** @minLength 1 */
+  firebaseUid: string;
+  /** @minLength 1 */
+  displayName: string;
+  email?: string;
+  roleIds: string[];
+  active: boolean;
+  photoUrl?: string;
+}
+
+export interface UpdateStaffRequest {
+  /** @minLength 1 */
+  firebaseUid?: string;
+  /** @minLength 1 */
+  displayName?: string;
+  email?: string;
+  roleIds?: string[];
+  active?: boolean;
+  photoUrl?: string;
+}
+
+export interface StaffListResponse {
+  staff: Staff[];
+}
+
+export type CreateRoleRequestPermissionsItem = typeof CreateRoleRequestPermissionsItem[keyof typeof CreateRoleRequestPermissionsItem];
+
+
+export const CreateRoleRequestPermissionsItem = {
+  tablesread: 'tables.read',
+  tablesrelease: 'tables.release',
+  ordersread: 'orders.read',
+  ordersmanage: 'orders.manage',
+  ticketsmanage: 'tickets.manage',
+  paymentsverify: 'payments.verify',
+  songsmanage: 'songs.manage',
+  inventoryread: 'inventory.read',
+  inventorymanage: 'inventory.manage',
+  settingsmanage: 'settings.manage',
+  staffmanage: 'staff.manage',
+  reportsread: 'reports.read',
+  'business-daysmanage': 'business-days.manage',
+} as const;
+
+export interface CreateRoleRequest {
+  /** @minLength 1 */
+  name: string;
+  permissions: CreateRoleRequestPermissionsItem[];
+  active: boolean;
+}
+
+export type UpdateRoleRequestPermissionsItem = typeof UpdateRoleRequestPermissionsItem[keyof typeof UpdateRoleRequestPermissionsItem];
+
+
+export const UpdateRoleRequestPermissionsItem = {
+  tablesread: 'tables.read',
+  tablesrelease: 'tables.release',
+  ordersread: 'orders.read',
+  ordersmanage: 'orders.manage',
+  ticketsmanage: 'tickets.manage',
+  paymentsverify: 'payments.verify',
+  songsmanage: 'songs.manage',
+  inventoryread: 'inventory.read',
+  inventorymanage: 'inventory.manage',
+  settingsmanage: 'settings.manage',
+  staffmanage: 'staff.manage',
+  reportsread: 'reports.read',
+  'business-daysmanage': 'business-days.manage',
+} as const;
+
+export interface UpdateRoleRequest {
+  /** @minLength 1 */
+  name?: string;
+  permissions?: UpdateRoleRequestPermissionsItem[];
+  active?: boolean;
+}
+
+export interface RoleListResponse {
+  roles: Role[];
+}
+
 export type NotificationPriority = typeof NotificationPriority[keyof typeof NotificationPriority];
 
 

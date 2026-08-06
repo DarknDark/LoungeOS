@@ -11,3 +11,4 @@
 - [Static Expo server security](static-server-security.md) — generated bundle serving uses explicit manifest allowlists and decoded path containment checks.
 - [Expo web font loading](expo-web-font-loading.md) — proxied web preview may keep native font loading pending; render with system fallback on web while retaining native font gating.
 - [Staff operations read model](staff-operations-read-model.md) — protected waiter table operations can read live tables, sessions, orders, payments, and pending joins; mobile staff auth remains explicit.
+- [Workspace dependency lockfile](workspace-dependency-lockfile.md) — package manifest changes require refreshing the pnpm lockfile before frozen installs can succeed.

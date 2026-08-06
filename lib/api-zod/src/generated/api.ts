@@ -1676,3 +1676,197 @@ export const SubmitOrderResponse = zod.object({
   "lineSubtotalMinor": zod.number()
 }))
 })
+
+
+/**
+ * @summary Create a staff membership
+ */
+
+
+
+export const CreateAdminStaffHeader = zod.object({
+  "X-Club-Id": zod.string().min(1)
+})
+
+
+
+
+
+export const CreateAdminStaffBody = zod.object({
+  "firebaseUid": zod.string().min(1),
+  "displayName": zod.string().min(1),
+  "email": zod.string().optional(),
+  "roleIds": zod.array(zod.string()),
+  "active": zod.boolean(),
+  "photoUrl": zod.string().optional()
+})
+
+export const CreateAdminStaffResponse = zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "firebaseUid": zod.string(),
+  "displayName": zod.string(),
+  "email": zod.string().optional(),
+  "roleIds": zod.array(zod.string()),
+  "active": zod.boolean(),
+  "photoUrl": zod.string().optional()
+})
+
+
+/**
+ * @summary List staff memberships
+ */
+
+
+
+export const ListAdminStaffHeader = zod.object({
+  "X-Club-Id": zod.string().min(1)
+})
+
+export const ListAdminStaffResponse = zod.object({
+  "staff": zod.array(zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "firebaseUid": zod.string(),
+  "displayName": zod.string(),
+  "email": zod.string().optional(),
+  "roleIds": zod.array(zod.string()),
+  "active": zod.boolean(),
+  "photoUrl": zod.string().optional()
+}))
+})
+
+
+/**
+ * @summary Update a staff membership
+ */
+
+
+
+export const UpdateAdminStaffParams = zod.object({
+  "staffId": zod.coerce.string().min(1)
+})
+
+
+
+
+export const UpdateAdminStaffHeader = zod.object({
+  "X-Club-Id": zod.string().min(1)
+})
+
+
+
+
+
+export const UpdateAdminStaffBody = zod.object({
+  "firebaseUid": zod.string().min(1).optional(),
+  "displayName": zod.string().min(1).optional(),
+  "email": zod.string().optional(),
+  "roleIds": zod.array(zod.string()).optional(),
+  "active": zod.boolean().optional(),
+  "photoUrl": zod.string().optional()
+})
+
+export const UpdateAdminStaffResponse = zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "firebaseUid": zod.string(),
+  "displayName": zod.string(),
+  "email": zod.string().optional(),
+  "roleIds": zod.array(zod.string()),
+  "active": zod.boolean(),
+  "photoUrl": zod.string().optional()
+})
+
+
+/**
+ * @summary Create a staff role
+ */
+
+
+
+export const CreateAdminRoleHeader = zod.object({
+  "X-Club-Id": zod.string().min(1)
+})
+
+
+
+
+export const CreateAdminRoleBody = zod.object({
+  "name": zod.string().min(1),
+  "permissions": zod.array(zod.enum(['tables.read', 'tables.release', 'orders.read', 'orders.manage', 'tickets.manage', 'payments.verify', 'songs.manage', 'inventory.read', 'inventory.manage', 'settings.manage', 'staff.manage', 'reports.read', 'business-days.manage'])),
+  "active": zod.boolean()
+})
+
+
+
+
+export const CreateAdminRoleResponse = zod.object({
+  "id": zod.string(),
+  "clubId": zod.string().optional(),
+  "name": zod.string().min(1),
+  "permissions": zod.array(zod.enum(['tables.read', 'tables.release', 'orders.read', 'orders.manage', 'tickets.manage', 'payments.verify', 'songs.manage', 'inventory.read', 'inventory.manage', 'settings.manage', 'staff.manage', 'reports.read', 'business-days.manage'])),
+  "active": zod.boolean()
+})
+
+
+/**
+ * @summary List staff roles
+ */
+
+
+
+export const ListAdminRolesHeader = zod.object({
+  "X-Club-Id": zod.string().min(1)
+})
+
+
+
+
+export const ListAdminRolesResponse = zod.object({
+  "roles": zod.array(zod.object({
+  "id": zod.string(),
+  "clubId": zod.string().optional(),
+  "name": zod.string().min(1),
+  "permissions": zod.array(zod.enum(['tables.read', 'tables.release', 'orders.read', 'orders.manage', 'tickets.manage', 'payments.verify', 'songs.manage', 'inventory.read', 'inventory.manage', 'settings.manage', 'staff.manage', 'reports.read', 'business-days.manage'])),
+  "active": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary Update a staff role
+ */
+
+
+
+export const UpdateAdminRoleParams = zod.object({
+  "roleId": zod.coerce.string().min(1)
+})
+
+
+
+
+export const UpdateAdminRoleHeader = zod.object({
+  "X-Club-Id": zod.string().min(1)
+})
+
+
+
+
+export const UpdateAdminRoleBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "permissions": zod.array(zod.enum(['tables.read', 'tables.release', 'orders.read', 'orders.manage', 'tickets.manage', 'payments.verify', 'songs.manage', 'inventory.read', 'inventory.manage', 'settings.manage', 'staff.manage', 'reports.read', 'business-days.manage'])).optional(),
+  "active": zod.boolean().optional()
+})
+
+
+
+
+export const UpdateAdminRoleResponse = zod.object({
+  "id": zod.string(),
+  "clubId": zod.string().optional(),
+  "name": zod.string().min(1),
+  "permissions": zod.array(zod.enum(['tables.read', 'tables.release', 'orders.read', 'orders.manage', 'tickets.manage', 'payments.verify', 'songs.manage', 'inventory.read', 'inventory.manage', 'settings.manage', 'staff.manage', 'reports.read', 'business-days.manage'])),
+  "active": zod.boolean()
+})

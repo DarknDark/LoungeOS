@@ -14,6 +14,8 @@ tags:
     description: Anonymous customer table-session operations
   - name: orders
     description: Customer ordering and staff order operations
+  - name: staff-administration
+    description: Protected staff and role administration operations
 paths:
   /healthz:
     get:
@@ -736,6 +738,172 @@ paths:
           $ref: "#/components/responses/ApiError"
         "409":
           $ref: "#/components/responses/ApiError"
+  /v1/admin/staff:
+    post:
+      operationId: createAdminStaff
+      tags: [staff-administration]
+      summary: Create a staff membership
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStaffRequest"
+      responses:
+        "201":
+          description: Created staff membership
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Staff"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+    get:
+      operationId: listAdminStaff
+      tags: [staff-administration]
+      summary: List staff memberships
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+      responses:
+        "200":
+          description: Staff memberships
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffListResponse"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+  /v1/admin/staff/{staffId}:
+    patch:
+      operationId: updateAdminStaff
+      tags: [staff-administration]
+      summary: Update a staff membership
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - name: staffId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStaffRequest"
+      responses:
+        "200":
+          description: Updated staff membership
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Staff"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "404":
+          $ref: "#/components/responses/ApiError"
+  /v1/admin/roles:
+    post:
+      operationId: createAdminRole
+      tags: [staff-administration]
+      summary: Create a staff role
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoleRequest"
+      responses:
+        "201":
+          description: Created staff role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+    get:
+      operationId: listAdminRoles
+      tags: [staff-administration]
+      summary: List staff roles
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+      responses:
+        "200":
+          description: Staff roles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleListResponse"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+  /v1/admin/roles/{roleId}:
+    patch:
+      operationId: updateAdminRole
+      tags: [staff-administration]
+      summary: Update a staff role
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRoleRequest"
+      responses:
+        "200":
+          description: Updated staff role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "404":
+          $ref: "#/components/responses/ApiError"
 components:
   parameters:
     ClubId:
@@ -794,6 +962,11 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ApiError"
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Firebase
   schemas:
     HealthStatus:
       type: object
@@ -1002,6 +1175,118 @@ components:
         active: { type: boolean }
         photoUrl: { type: string }
       required: [id, clubId, firebaseUid, displayName, roleIds, active]
+    Role:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        name: { type: string, minLength: 1 }
+        permissions:
+          type: array
+          items:
+            type: string
+            enum:
+              - tables.read
+              - tables.release
+              - orders.read
+              - orders.manage
+              - tickets.manage
+              - payments.verify
+              - songs.manage
+              - inventory.read
+              - inventory.manage
+              - settings.manage
+              - staff.manage
+              - reports.read
+              - business-days.manage
+        active: { type: boolean }
+      required: [id, name, permissions, active]
+    CreateStaffRequest:
+      type: object
+      properties:
+        firebaseUid: { type: string, minLength: 1 }
+        displayName: { type: string, minLength: 1 }
+        email: { type: string }
+        roleIds:
+          type: array
+          items: { type: string }
+        active: { type: boolean }
+        photoUrl: { type: string }
+      required: [firebaseUid, displayName, roleIds, active]
+    UpdateStaffRequest:
+      type: object
+      properties:
+        firebaseUid: { type: string, minLength: 1 }
+        displayName: { type: string, minLength: 1 }
+        email: { type: string }
+        roleIds:
+          type: array
+          items: { type: string }
+        active: { type: boolean }
+        photoUrl: { type: string }
+    StaffListResponse:
+      type: object
+      properties:
+        staff:
+          type: array
+          items:
+            $ref: "#/components/schemas/Staff"
+      required: [staff]
+    CreateRoleRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        permissions:
+          type: array
+          items:
+            type: string
+            enum:
+              - tables.read
+              - tables.release
+              - orders.read
+              - orders.manage
+              - tickets.manage
+              - payments.verify
+              - songs.manage
+              - inventory.read
+              - inventory.manage
+              - settings.manage
+              - staff.manage
+              - reports.read
+              - business-days.manage
+        active: { type: boolean }
+      required: [name, permissions, active]
+    UpdateRoleRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        permissions:
+          type: array
+          items:
+            type: string
+            enum:
+              - tables.read
+              - tables.release
+              - orders.read
+              - orders.manage
+              - tickets.manage
+              - payments.verify
+              - songs.manage
+              - inventory.read
+              - inventory.manage
+              - settings.manage
+              - staff.manage
+              - reports.read
+              - business-days.manage
+        active: { type: boolean }
+    RoleListResponse:
+      type: object
+      properties:
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Role"
+      required: [roles]
     Notification:
       type: object
       properties:

@@ -109,11 +109,16 @@ export type CustomerSessionRepository = {
 export type StaffRepository = {
   getById(clubId: ClubId, staffId: string): Promise<Staff | null>;
   getByFirebaseUid(clubId: ClubId, firebaseUid: string): Promise<Staff | null>;
+  create(staff: Staff): Promise<Staff>;
+  update(staff: Staff): Promise<Staff>;
+  list(clubId: ClubId): Promise<Staff[]>;
 };
 
 export type RoleRepository = {
   getById(clubId: ClubId, roleId: string): Promise<Role | null>;
   list(clubId: ClubId): Promise<Role[]>;
+  create(role: Role): Promise<Role>;
+  update(role: Role): Promise<Role>;
 };
 
 export type MenuRepository = {

@@ -109,15 +109,17 @@ QR remains unchanged.
 
 Current milestone:
 
-Firebase staff authentication completed.
+Staff Administration completed.
 
 Verified:
 
-- 25/25 tests passing
+- 28/28 application tests passing
+- API staff administration authentication test passing
 - API health OK
 - Typechecks pass
-- Expo builds
-- OpenAPI clean
+- OpenAPI generated successfully
+- Generated API clients verified
+- Expo/mobile typecheck passes
 
 ---
 
@@ -127,10 +129,13 @@ Verified:
 
 Admin Staff Management
 
-- create waiter
-- deactivate waiter
-- assign roles
-- assign permissions
+✅ create staff
+
+✅ update/deactivate staff
+
+✅ assign roles
+
+✅ assign permissions through the existing `staff.manage` authorization model
 
 ---
 
@@ -233,6 +238,6 @@ Push to GitHub
 
 # Next Task
 
-Implement Staff Administration.
+Implement realtime synchronization.
 
 Not Module 4.

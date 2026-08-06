@@ -34,6 +34,7 @@ export type RequestActor = {
   customerSessionId?: string;
   customerSessionToken?: string;
   staffId?: string;
+  firebaseUid?: string;
 };
 
 export type TableSessionService = {

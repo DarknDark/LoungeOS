@@ -1633,6 +1633,41 @@ export class FirestoreStaffRepository implements StaffRepository {
     const document = snapshot.docs[0];
     return document ? documentWithId<Staff>(document.id, document.data()) : null;
   }
+
+  async create(staff: Staff): Promise<Staff> {
+    await scopedCollection(
+      this.firestore,
+      staff.clubId,
+      FIRESTORE_COLLECTIONS.staff,
+    )
+      .doc(staff.id)
+      .create(staff);
+    return staff;
+  }
+
+  async update(staff: Staff): Promise<Staff> {
+    await scopedCollection(
+      this.firestore,
+      staff.clubId,
+      FIRESTORE_COLLECTIONS.staff,
+    )
+      .doc(staff.id)
+      .set(staff, { merge: true });
+    return staff;
+  }
+
+  async list(clubId: string): Promise<Staff[]> {
+    const snapshot = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.staff,
+    )
+      .orderBy('displayName')
+      .get();
+    return snapshot.docs
+      .map((document) => documentWithId<Staff>(document.id, document.data()))
+      .filter((staff): staff is Staff => staff !== null);
+  }
 }
 
 export class FirestoreSongRepository implements SongRepository {
@@ -1711,6 +1746,34 @@ export class FirestoreRoleRepository implements RoleRepository {
     return snapshot.docs
       .map((document) => documentWithId<Role>(document.id, document.data()))
       .filter((role): role is Role => role !== null);
+  }
+
+  async create(role: Role): Promise<Role> {
+    if (!role.clubId) {
+      throw new Error('ROLE_CLUB_REQUIRED');
+    }
+    await scopedCollection(
+      this.firestore,
+      role.clubId,
+      FIRESTORE_COLLECTIONS.roles,
+    )
+      .doc(role.id)
+      .create(role);
+    return role;
+  }
+
+  async update(role: Role): Promise<Role> {
+    if (!role.clubId) {
+      throw new Error('ROLE_CLUB_REQUIRED');
+    }
+    await scopedCollection(
+      this.firestore,
+      role.clubId,
+      FIRESTORE_COLLECTIONS.roles,
+    )
+      .doc(role.id)
+      .set(role, { merge: true });
+    return role;
   }
 }
 
