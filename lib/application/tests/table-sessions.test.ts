@@ -517,6 +517,128 @@ test('permanent QR is reusable immediately after the waiter closes the table', a
   assert.equal(tables.get(tableId)?.activeSessionId, second.tableSession.id);
 });
 
+test('Pay Now on a staff-controlled table applies to running bill and keeps table active for another round', async () => {
+  const { service, sessions, payments, tables } = makeHarness();
+  const staffActor = { kind: 'staff' as const, id: 'staff-1', staffId: 'staff-1', clubId };
+
+  const manual = await service.openManual({
+    actor: staffActor,
+    tableId,
+    now: '2026-08-04T12:00:00.000Z',
+  });
+  assert.equal(manual.controllerType, 'staff');
+  assert.equal(manual.status, 'active');
+  assert.equal(tables.get(tableId)?.status, 'active');
+
+  // Simulate a round of orders by directly setting the running total.
+  sessions.set(manual.id, { ...manual, runningTotalMinor: 800 });
+
+  // A submitted-payment exists (e.g. cash handover from the customer).
+  const payId1 = 'pay-round-1';
+  payments.set(payId1, {
+    id: payId1,
+    clubId,
+    tableSessionId: manual.id,
+    businessDayId: 'business-day-1',
+    method: 'cash',
+    amountMinor: 800,
+    currency: 'USD',
+    status: 'submitted',
+    createdAt: '2026-08-04T12:10:00.000Z',
+  });
+
+  // Waiter verifies — keepsTableActive path: applied to running balance, total resets, table stays open.
+  await service.verifyPayment({
+    actor: staffActor,
+    paymentId: payId1,
+    now: '2026-08-04T12:11:00.000Z',
+  });
+  assert.ok(payments.get(payId1)?.appliedToRunningBalanceAt, 'payment must be marked applied');
+  assert.equal(sessions.get(manual.id)?.runningTotalMinor, 0);
+  assert.equal(sessions.get(manual.id)?.status, 'active');
+  assert.equal(tables.get(tableId)?.status, 'active');
+
+  // Second round — more items ordered, another Pay Now cycle.
+  sessions.set(manual.id, { ...sessions.get(manual.id)!, runningTotalMinor: 500 });
+  const payId2 = 'pay-round-2';
+  payments.set(payId2, {
+    id: payId2,
+    clubId,
+    tableSessionId: manual.id,
+    businessDayId: 'business-day-1',
+    method: 'till',
+    amountMinor: 500,
+    currency: 'USD',
+    status: 'submitted',
+    createdAt: '2026-08-04T12:20:00.000Z',
+  });
+  await service.verifyPayment({
+    actor: staffActor,
+    paymentId: payId2,
+    now: '2026-08-04T12:21:00.000Z',
+  });
+  assert.ok(payments.get(payId2)?.appliedToRunningBalanceAt);
+  assert.equal(sessions.get(manual.id)?.runningTotalMinor, 0);
+  assert.equal(sessions.get(manual.id)?.status, 'active');
+
+  // Waiter closes: running total is 0 and all payments are applied — no outstanding balance.
+  await service.closeAfterVerifiedPayment({
+    actor: staffActor,
+    tableSessionId: manual.id,
+    now: '2026-08-04T12:30:00.000Z',
+  });
+  assert.equal(sessions.get(manual.id)?.status, 'closed');
+  assert.equal(tables.get(tableId)?.status, 'available');
+});
+
+test('listJoinRequests returns only pending approvals for the session', async () => {
+  const { service } = makeHarness();
+  const staffActor = { kind: 'staff' as const, id: 'staff-1', staffId: 'staff-1', clubId };
+
+  const manual = await service.openManual({
+    actor: staffActor,
+    tableId,
+    now: '2026-08-04T12:00:00.000Z',
+  });
+
+  // Two guests attempt to join.
+  const guestA = await service.join({
+    actor: customerActor(),
+    tableSessionId: manual.id,
+    deviceId: 'guest-a',
+    now: '2026-08-04T12:01:00.000Z',
+  });
+  const guestB = await service.join({
+    actor: customerActor(),
+    tableSessionId: manual.id,
+    deviceId: 'guest-b',
+    now: '2026-08-04T12:02:00.000Z',
+  });
+  assert.equal(guestA.customerSession.approvalStatus, 'pending-approval');
+  assert.equal(guestB.customerSession.approvalStatus, 'pending-approval');
+
+  const before = await service.listJoinRequests({
+    actor: staffActor,
+    tableSessionId: manual.id,
+  });
+  assert.equal(before.length, 2);
+
+  // Approve guest A — guest B should remain pending.
+  await service.approveJoin({
+    actor: staffActor,
+    tableSessionId: manual.id,
+    customerSessionId: guestA.customerSession.id,
+    now: '2026-08-04T12:03:00.000Z',
+  });
+
+  const after = await service.listJoinRequests({
+    actor: staffActor,
+    tableSessionId: manual.id,
+  });
+  assert.equal(after.length, 1);
+  assert.equal(after[0]?.id, guestB.customerSession.id);
+});
+
 test('heartbeat refreshes inactivity expiry and expiration releases the table', async () => {
   const { service, tables, notifications, timeline } = makeHarness();
   const owner = await service.createFromQr({

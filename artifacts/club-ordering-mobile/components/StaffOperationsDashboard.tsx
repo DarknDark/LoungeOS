@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -12,10 +12,17 @@ import {
   useReopenStaffTableSession,
   useVerifyPayment,
 } from '@workspace/api-client-react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { clubSettings } from '@/config/clubSettings';
 import colors from '@/constants/colors';
-import { isStaffAuthConfigured } from '@/services/staff-auth';
+import { configureStaffAuthTokenProvider, isStaffAuthConfigured } from '@/services/staff-auth';
+import {
+  isFirebaseClientConfigured,
+  staffSignIn,
+  staffSignOut,
+  getStaffIdToken,
+  onStaffAuthStateChanged,
+} from '@/services/firebase-client';
 
 const headers = { 'X-Club-Id': clubSettings.clubId };
 
@@ -154,9 +161,61 @@ function TableCard({
 
 export default function StaffOperationsDashboard() {
   const queryClient = useQueryClient();
-  const enabled = isStaffAuthConfigured();
+  const [authReady, setAuthReady] = useState(isStaffAuthConfigured());
+  const enabled = authReady;
   const [message, setMessage] = useState('');
   const [orderTableId, setOrderTableId] = useState<string | null>(null);
+
+  // Sign-in form state
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [signingIn, setSigningIn] = useState(false);
+  const [signInError, setSignInError] = useState('');
+  const firebaseConfigured = isFirebaseClientConfigured();
+
+  // Wire up Firebase auth state so the dashboard unlocks automatically after
+  // sign-in and locks again when the user signs out.
+  useEffect(() => {
+    if (!firebaseConfigured) return;
+    let unsubscribe: (() => void) | undefined;
+    onStaffAuthStateChanged((user) => {
+      if (user) {
+        configureStaffAuthTokenProvider(() => user.getIdToken());
+        setAuthReady(true);
+      } else {
+        configureStaffAuthTokenProvider(null);
+        setAuthReady(false);
+      }
+    }).then((unsub) => {
+      unsubscribe = unsub;
+    });
+    return () => unsubscribe?.();
+  }, [firebaseConfigured]);
+
+  const handleSignIn = async () => {
+    if (!email.trim() || !password) return;
+    setSigningIn(true);
+    setSignInError('');
+    try {
+      await staffSignIn(email.trim(), password);
+      // onStaffAuthStateChanged will call configureStaffAuthTokenProvider + setAuthReady
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Sign-in failed.';
+      setSignInError(msg.replace(/\(auth\/[^)]+\)\s*\.?/, '').trim());
+    } finally {
+      setSigningIn(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await staffSignOut();
+    } catch {
+      // auth state listener will handle cleanup
+      configureStaffAuthTokenProvider(null);
+      setAuthReady(false);
+    }
+  };
   const staffTables = useListStaffTables({
     query: {
       queryKey: ['/api/v1/staff/tables'],
@@ -198,14 +257,55 @@ export default function StaffOperationsDashboard() {
   };
 
   if (!enabled) {
+    if (!firebaseConfigured) {
+      return (
+        <View style={styles.locked}>
+          <View style={styles.lockIcon}><Icon name="lock-closed-outline" size={24} color={colors.light.primary} /></View>
+          <Text style={styles.lockedTitle}>Staff sign-in not configured</Text>
+          <Text style={styles.lockedCopy}>
+            Add your Firebase web app credentials to enable staff authentication.
+          </Text>
+          <Text style={styles.lockedHint}>
+            Set EXPO_PUBLIC_FIREBASE_API_KEY, EXPO_PUBLIC_FIREBASE_PROJECT_ID, and
+            EXPO_PUBLIC_FIREBASE_APP_ID in your environment variables.
+          </Text>
+        </View>
+      );
+    }
+
     return (
       <View style={styles.locked}>
-        <View style={styles.lockIcon}><Icon name="lock-closed-outline" size={24} color={colors.light.primary} /></View>
-        <Text style={styles.lockedTitle}>Staff sign-in required</Text>
-        <Text style={styles.lockedCopy}>
-          Waiter operations use Firebase staff authentication. This customer bundle has no staff token provider configured, so live tables and payment actions are intentionally unavailable.
-        </Text>
-        <Text style={styles.lockedHint}>Register a native Firebase ID-token getter with configureStaffAuthTokenProvider() to enable this dashboard.</Text>
+        <View style={styles.lockIcon}><Icon name="person-circle-outline" size={24} color={colors.light.primary} /></View>
+        <Text style={styles.lockedTitle}>Waiter sign-in</Text>
+        <Text style={styles.lockedCopy}>Sign in with your Firebase staff account to manage tables and payments.</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          placeholderTextColor={colors.light.mutedForeground}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+          editable={!signingIn}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          placeholderTextColor={colors.light.mutedForeground}
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+          editable={!signingIn}
+          onSubmitEditing={handleSignIn}
+        />
+        {signInError ? <Text style={styles.signInError}>{signInError}</Text> : null}
+        <Action
+          label={signingIn ? 'Signing in…' : 'Sign in'}
+          icon="log-in-outline"
+          primary
+          disabled={signingIn || !email.trim() || !password}
+          onPress={handleSignIn}
+        />
       </View>
     );
   }
@@ -229,7 +329,10 @@ export default function StaffOperationsDashboard() {
     <View style={styles.dashboard}>
       <View style={styles.dashboardHeader}>
         <View><Text style={styles.kicker}>LIVE WAITER DESK</Text><Text style={styles.title}>Keep the room moving.</Text></View>
-        <Pressable style={styles.refresh} onPress={() => void staffTables.refetch()}><Icon name="refresh-outline" color={colors.light.primary} /></Pressable>
+        <View style={styles.headerActions}>
+          <Pressable style={styles.refresh} onPress={() => void staffTables.refetch()}><Icon name="refresh-outline" color={colors.light.primary} /></Pressable>
+          <Pressable style={styles.refresh} onPress={() => void handleSignOut()}><Icon name="log-out-outline" color={colors.light.mutedForeground} /></Pressable>
+        </View>
       </View>
       <View style={styles.metrics}>
         <View style={styles.metric}><Text style={styles.label}>FINISHING</Text><Text style={styles.value}>{finishing.length}</Text></View>
@@ -364,5 +467,8 @@ const styles = StyleSheet.create({
   lockedTitle: { color: colors.light.foreground, fontSize: 18, fontWeight: '700', textAlign: 'center' },
   lockedCopy: { color: colors.light.mutedForeground, fontSize: 12, lineHeight: 18, textAlign: 'center' },
   lockedHint: { color: colors.light.primary, fontSize: 10, lineHeight: 15, textAlign: 'center' },
+  input: { width: '100%', borderWidth: 1, borderColor: colors.light.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: colors.light.foreground, backgroundColor: colors.light.secondary, fontSize: 14 },
+  signInError: { color: colors.light.destructive, fontSize: 11, textAlign: 'center' },
   loading: { minHeight: 150, alignItems: 'center', justifyContent: 'center', gap: 10 },
+  headerActions: { flexDirection: 'row', gap: 8 },
 });
