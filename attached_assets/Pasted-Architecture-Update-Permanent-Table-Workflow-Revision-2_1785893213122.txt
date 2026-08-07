@@ -1,0 +1,299 @@
+Architecture Update – Permanent Table Workflow (Revision 2)
+
+Do not implement Module 4.
+
+This is an architecture refinement to the existing ordering lifecycle.
+
+Core Principle
+
+A QR code permanently identifies a table only.
+
+Example:
+
+Table 1
+Table 2
+Table 7
+
+The QR never expires and is never regenerated during normal operation.
+
+The QR does not contain a secret token.
+
+The application determines what happens based on the current table state.
+
+Table States
+
+A table can only be in one of these states:
+
+Available
+
+No active table session.
+QR starts a new table session.
+
+Occupied
+
+Active table session exists.
+Orders can continue.
+QR cannot start another customer session.
+
+Finishing Up
+
+Customer has pressed Close My Tab.
+Waiting for waiter confirmation.
+Split payments are allowed.
+No new ordering unless the customer cancels the close request.
+
+Only the waiter can move a table back to Available.
+
+Customer Buttons
+
+Replace the current workflow with these actions.
+
+Continue Ordering
+
+Normal state.
+
+Pay Now
+
+New feature.
+
+Purpose:
+
+Customer wants to pay now but continue enjoying the table.
+
+Examples:
+
+Pays after every beer.
+Pays after food arrives.
+Wants smaller bills.
+
+This should:
+
+Calculate current balance.
+Process payment.
+Clear only the outstanding balance.
+Keep the table session active.
+Keep ordering enabled.
+
+No session closes.
+
+No waiter action required unless cash payment is selected.
+
+Close My Tab
+
+Customer indicates:
+
+"I'm finished ordering."
+
+System should:
+
+Lock further ordering.
+Calculate final bill.
+Trigger payment flow.
+Notify waiter.
+
+Waiter dashboard:
+
+🟡 Table 7 finishing up
+
+Cancel Close
+
+If the customer changes their mind before the waiter closes the table.
+
+Example:
+
+They decide to order another beer.
+
+Press:
+
+Cancel Close
+
+System:
+
+Unlock ordering.
+Remove finishing-up state.
+Remove waiter notification.
+Return to Occupied.
+
+No new session.
+
+No lost orders.
+
+Waiter Dashboard
+
+The waiter owns the table lifecycle.
+
+Only the waiter can officially close a table.
+
+When customers press Close My Tab:
+
+Show:
+
+🟡 Table 7 finishing up
+
+Waiter arrives.
+
+Confirms:
+
+Cash received
+
+or
+
+M-Pesa payment confirmed
+
+or
+
+Till payment completed
+
+After confirmation:
+
+Button:
+
+Close Table
+
+Close Table performs:
+
+End customer sessions
+End table session
+Archive bill
+Finalize audit trail
+Mark table Available
+Reopen permanent QR immediately
+
+Same QR.
+
+No regeneration.
+
+No printing.
+
+Customers Who Never Scan
+
+Some customers simply won't use the QR.
+
+Support this properly.
+
+Add a waiter workflow:
+
+Open Table Manually
+
+Waiter selects:
+
+Table 7
+
+Press:
+
+Start Table
+
+Creates the same table session the QR would have created.
+
+No customer scan required.
+
+Waiter Ordering Mode
+
+Waiter takes orders through the staff dashboard.
+
+Exactly the same ordering engine.
+
+Same menu.
+
+Same pricing.
+
+Same inventory.
+
+Same running bill.
+
+Difference:
+
+Orders are entered by staff instead of customer.
+
+Payments can be:
+
+Cash
+Till
+M-Pesa
+
+All recorded inside LoungeOS.
+
+The waiter still closes the table at the end.
+
+Hybrid Tables
+
+Support mixed situations.
+
+Example:
+
+Four customers.
+
+Two scan QR.
+
+Two refuse.
+
+The waiter joins the existing table session.
+
+Everyone shares:
+
+Same running bill
+Same kitchen tickets
+Same inventory
+Same audit history
+
+The system must support customer-created and waiter-created orders inside one table session.
+
+Split Bills
+
+Split bills happen only after Close My Tab.
+
+Example:
+
+Four people.
+
+Two want to pay separately.
+
+The system opens two payment branches.
+
+Each branch settles independently.
+
+When every branch is settled:
+
+Waiter sees:
+
+🟢 Table ready to close
+
+Only then can:
+
+Close Table
+
+be pressed.
+
+Important Rule
+
+The waiter is the authority.
+
+Customers cannot reopen a closed table.
+
+Customers cannot officially close a table.
+
+Customers only request payment.
+
+The waiter confirms settlement.
+
+The waiter closes the table.
+
+That action alone makes the permanent QR available for the next guests.
+
+Existing Features That Must Remain
+
+Do not remove or rewrite:
+
+Ordering Engine
+Inventory
+Running bills
+Timeline
+Notifications
+Audit logs
+Optimistic locking
+Idempotency
+Firestore structure
+Customer ordering flow
+Staff permissions
+
+Refactor only the table lifecycle and QR/session workflow required for this permanent-table architecture.

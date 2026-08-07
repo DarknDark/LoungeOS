@@ -1,0 +1,283 @@
+The startup timeout issue is resolved. Before implementing any new major functionality, make the startup fix permanent, then implement the next feature set based on the approved table workflow.
+
+Part 1 — Permanently finalize the startup fix
+
+This is no longer a temporary workaround.
+
+Requirements:
+
+Keep native iOS/Android loading the Inter fonts normally.
+Keep Expo Web using the existing system font fallback.
+Make this behavior explicit with a Platform check.
+Ensure SplashScreen always hides, even if fonts fail.
+Remove every temporary diagnostic log added during debugging.
+Remove any dead startup/debug code.
+Verify:
+Mobile preview loads normally.
+Native build still loads Inter fonts.
+No startup timeout remains.
+No startup race conditions remain.
+
+Do not modify business logic during this cleanup.
+
+Part 2 — Implement the permanent table QR workflow
+
+We are replacing the old QR-token model.
+
+New rule
+
+A QR code is permanent.
+
+It identifies the table only.
+
+Example:
+
+Table 1
+Table 2
+Table 3
+...
+
+The QR never changes unless management intentionally replaces it.
+
+Do not generate disposable QR codes.
+
+Do not require periodic QR regeneration.
+
+Customer scan flow
+
+Customer scans the QR.
+
+If the table is AVAILABLE:
+
+create a new table session
+create a customer session
+assign the scanner as the owner
+show the customer dashboard
+
+If the table already has an active tab:
+
+Show:
+
+"This table already has an active tab.
+
+Please call the waiter if the previous table was already cleared."
+
+Do not expose any previous customer information.
+
+Customer dashboard
+
+Owner dashboard:
+
+Can:
+
+Order food
+Order drinks
+Request songs
+Call waiter
+Pay Now
+Close Tab
+
+Guests:
+
+Can:
+
+Order (if enabled by owner)
+Request songs
+Call waiter
+
+Cannot close the table.
+
+Pay Now
+
+Add a new button:
+
+Pay Now
+
+Purpose:
+
+Customer wants to settle the current bill but continue sitting.
+
+Flow:
+
+Pay outstanding balance.
+Keep table session active.
+Keep QR locked.
+Continue allowing new orders afterward.
+
+The table remains occupied.
+
+Close Tab
+
+Add a second button:
+
+Close Tab
+
+Purpose:
+
+Customer is finished and wants to leave.
+
+Flow:
+
+Customer presses Close Tab.
+Customer can still cancel before waiter confirmation.
+Dashboard changes to:
+
+"Waiting for waiter confirmation..."
+
+Show a Cancel button.
+
+Cancel returns the customer to the active dashboard.
+
+Waiter dashboard
+
+When customer requests Close Tab:
+
+Show a prominent status such as:
+
+🟢 Table 5 finishing up
+
+The waiter should see:
+
+Review outstanding balance.
+Confirm M-Pesa payment.
+Receive cash.
+Process card payment.
+Print receipt.
+Send SMS receipt.
+Mark bill settled.
+
+Only after everything is confirmed:
+
+Press:
+
+Close Table
+
+Close Table
+
+This is the only action that officially ends the session.
+
+Closing the table must:
+
+Close customer session(s).
+Close table session.
+Archive running bill.
+Finalize audit trail.
+Finalize timeline.
+Release inventory reservations where applicable.
+Mark the table AVAILABLE.
+Automatically make the same permanent QR usable for the next customers.
+
+No QR regeneration.
+
+No new QR.
+
+No manual reopening.
+
+Waiter-created tables
+
+Sometimes customers refuse to scan.
+
+Allow the waiter to open Table 5 manually.
+
+The waiter manages:
+
+ordering
+payment
+bill
+tab
+
+Customers may later scan the permanent QR.
+
+If they scan a waiter-managed table:
+
+Do not create a normal customer session.
+
+Instead show:
+
+"Please wait.
+The waiter has been notified and will assist you."
+
+Use a clean green waiting screen.
+
+Waiter receives:
+
+"Customer requesting access to Table 5"
+
+Waiter may approve.
+
+After approval, customer receives a limited dashboard.
+
+Limited dashboard
+
+Customer may:
+
+View running bill
+View ordered items
+Request songs
+Call waiter
+
+Customer may NOT:
+
+Order
+Pay
+Split bill
+Close tab
+Modify anything
+
+All ordering remains waiter-controlled.
+
+SMS receipts
+
+Implement automatic SMS receipts.
+
+Rules:
+
+M-Pesa
+
+Use the phone number from the confirmed M-Pesa transaction.
+
+Automatically send:
+
+receipt
+total
+table
+date
+transaction reference
+
+No prompt required.
+
+Cash
+
+After payment:
+
+Ask:
+
+"Would you like your receipt by SMS?"
+
+If yes:
+
+Collect phone number.
+
+Send receipt.
+
+Otherwise print only.
+
+Architecture
+
+Keep this implementation simple.
+
+The permanent table identity is now:
+
+Table ID
+
+NOT
+
+Temporary QR token.
+
+All temporary customer permissions must come from the active session, not from the QR itself.
+
+The QR is only the doorway.
+
+The session determines everything else.
+
+.

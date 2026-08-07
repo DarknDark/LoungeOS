@@ -1,0 +1,1597 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: customer-sessions
+    description: Anonymous customer table-session operations
+  - name: orders
+    description: Customer ordering and staff order operations
+  - name: staff-administration
+    description: Protected staff and role administration operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /v1/customer/tables/{tableId}/validate:
+    post:
+      operationId: validateCustomerTable
+      tags: [customer-sessions]
+      summary: Validate a table QR context
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QrValidationRequest"
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/TableId"
+      responses:
+        "200":
+          description: Valid table context
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableValidationResponse"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "404":
+          $ref: "#/components/responses/ApiError"
+  /v1/customer/tables/{tableId}/open:
+    post:
+      operationId: openCustomerTableSession
+      tags: [customer-sessions]
+      summary: Open a customer session from a permanent table QR
+      description: Validates the table ID and opens a customer session without a secret QR token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpenTableSessionRequest"
+      parameters:
+        - $ref: "#/components/parameters/TableId"
+      responses:
+        "201":
+          description: Created customer table session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSessionAccess"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/customer/table-sessions:
+    post:
+      operationId: createCustomerTableSession
+      tags: [customer-sessions]
+      summary: Create the owner session from a table QR
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTableSessionRequest"
+      responses:
+        "201":
+          description: Created customer table session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSessionAccess"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/customer/table-sessions/{sessionId}/join:
+    post:
+      operationId: joinCustomerTableSession
+      tags: [customer-sessions]
+      summary: Join an active customer table session
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinTableSessionRequest"
+      responses:
+        "201":
+          description: Joined customer table session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSessionAccess"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+  /v1/customer/table-sessions/recover:
+    post:
+      operationId: recoverCustomerTableSession
+      tags: [customer-sessions]
+      summary: Recover a customer session after refresh or reconnection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecoverTableSessionRequest"
+      responses:
+        "200":
+          description: Recovered customer table session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSessionAccess"
+        "401":
+          $ref: "#/components/responses/ApiError"
+  /v1/customer/table-sessions/{sessionId}/heartbeat:
+    post:
+      operationId: heartbeatCustomerTableSession
+      tags: [customer-sessions]
+      summary: Refresh customer session activity and expiry
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HeartbeatRequest"
+      responses:
+        "200":
+          description: Updated customer table session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSessionAccess"
+        "401":
+          $ref: "#/components/responses/ApiError"
+  /v1/customer/table-sessions/{sessionId}:
+    get:
+      operationId: getCustomerTableSessionStatus
+      tags: [customer-sessions]
+      summary: Get the authorized customer session status
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: Current customer table session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSessionAccess"
+        "401":
+          $ref: "#/components/responses/ApiError"
+    delete:
+      operationId: closeCustomerTableSession
+      tags: [customer-sessions]
+      summary: Confirm and close a table session (waiter only)
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "204":
+          description: Session closed
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+  /v1/customer/table-sessions/{sessionId}/close:
+    post:
+      operationId: requestCustomerTableSessionClose
+      tags: [customer-sessions]
+      summary: Request to close the current tab
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - $ref: "#/components/parameters/ClubId"
+      responses:
+        "200":
+          description: Table session moved to finishing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSessionAccess"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/customer/table-sessions/{sessionId}/cancel-close:
+    post:
+      operationId: cancelCustomerTableSessionClose
+      tags: [customer-sessions]
+      summary: Cancel a close request before waiter confirmation
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - $ref: "#/components/parameters/ClubId"
+      responses:
+        "200":
+          description: Table session returned to active
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSessionAccess"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/customer/table-sessions/{sessionId}/payments:
+    post:
+      operationId: submitCustomerTableSessionPayment
+      tags: [customer-sessions]
+      summary: Submit the outstanding balance for waiter verification
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/CustomerSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionTokenHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitPaymentRequest"
+      responses:
+        "201":
+          description: Payment submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/staff/table-sessions/manual:
+    post:
+      operationId: openManualStaffTableSession
+      tags: [customer-sessions]
+      summary: Open a waiter-controlled table session
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpenManualTableSessionRequest"
+      responses:
+        "201":
+          description: Manual table session opened
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSession"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/staff/tables:
+    get:
+      operationId: listStaffTables
+      tags: [customer-sessions]
+      summary: List table states and live waiter operations
+      description: Returns permanent tables with their active session, shared orders, payments, and pending join requests.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+      responses:
+        "200":
+          description: Current table operations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffTableListResponse"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+  /v1/staff/table-sessions/{sessionId}/reopen:
+    post:
+      operationId: reopenStaffTableSession
+      tags: [customer-sessions]
+      summary: Reopen a finishing table tab
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: Reopened table session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSession"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/staff/table-sessions/{sessionId}/close:
+    post:
+      operationId: closeStaffTableSession
+      tags: [customer-sessions]
+      summary: Close a staff table after verified payment
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "204":
+          description: Table closed and released
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/staff/table-sessions/{sessionId}/join-requests:
+    get:
+      operationId: listStaffTableSessionJoinRequests
+      tags: [customer-sessions]
+      summary: List pending customer requests to join a manual table
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: Pending customer join requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CustomerSession"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+    post:
+      operationId: approveStaffTableSessionJoin
+      tags: [customer-sessions]
+      summary: Approve a customer request to join a manual table
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/SessionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApproveTableSessionJoinRequest"
+      responses:
+        "200":
+          description: Approved temporary customer access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSession"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/payments/{paymentId}/verify:
+    post:
+      operationId: verifyPayment
+      tags: [customer-sessions]
+      summary: Verify a submitted payment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - $ref: "#/components/parameters/ClubId"
+      responses:
+        "200":
+          description: Verified payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "404":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/customer/table-sessions/{sessionId}/split:
+    post:
+      operationId: enableCustomerTableSessionSplit
+      tags: [customer-sessions]
+      summary: Enable a staff-controlled bill split
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - $ref: "#/components/parameters/ClubId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SplitTableSessionRequest"
+      responses:
+        "204":
+          description: Bill splitting enabled
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/orders/menu:
+    get:
+      operationId: listOrderMenu
+      tags: [orders]
+      summary: List the available menu for a club
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+      responses:
+        "200":
+          description: Available categories, items, and modifiers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderMenuResponse"
+        "503":
+          $ref: "#/components/responses/ApiError"
+  /v1/orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List orders for the authorized table session
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/TableSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionTokenHeader"
+      responses:
+        "200":
+          description: Order history and active orders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderListResponse"
+        "401":
+          $ref: "#/components/responses/ApiError"
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Create and submit an order
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/CustomerSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionTokenHeader"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Submitted order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/staff/orders:
+    post:
+      operationId: createStaffOrder
+      tags: [orders]
+      summary: Create and submit an order for a waiter-controlled table
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Submitted waiter order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/orders/drafts:
+    post:
+      operationId: createOrderDraft
+      tags: [orders]
+      summary: Create an editable draft order
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/CustomerSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionTokenHeader"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Draft order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/orders/{orderId}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Get an order belonging to the authorized table session
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/CustomerSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionTokenHeader"
+      responses:
+        "200":
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "404":
+          $ref: "#/components/responses/ApiError"
+    patch:
+      operationId: updateDraftOrder
+      tags: [orders]
+      summary: Update a draft order before submission
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/CustomerSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionTokenHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDraftOrderRequest"
+      responses:
+        "200":
+          description: Updated draft order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+    delete:
+      operationId: cancelOrder
+      tags: [orders]
+      summary: Cancel an order within the cancellation window
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/CustomerSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionTokenHeader"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelOrderRequest"
+      responses:
+        "200":
+          description: Cancelled order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/orders/{orderId}/status:
+    post:
+      operationId: updateOrderStatus
+      tags: [orders]
+      summary: Move an order through the staff lifecycle
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+        - $ref: "#/components/parameters/ClubId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrderStatusRequest"
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/orders/{orderId}/submit:
+    post:
+      operationId: submitOrder
+      tags: [orders]
+      summary: Submit an editable draft order
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/CustomerSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionTokenHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                version: { type: number, minimum: 0 }
+              required: [version]
+      responses:
+        "200":
+          description: Submitted order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/admin/staff:
+    post:
+      operationId: createAdminStaff
+      tags: [staff-administration]
+      summary: Create a staff membership
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStaffRequest"
+      responses:
+        "201":
+          description: Created staff membership
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Staff"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+    get:
+      operationId: listAdminStaff
+      tags: [staff-administration]
+      summary: List staff memberships
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+      responses:
+        "200":
+          description: Staff memberships
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffListResponse"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+  /v1/admin/staff/{staffId}:
+    patch:
+      operationId: updateAdminStaff
+      tags: [staff-administration]
+      summary: Update a staff membership
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - name: staffId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStaffRequest"
+      responses:
+        "200":
+          description: Updated staff membership
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Staff"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "404":
+          $ref: "#/components/responses/ApiError"
+  /v1/admin/roles:
+    post:
+      operationId: createAdminRole
+      tags: [staff-administration]
+      summary: Create a staff role
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoleRequest"
+      responses:
+        "201":
+          description: Created staff role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+    get:
+      operationId: listAdminRoles
+      tags: [staff-administration]
+      summary: List staff roles
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+      responses:
+        "200":
+          description: Staff roles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleListResponse"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+  /v1/admin/roles/{roleId}:
+    patch:
+      operationId: updateAdminRole
+      tags: [staff-administration]
+      summary: Update a staff role
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRoleRequest"
+      responses:
+        "200":
+          description: Updated staff role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "404":
+          $ref: "#/components/responses/ApiError"
+components:
+  parameters:
+    ClubId:
+      name: X-Club-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    TableId:
+      name: tableId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    TableSessionIdHeader:
+      name: X-Table-Session-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    CustomerSessionIdHeader:
+      name: X-Customer-Session-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    CustomerSessionTokenHeader:
+      name: X-Customer-Session-Token
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+  responses:
+    ApiError:
+      description: LoungeOS API error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Firebase
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+          required: [code, message]
+      required: [error]
+    OrderModifierSelection:
+      type: object
+      properties:
+        modifierId: { type: string }
+        optionIds:
+          type: array
+          items: { type: string }
+      required: [modifierId, optionIds]
+    CreateOrderItemRequest:
+      type: object
+      properties:
+        menuItemId: { type: string }
+        quantity: { type: number, minimum: 1, maximum: 99 }
+        modifiers:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderModifierSelection"
+        notes: { type: string, maxLength: 500 }
+      required: [menuItemId, quantity]
+    CreateOrderRequest:
+      type: object
+      properties:
+        clubId: { type: string, minLength: 1 }
+        tableSessionId: { type: string, minLength: 1 }
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/CreateOrderItemRequest"
+        notes: { type: string, maxLength: 500 }
+      required: [clubId, tableSessionId, items]
+    UpdateDraftOrderRequest:
+      type: object
+      properties:
+        version: { type: number, minimum: 0 }
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/CreateOrderItemRequest"
+        notes: { type: string, maxLength: 500 }
+      required: [version, items]
+    CancelOrderRequest:
+      type: object
+      properties:
+        reason: { type: string, maxLength: 250 }
+    UpdateOrderStatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [accepted, preparing, ready, delivered, cancelled]
+        version: { type: number, minimum: 0 }
+        reason: { type: string, maxLength: 250 }
+      required: [status, version]
+    MenuCategory:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        sortOrder: { type: number }
+        active: { type: boolean }
+      required: [id, name, slug, sortOrder, active]
+    ModifierOption:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        priceDeltaMinor: { type: number }
+        available: { type: boolean }
+      required: [id, name, priceDeltaMinor, available]
+    MenuModifier:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        required: { type: boolean }
+        minSelections: { type: number, minimum: 0 }
+        maxSelections: { type: number, minimum: 0 }
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModifierOption"
+      required: [id, name, required, minSelections, maxSelections, options]
+    MenuItem:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        priceMinor: { type: number, minimum: 0 }
+        currency: { type: string }
+        categoryId: { type: string }
+        imageUrl: { type: string }
+        preparationStationId: { type: string }
+        available: { type: boolean }
+        sortOrder: { type: number }
+        modifierIds:
+          type: array
+          items: { type: string }
+      required: [id, name, priceMinor, currency, preparationStationId, available, sortOrder]
+    OrderMenuResponse:
+      type: object
+      properties:
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/MenuCategory"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MenuItem"
+        modifiers:
+          type: array
+          items:
+            $ref: "#/components/schemas/MenuModifier"
+      required: [categories, items, modifiers]
+    OrderItem:
+      type: object
+      properties:
+        id: { type: string }
+        menuItemId: { type: string }
+        nameSnapshot: { type: string }
+        unitPriceMinor: { type: number }
+        quantity: { type: number }
+        modifiers:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderModifierSelection"
+        notes: { type: string }
+        lineSubtotalMinor: { type: number }
+      required: [id, menuItemId, nameSnapshot, unitPriceMinor, quantity, modifiers, lineSubtotalMinor]
+    Order:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        tableSessionId: { type: string }
+        customerSessionId: { type: string }
+        createdByStaffId: { type: string }
+        status: { type: string, enum: [draft, submitted, accepted, preparing, ready, delivered, cancelled] }
+        itemIds:
+          type: array
+          items: { type: string }
+        idempotencyKey: { type: string }
+        subtotalMinor: { type: number }
+        taxMinor: { type: number }
+        serviceChargeMinor: { type: number }
+        discountMinor: { type: number }
+        totalMinor: { type: number }
+        notes: { type: string }
+        version: { type: number }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, clubId, tableSessionId, customerSessionId, status, itemIds, idempotencyKey, subtotalMinor, taxMinor, serviceChargeMinor, discountMinor, totalMinor, createdAt]
+    OrderResponse:
+      type: object
+      properties:
+        order:
+          $ref: "#/components/schemas/Order"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+      required: [order, items]
+    OrderListResponse:
+      type: object
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderResponse"
+      required: [orders]
+    Staff:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        firebaseUid: { type: string }
+        displayName: { type: string }
+        email: { type: string }
+        roleIds:
+          type: array
+          items: { type: string }
+        active: { type: boolean }
+        photoUrl: { type: string }
+      required: [id, clubId, firebaseUid, displayName, roleIds, active]
+    Role:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        name: { type: string, minLength: 1 }
+        permissions:
+          type: array
+          items:
+            type: string
+            enum:
+              - tables.read
+              - tables.release
+              - orders.read
+              - orders.manage
+              - tickets.manage
+              - payments.verify
+              - songs.manage
+              - inventory.read
+              - inventory.manage
+              - settings.manage
+              - staff.manage
+              - reports.read
+              - business-days.manage
+        active: { type: boolean }
+      required: [id, name, permissions, active]
+    CreateStaffRequest:
+      type: object
+      properties:
+        firebaseUid: { type: string, minLength: 1 }
+        displayName: { type: string, minLength: 1 }
+        email: { type: string }
+        roleIds:
+          type: array
+          items: { type: string }
+        active: { type: boolean }
+        photoUrl: { type: string }
+      required: [firebaseUid, displayName, roleIds, active]
+    UpdateStaffRequest:
+      type: object
+      properties:
+        firebaseUid: { type: string, minLength: 1 }
+        displayName: { type: string, minLength: 1 }
+        email: { type: string }
+        roleIds:
+          type: array
+          items: { type: string }
+        active: { type: boolean }
+        photoUrl: { type: string }
+    StaffListResponse:
+      type: object
+      properties:
+        staff:
+          type: array
+          items:
+            $ref: "#/components/schemas/Staff"
+      required: [staff]
+    CreateRoleRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        permissions:
+          type: array
+          items:
+            type: string
+            enum:
+              - tables.read
+              - tables.release
+              - orders.read
+              - orders.manage
+              - tickets.manage
+              - payments.verify
+              - songs.manage
+              - inventory.read
+              - inventory.manage
+              - settings.manage
+              - staff.manage
+              - reports.read
+              - business-days.manage
+        active: { type: boolean }
+      required: [name, permissions, active]
+    UpdateRoleRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        permissions:
+          type: array
+          items:
+            type: string
+            enum:
+              - tables.read
+              - tables.release
+              - orders.read
+              - orders.manage
+              - tickets.manage
+              - payments.verify
+              - songs.manage
+              - inventory.read
+              - inventory.manage
+              - settings.manage
+              - staff.manage
+              - reports.read
+              - business-days.manage
+        active: { type: boolean }
+    RoleListResponse:
+      type: object
+      properties:
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Role"
+      required: [roles]
+    Notification:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        recipientId: { type: string }
+        recipientRole: { type: string }
+        priority:
+          type: string
+          enum: [low, normal, high, urgent]
+        category:
+          type: string
+          enum: [waiter, kitchen, bar, dj, payment, inventory, session, business-day, administration]
+        message: { type: string }
+        relatedRecord:
+          type: object
+          properties:
+            type: { type: string }
+            id: { type: string }
+          required: [type, id]
+        createdAt: { type: string, format: date-time }
+        readAt: { type: string, format: date-time }
+        deliveredAt: { type: string, format: date-time }
+        archivedAt: { type: string, format: date-time }
+      required: [id, clubId, priority, category, message, createdAt]
+    SongRequest:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        tableSessionId: { type: string }
+        customerSessionId: { type: string }
+        businessDayId: { type: string }
+        songId: { type: string }
+        song: { type: string }
+        artist: { type: string }
+        duplicateKey: { type: string }
+        queuePosition: { type: number }
+        status:
+          type: string
+          enum: [queued, playing, played, skipped]
+        skipReason: { type: string }
+      required:
+        [id, clubId, tableSessionId, customerSessionId, businessDayId, song, artist, duplicateKey, status]
+    ServiceTimelineEvent:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        tableSessionId: { type: string }
+        type: { type: string }
+        message: { type: string }
+        sourceRecord:
+          type: object
+          properties:
+            type: { type: string }
+            id: { type: string }
+          required: [type, id]
+        occurredAt: { type: string, format: date-time }
+      required: [id, clubId, tableSessionId, type, message, occurredAt]
+    StaffTableListResponse:
+      type: object
+      properties:
+        tables:
+          type: array
+          items:
+            $ref: "#/components/schemas/StaffTableOperations"
+      required: [tables]
+    StaffTableOperations:
+      type: object
+      properties:
+        table:
+          $ref: "#/components/schemas/Table"
+        session:
+          anyOf:
+            - $ref: "#/components/schemas/TableSession"
+            - type: "null"
+        assignedStaff:
+          anyOf:
+            - $ref: "#/components/schemas/Staff"
+            - type: "null"
+        customerSessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerSession"
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderResponse"
+        payments:
+          type: array
+          items:
+            $ref: "#/components/schemas/PaymentResponse"
+        joinRequests:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerSession"
+        customerRequests:
+          type: array
+          items:
+            $ref: "#/components/schemas/Notification"
+        songRequests:
+          type: array
+          items:
+            $ref: "#/components/schemas/SongRequest"
+        timeline:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceTimelineEvent"
+      required:
+        [table, session, assignedStaff, customerSessions, orders, payments, joinRequests, customerRequests, songRequests, timeline]
+    QrValidationRequest:
+      type: object
+      properties:
+        qrToken:
+          type: string
+          minLength: 1
+      required: [qrToken]
+    OpenTableSessionRequest:
+      type: object
+      properties:
+        clubId:
+          type: string
+          minLength: 1
+        deviceId:
+          type: string
+          minLength: 1
+      required: [clubId]
+    OpenManualTableSessionRequest:
+      type: object
+      properties:
+        tableId:
+          type: string
+          minLength: 1
+      required: [tableId]
+    ApproveTableSessionJoinRequest:
+      type: object
+      properties:
+        customerSessionId:
+          type: string
+          minLength: 1
+      required: [customerSessionId]
+    CreateTableSessionRequest:
+      type: object
+      properties:
+        clubId:
+          type: string
+          minLength: 1
+        tableId:
+          type: string
+          minLength: 1
+        qrToken:
+          type: string
+          minLength: 1
+        deviceId:
+          type: string
+          minLength: 1
+      required: [clubId, tableId]
+    JoinTableSessionRequest:
+      type: object
+      properties:
+        clubId:
+          type: string
+          minLength: 1
+        qrToken:
+          type: string
+          minLength: 1
+        deviceId:
+          type: string
+          minLength: 1
+      required: [clubId]
+    RecoverTableSessionRequest:
+      type: object
+      properties:
+        clubId:
+          type: string
+          minLength: 1
+        customerSessionId:
+          type: string
+          minLength: 1
+        recoveryToken:
+          type: string
+          minLength: 1
+        deviceId:
+          type: string
+          minLength: 1
+      required: [clubId, customerSessionId, recoveryToken]
+    HeartbeatRequest:
+      type: object
+      properties:
+        clubId:
+          type: string
+          minLength: 1
+        customerSessionId:
+          type: string
+          minLength: 1
+      required: [clubId, customerSessionId]
+    SplitTableSessionRequest:
+      type: object
+      properties:
+        splitCount:
+          type: number
+          minimum: 1
+      required: [splitCount]
+    SubmitPaymentRequest:
+      type: object
+      properties:
+        method:
+          type: string
+          enum: [cash, till, mpesa]
+      required: [method]
+    PaymentResponse:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        tableSessionId: { type: string }
+        businessDayId: { type: string }
+        method:
+          type: string
+          enum: [cash, till, mpesa]
+        amountMinor: { type: number, minimum: 0 }
+        currency: { type: string }
+        status:
+          type: string
+          enum: [pending, submitted, verified, rejected, expired]
+        providerReference: { type: string }
+        verifiedByStaffId: { type: string }
+        createdAt: { type: string, format: date-time }
+        verifiedAt: { type: string, format: date-time }
+      required:
+        [id, clubId, tableSessionId, businessDayId, method, amountMinor, currency, status, createdAt]
+    TableValidationResponse:
+      type: object
+      properties:
+        table:
+          $ref: "#/components/schemas/Table"
+      required: [table]
+    TableSessionAccess:
+      type: object
+      properties:
+        tableSession:
+          $ref: "#/components/schemas/TableSession"
+        customerSession:
+          $ref: "#/components/schemas/CustomerSession"
+        recoveryToken:
+          type: string
+      required: [tableSession, customerSession, recoveryToken]
+    Table:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        number: { type: number, minimum: 1 }
+        label: { type: string }
+        capacity: { type: number, minimum: 1 }
+        qrVersion: { type: number, minimum: 1 }
+        status:
+          type: string
+          enum: [available, active, finishing]
+        activeSessionId: { type: string }
+        splitSlotsRemaining: { type: number, minimum: 0 }
+      required: [id, clubId, number, label, qrVersion, status]
+    TableSession:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        tableId: { type: string }
+        businessDayId: { type: string }
+        ownerCustomerSessionId: { type: string }
+        controllerType:
+          type: string
+          enum: [customer, staff]
+        controllerStaffId: { type: string }
+        openedAt: { type: string, format: date-time }
+        closedAt: { type: string, format: date-time }
+        status:
+          type: string
+          enum: [created, active, splitting-bill, awaiting-payment, payment-pending, completed, closed, expired]
+        runningTotalMinor: { type: number, minimum: 0 }
+        expiresAt: { type: string, format: date-time }
+        lastActivityAt: { type: string, format: date-time }
+      required:
+        [id, clubId, tableId, businessDayId, controllerType, openedAt, status, runningTotalMinor, expiresAt, lastActivityAt]
+    CustomerSession:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        tableSessionId: { type: string }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        isTableOwner: { type: boolean }
+        accessLevel:
+          type: string
+          enum: [owner, participant, temporary]
+        approvalStatus:
+          type: string
+          enum: [approved, pending-approval]
+        approvalRequestedAt: { type: string, format: date-time }
+        approvedAt: { type: string, format: date-time }
+        approvedByStaffId: { type: string }
+        deviceId: { type: string }
+        lastHeartbeatAt: { type: string, format: date-time }
+        expiredAt: { type: string, format: date-time }
+      required: [id, clubId, tableSessionId, createdAt, expiresAt, isTableOwner, accessLevel, approvalStatus]
+

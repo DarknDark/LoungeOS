@@ -1,0 +1,500 @@
+LOUNGEOS – ARCHITECTURE APPROVAL & MODULE 1 AUTHORIZATION
+
+The architecture review is approved.
+
+The review correctly identified what is reusable and what must be refactored.
+
+Before beginning Module 1, I want LoungeOS to have a complete architectural foundation so we don't need to redesign core systems later.
+
+Your next task is to complete the architecture phase before building customer or staff features.
+STEP 1 – CREATE ARCHITECTURE DOCUMENTATION
+
+In addition to the existing ROADMAP.md, create a new file in the project root called:
+
+ARCHITECTURE.md
+
+This document will become the technical blueprint for LoungeOS.
+
+It should be written so that any developer joining the project can understand how the entire system works without reading the code first.
+ARCHITECTURE.md MUST INCLUDE
+1. System Overview
+
+Explain LoungeOS as a complete hospitality operating platform.
+
+Describe the two applications:
+Customer Application
+
+    Responsive Web App
+
+    QR Code Access
+
+    No Login
+
+    No Download
+
+Staff Application
+
+    Expo Mobile App
+
+    Firebase Authentication
+
+    Role-Based Access Control
+
+Explain how these two applications communicate through the same backend while remaining completely separate experiences.
+2. System Architecture Diagram
+
+Document the flow:
+
+Customer QR Scan
+
+↓
+
+Customer Web App
+
+↓
+
+API Layer
+
+↓
+
+Application Services
+
+↓
+
+Repositories
+
+↓
+
+Firestore
+
+↓
+
+Realtime Listeners
+
+↓
+
+Staff Mobile App
+
+Explain the responsibility of each layer.
+3. Domain Model
+
+Document every business entity.
+
+Include:
+
+    Club
+
+    Table
+
+    Table Session
+
+    Customer Session
+
+    Staff
+
+    Roles
+
+    Menu Item
+
+    Order
+
+    Order Item
+
+    Preparation Station
+
+    Kitchen Ticket
+
+    Song Request
+
+    Payment
+
+    Payment Token
+
+    Inventory Item
+
+    Inventory Transaction
+
+    Notification
+
+    Audit Log
+
+    Business Day
+
+    Settings
+
+    Analytics
+
+    Activity Feed
+
+    Service Timeline
+
+Explain relationships between each entity.
+4. Firestore Design
+
+Document every collection.
+
+Include:
+
+Purpose
+
+Relationships
+
+Indexes
+
+Future scalability considerations
+5. Repository Layer
+
+Explain every repository.
+
+Examples:
+
+ClubRepository
+
+OrderRepository
+
+InventoryRepository
+
+PaymentRepository
+
+NotificationRepository
+
+SongRepository
+
+SettingsRepository
+
+AuditRepository
+
+Explain which services use each repository.
+6. Service Layer
+
+Document business services.
+
+Examples:
+
+TableSessionService
+
+OrderService
+
+PaymentService
+
+InventoryService
+
+KitchenService
+
+DJService
+
+NotificationService
+
+AnalyticsService
+
+BusinessDayService
+
+SettingsService
+
+AuditService
+
+Describe the responsibilities of each service.
+7. Authentication
+
+Explain:
+
+Firebase Authentication
+
+Staff Login
+
+Role-Based Access
+
+Permission boundaries
+
+Customer temporary sessions
+
+Payment contributor sessions
+8. Notification Architecture
+
+Explain:
+
+Realtime listeners
+
+Notification lifecycle
+
+Who receives notifications
+
+Notification priorities
+
+Notification persistence
+9. Audit Log Architecture
+
+Document the permanent audit logging system.
+
+Record examples:
+
+    Login
+
+    Logout
+
+    Price changed
+
+    Inventory adjusted
+
+    Payment verified
+
+    Table opened
+
+    Table closed
+
+    Business day opened
+
+    Business day closed
+
+Explain how Audit Logs differ from Notifications and Service Timeline.
+10. Settings Module
+
+Document centralized editable settings.
+
+Include:
+
+Club Branding
+
+Logo
+
+Theme
+
+Currency
+
+Business Hours
+
+Till Numbers
+
+Taxes
+
+Service Charges
+
+Notification Preferences
+
+DJ Defaults
+
+Kitchen Defaults
+
+Future Printer Configuration
+
+Everything business-specific must come from Settings instead of hardcoded values.
+11. Analytics Layer
+
+Document future analytics.
+
+Examples:
+
+Top selling drinks
+
+Top selling food
+
+Average table spend
+
+Peak hours
+
+Most requested songs
+
+Most skipped songs
+
+Kitchen performance
+
+Bartender performance
+
+Inventory trends
+
+Staff performance
+
+Revenue trends
+
+Explain where analytics data comes from.
+12. Activity Feed
+
+Document the Admin Activity Feed.
+
+Explain how it differs from:
+
+Notifications
+
+Service Timeline
+
+Audit Logs
+
+Give examples of events displayed.
+13. Folder Structure
+
+Document the target project structure.
+
+Explain every folder.
+
+Explain separation of:
+
+UI
+
+Domain
+
+Application
+
+Infrastructure
+
+Shared Components
+
+Services
+
+Repositories
+
+Types
+
+Hooks
+
+Utilities
+
+Configuration
+14. Coding Standards
+
+Document:
+
+Clean Architecture
+
+SOLID Principles
+
+Naming Conventions
+
+Folder Organization
+
+Reusable Components
+
+Testing Strategy
+
+State Management
+
+Documentation Standards
+15. Future Integrations
+
+Reserve architecture boundaries for:
+
+M-Pesa
+
+Printer Support
+
+Receipt Printing
+
+SMS
+
+Email
+
+Loyalty Programs
+
+Reservations
+
+Online Bookings
+
+Multiple Branches
+
+Multiple Clubs
+
+Do not implement them.
+
+Simply define where they will plug into the architecture.
+STEP 2 – UPDATE ROADMAP
+
+Update ROADMAP.md.
+
+Include these new platform modules:
+
+    Audit Log
+
+    Settings
+
+    Analytics
+
+    Activity Feed
+
+Update the implementation order to include them.
+STEP 3 – BEGIN MODULE 1
+
+After documentation is complete, begin only:
+Module 1 – Architecture Refactor
+
+The goal of Module 1 is NOT to build features.
+
+Its goal is to build the foundation.
+
+Module 1 should:
+
+    Separate business logic from UI.
+
+    Introduce repository interfaces.
+
+    Introduce service layer.
+
+    Create shared domain models.
+
+    Create Firestore model definitions.
+
+    Separate Customer and Staff applications.
+
+    Remove hardcoded business data.
+
+    Add centralized Settings foundation.
+
+    Add Notification foundation.
+
+    Add Audit foundation.
+
+    Add Analytics foundation.
+
+    Add Activity Feed foundation.
+
+    Establish dependency boundaries.
+
+    Create reusable interfaces for future modules.
+
+Do NOT implement customer ordering, staff dashboards, or M-Pesa yet.
+STEP 4 – VALIDATION
+
+When Module 1 is complete:
+
+Provide:
+
+    Architecture summary.
+
+    List of all files created.
+
+    List of all files modified.
+
+    TypeScript validation results.
+
+    Expo build validation.
+
+    Remaining technical debt (if any).
+
+    Updated ROADMAP progress.
+
+    Updated ARCHITECTURE documentation.
+
+Then STOP.
+
+Wait for approval before beginning Module 2.
+FINAL INSTRUCTION
+
+Treat LoungeOS like a commercial software product that will be used every night by real businesses.
+
+Prioritize:
+
+    Reliability
+
+    Scalability
+
+    Maintainability
+
+    Security
+
+    Clean architecture
+
+    Separation of concerns
+
+    Long-term extensibility
+
+Do not rush into feature development.
+
+A strong architecture now will save significant time and reduce technical debt as LoungeOS grows into a complete hospitality operating platform.

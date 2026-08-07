@@ -1,0 +1,168 @@
+Before making ANY code changes:
+
+1. Read HANDOFF.md completely.
+2. Read PROJECT_STATE.md completely.
+3. Read CHANGELOG.md if it exists.
+4. Spend no more than 5 minutes auditing the code. Use the documentation as the primary source of truth. Do NOT rediscover the entire project unless the documentation conflicts with the code.
+
+The project was imported from GitHub and already contains:
+
+- Permanent QR architecture (frozen)
+- Atomic Close Table lifecycle
+- Firebase staff authentication
+- Waiter dashboard foundation
+- Protected staff APIs
+- OpenAPI generation
+- Generated API clients
+- Passing application tests
+- GitHub is the source of truth
+
+The architecture is frozen.
+
+Do NOT redesign it.
+
+Do NOT modify the permanent QR workflow.
+
+Do NOT start Module 4.
+
+Do NOT implement realtime, ReceiptService, manual waiter mode, SMS, printing, or provider integrations.
+
+==================================================
+CURRENT MILESTONE
+==================================================
+
+Implement ONLY the Staff Administration milestone.
+
+Nothing else.
+
+==================================================
+REPOSITORY
+==================================================
+
+Extend StaffRepository with:
+
+- create()
+- update()
+- list()
+
+Extend RoleRepository with:
+
+- create()
+- update()
+
+Implement the matching Firestore repository methods.
+
+==================================================
+APPLICATION
+==================================================
+
+Create AdminStaffService.
+
+Keep business logic inside the application layer.
+
+==================================================
+API
+==================================================
+
+Add protected admin endpoints for:
+
+- Create staff
+- Update staff
+- List staff
+- Create role
+- Update role
+- List roles
+
+Reuse the existing authorization model.
+
+Enforce ONLY the existing:
+
+staff.manage
+
+permission.
+
+Do NOT invent new permissions.
+
+==================================================
+OPENAPI
+==================================================
+
+Update the OpenAPI specification.
+
+Regenerate generated clients.
+
+==================================================
+TESTS
+==================================================
+
+Add:
+
+- application tests
+- API tests
+
+Verify:
+
+- create staff
+- update staff
+- list staff
+- create role
+- update role
+- list roles
+- permission enforcement
+
+==================================================
+VERIFICATION
+==================================================
+
+Run:
+
+- Application tests
+- API tests
+- Library typecheck
+- API typecheck
+- Mobile typecheck
+- OpenAPI generation
+- Generated client verification
+- Restart workflows
+- API health check
+
+==================================================
+IMPORTANT
+==================================================
+
+Do NOT continue into another milestone.
+
+Do NOT begin:
+
+- realtime
+- ReceiptService
+- manual waiter mode
+- Module 4
+
+If you encounter a blocker:
+
+STOP.
+
+Explain the blocker.
+
+Do NOT begin another feature.
+
+==================================================
+WHEN COMPLETE
+==================================================
+
+Update:
+
+- PROJECT_STATE.md
+- CHANGELOG.md (create if missing)
+
+Provide a final report including:
+
+- files changed
+- tests added
+- verification results
+- API health status
+- workflows restarted
+- remaining work
+
+Then STOP.

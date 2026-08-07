@@ -1,0 +1,378 @@
+Excellent.
+
+The planning phase is now COMPLETE.
+
+The following documents are APPROVED and are now the source of truth for LoungeOS:
+
+• ARCHITECTURE.md
+• ROADMAP.md
+• Module 1
+• Module 1.5
+
+Do NOT generate any more planning documents.
+
+Do NOT expand the roadmap.
+
+Do NOT redesign the architecture.
+
+Do NOT rewrite existing documentation unless required by implementation.
+
+From this point onward we are officially entering the IMPLEMENTATION PHASE.
+
+======================================================================
+MODULE 2
+TABLE SESSION ENGINE
+======================================================================
+
+Begin implementation of Module 2 only.
+
+Do NOT start Module 3.
+
+Implement production-quality code only.
+
+No placeholders.
+
+No demo implementations.
+
+No mock databases.
+
+Everything must integrate with the Firebase architecture already created.
+
+======================================================================
+FEATURES
+======================================================================
+
+Implement the complete customer table session lifecycle.
+
+Include:
+
+• QR table access
+• QR validation
+• Table validation
+• Session creation
+• Session ownership
+• One active owner per table
+• Guest reconnection
+• Session recovery after refresh
+• Session timeout
+• Session locking
+• Session heartbeat
+• Session expiration
+• Session close
+• Running tab initialization
+• Multi-device synchronization
+
+======================================================================
+FIRESTORE
+======================================================================
+
+Create the necessary Firestore collections.
+
+Add indexes where appropriate.
+
+Use repository interfaces.
+
+Never access Firestore directly from UI components.
+
+Repositories should remain the single persistence layer.
+
+======================================================================
+API
+======================================================================
+
+Create production API endpoints.
+
+Include:
+
+Create Session
+
+Join Session
+
+Validate Table
+
+Recover Session
+
+Close Session
+
+Heartbeat
+
+Get Session Status
+
+======================================================================
+SECURITY
+======================================================================
+
+Implement production security.
+
+Rules:
+
+Only one active session owner.
+
+Guests cannot steal ownership.
+
+Expired sessions cannot be reused.
+
+Closed sessions cannot reopen.
+
+QR tokens must expire.
+
+Sessions survive refresh.
+
+Sessions survive reconnection.
+
+Reject duplicate owners.
+
+======================================================================
+NOTIFICATIONS
+======================================================================
+
+Implement customer notifications.
+
+Session Started
+
+Session Restored
+
+Session Expiring
+
+Session Closed
+
+Session Expired
+
+======================================================================
+TESTS
+======================================================================
+
+Implement automated tests.
+
+Verify:
+
+QR validation
+
+Ownership
+
+Duplicate joins
+
+Reconnect
+
+Refresh
+
+Expiration
+
+Multiple devices
+
+Session recovery
+
+======================================================================
+IMPORTANT
+======================================================================
+
+Keep UI changes minimal.
+
+The objective is functionality.
+
+Do not redesign existing screens.
+
+Only add what Module 2 requires.
+
+======================================================================
+NEW FOUNDATION MODULE
+======================================================================
+
+Before completing Module 2, create a reusable Club Configuration system.
+
+This is NOT a customer feature.
+
+This is a platform foundation that all future modules must use.
+
+Instead of hardcoding values anywhere in the project, create a configurable Club Settings model.
+
+Every club should have a configuration document that controls the behaviour of the system.
+
+The configuration should include at minimum:
+
+GENERAL
+
+• Club Name
+• Logo
+• Description
+• Address
+• Phone Number
+• Email
+• Website
+• Currency
+• Time Zone
+• Language
+
+BUSINESS
+
+• Business Hours
+• Opening Time
+• Closing Time
+• Tax Percentage
+• Service Charge Percentage
+• Maximum Table Time
+• Session Timeout
+• Maximum Contributors
+• Split Bill Enabled
+• Song Requests Enabled
+
+PAYMENTS
+
+• M-Pesa Till Number
+• Paybill Number
+• Merchant Name
+• Payment Instructions
+• Supported Payment Methods
+
+OPERATIONS
+
+• Active Departments
+
+Examples:
+
+Kitchen
+
+Bar
+
+Pork Station
+
+Nyama Choma
+
+Pizza
+
+Cocktail Bar
+
+VIP Kitchen
+
+Allow departments to be added or removed without changing code.
+
+STAFF
+
+Allow configurable staff roles.
+
+Examples:
+
+Admin
+
+Manager
+
+Supervisor
+
+Waiter
+
+Bartender
+
+Kitchen
+
+Pork Chef
+
+Nyama Chef
+
+DJ
+
+Cashier
+
+Security
+
+Each role must support configurable permissions.
+
+NOTIFICATIONS
+
+Allow configurable notification settings.
+
+Examples:
+
+Push Notifications
+
+Sound Alerts
+
+Kitchen Alerts
+
+DJ Alerts
+
+Low Stock Alerts
+
+Business Closing Alerts
+
+CUSTOMER SETTINGS
+
+Allow enabling/disabling:
+
+Song Requests
+
+Split Bills
+
+Call Waiter
+
+Service Timeline
+
+Estimated Waiting Time
+
+Menu Categories
+
+THEMES
+
+Support configurable branding.
+
+Logo
+
+Primary Color
+
+Secondary Color
+
+Accent Color
+
+Dark Theme
+
+Light Theme
+
+Future custom branding.
+
+======================================================================
+DESIGN REQUIREMENT
+======================================================================
+
+No future module should contain hardcoded values such as:
+
+Club Name
+
+Till Number
+
+Departments
+
+Tax
+
+Service Charge
+
+Currency
+
+Theme
+
+Roles
+
+Business Hours
+
+Everything must read from the Club Configuration.
+
+This makes LoungeOS a true multi-club platform instead of a single-lounge application.
+
+======================================================================
+DELIVERABLE
+======================================================================
+
+When Module 2 is complete STOP.
+
+Do NOT begin Module 3.
+
+Provide only:
+
+• Files Created
+• Files Modified
+• Firestore Collections
+• API Endpoints
+• Club Configuration Model
+• Security Implemented
+• Tests Passed
+• Remaining Improvements
+
+Wait for approval before continuing to Module 3.

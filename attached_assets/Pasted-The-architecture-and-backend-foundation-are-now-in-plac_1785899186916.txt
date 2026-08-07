@@ -1,0 +1,248 @@
+The architecture and backend foundation are now in place. Do not start Module 4. Continue by completing the remaining permanent-table workflow one complete feature at a time. Do not leave partially implemented features.
+
+Development rules
+Do not add placeholder data.
+Do not bypass staff authentication.
+Do not invent SMS or payment providers.
+Keep all existing business rules intact.
+Keep the permanent QR architecture.
+Every feature must be fully implemented:
+Backend
+API
+Tests
+Mobile UI
+Verification
+before starting the next feature.
+Phase 1 (Highest Priority)
+Finish the waiter operational workflow
+
+Implement and verify:
+
+Active Tables
+
+Each active table should display:
+
+Table number
+Running bill
+Current status
+Assigned waiter
+Number of guests
+Active customer session(s)
+
+Actions:
+
+View Bill
+Add Order
+Manual Order
+Pay Request
+Reopen Tab (when applicable)
+Close Table
+Finishing Up Queue
+
+When a customer presses Close Tab:
+
+Customer sees:
+
+You're almost done.
+
+A waiter is coming to complete your payment.
+
+Buttons:
+
+Cancel
+Continue Payment
+
+Waiter dashboard should immediately move that table into:
+
+Finishing Up
+
+Display:
+
+Table
+Outstanding amount
+Payment method
+Time requested
+
+Actions:
+
+Verify Payment
+Collect Cash
+Close Table
+Close Table
+
+This is the most important operation.
+
+When the waiter presses Close Table:
+
+Atomically:
+
+Verify no outstanding balance
+End customer session(s)
+End table session
+Clear temporary dashboards
+Remove join approvals
+Remove split-payment tickets
+Complete timeline
+Write audit record
+Release table
+
+Immediately afterward:
+
+The permanent QR becomes available again.
+
+No new QR.
+
+No token rotation.
+
+No table recreation.
+
+Phase 2
+Realtime Updates
+
+Replace manual refreshes.
+
+Whenever any of these happen:
+
+new order
+waiter order
+payment request
+pay now
+close tab
+join request
+song request
+payment verification
+table close
+reopen tab
+
+the waiter dashboard should update automatically.
+
+If realtime listeners already exist, use them.
+
+Otherwise use lightweight polling every 3–5 seconds until realtime is available.
+
+Phase 3
+Manual Waiter Mode
+
+Support customers who never scan.
+
+Waiter opens the table manually.
+
+Everything works normally:
+
+inventory
+kitchen
+orders
+running bill
+timeline
+audit
+
+No customer dashboard exists.
+
+If someone later scans the QR:
+
+Display:
+
+This table is currently being managed by your waiter.
+
+Please call your waiter for access.
+
+Notify the waiter.
+
+Waiter may approve.
+
+If approved:
+
+Open a Temporary Dashboard.
+
+Temporary Dashboard allows only:
+
+View running bill
+Request song
+Call waiter
+
+It must NOT allow:
+
+Ordering
+Payment
+Split bill
+Ownership transfer
+
+When the waiter closes the table, this temporary dashboard must immediately expire.
+
+Phase 4
+Pay Now
+
+Customers should be able to pay without leaving.
+
+Flow:
+
+Pay Now
+
+↓
+
+Payment
+
+↓
+
+Waiter verifies
+
+↓
+
+Balance becomes zero
+
+↓
+
+Table remains ACTIVE
+
+↓
+
+Customer continues ordering
+
+Repeat this cycle as many times as needed.
+
+Phase 5
+Receipt Service
+
+Create a provider interface only.
+
+Example:
+
+ReceiptService
+    sendSmsReceipt(...)
+    printReceipt(...)
+
+Do not integrate an SMS provider yet.
+
+Do not integrate printer drivers yet.
+
+Only create the abstraction.
+
+Testing Requirements
+
+After each phase:
+
+Run:
+
+API tests
+Application tests
+Mobile typecheck
+API typecheck
+OpenAPI generation
+Smoke test
+Manual verification
+
+Do not proceed until all checks pass.
+
+Architecture Rule
+
+The permanent QR identifies only the table.
+
+It never identifies a customer.
+
+Customers own temporary sessions.
+
+Waiters own table operations.
+
+The waiter pressing Close Table is the only action that officially releases the table and makes the permanent QR immediately available for the next customers.
+
+Only after every item above is implemented, tested, and verified should development begin on Module 4.

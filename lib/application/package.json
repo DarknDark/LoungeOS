@@ -1,0 +1,20 @@
+{
+  "name": "@workspace/application",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./services": "./src/services.ts"
+  },
+  "dependencies": {
+    "@workspace/domain": "workspace:*"
+  },
+  "scripts": {
+    "test": "tsx --test tests/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsx": "catalog:"
+  }
+}

@@ -1,0 +1,81 @@
+The architecture is now frozen.
+
+From this point onward, implement only one milestone at a time. Do not work on multiple milestones in parallel.
+
+Current Milestone: Waiter Operational Workflow (Part 1)
+
+Your only goal is to complete the Close Table lifecycle. Do not begin realtime, manual waiter mode, ReceiptService, or Module 4.
+
+Requirements
+
+Implement the complete Close Table workflow so it becomes the single authoritative way to release a table.
+
+When a waiter presses Close Table, perform one atomic transaction that:
+
+Confirms there is no outstanding balance.
+Confirms all payments are verified.
+Ends every active customer session for that table.
+Ends the active table session.
+Removes all temporary dashboard access.
+Removes all pending join requests.
+Removes all split-payment tickets.
+Clears any temporary payment state.
+Writes audit records.
+Writes timeline events.
+Sends the appropriate notifications.
+Marks the table as AVAILABLE.
+Makes the permanent table QR immediately usable again.
+
+Do not rotate QR codes.
+
+Do not generate new QR codes.
+
+Do not create a new table.
+
+The permanent QR must simply work again because the previous table session has ended.
+
+Verification
+
+After implementation, verify only this workflow:
+
+Customer scans permanent QR.
+Customer opens a session.
+Customer places an order.
+Customer presses Close Tab.
+Waiter sees the table in the Finishing Up queue.
+Waiter verifies payment.
+Waiter presses Close Table.
+Customer session is ended.
+Table session is ended.
+Table status becomes AVAILABLE.
+The same permanent QR immediately starts a completely new customer session.
+
+Verify through:
+
+API tests
+Application tests
+OpenAPI generation
+API typecheck
+Mobile typecheck
+Workflow restart
+API health check
+Live smoke test
+
+If any step fails:
+
+Stop immediately.
+Fix only that failure.
+Repeat verification from the last successful checkpoint.
+Do not continue to another milestone.
+Deliverables
+
+At the end of this milestone, report:
+
+Files changed.
+API endpoints affected.
+Database entities updated.
+Tests added or modified.
+Smoke-test results.
+Any remaining blockers before moving to the next milestone.
+
+Do not start the next milestone until this one is fully complete and verified.

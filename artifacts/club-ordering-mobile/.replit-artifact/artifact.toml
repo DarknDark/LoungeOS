@@ -1,0 +1,24 @@
+kind = "mobile"
+previewPath = "/club-ordering-mobile/"
+title = "Club Ordering Mobile"
+description = "A premium mobile-first club ordering experience for table guests and staff, covering drinks, food, song requests, bills, payments, and role-based operations."
+version = "1.0.0"
+id = "artifacts/club-ordering-mobile"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/club-ordering-mobile/" ]
+localPort = 24663
+
+[services.development]
+run = "pnpm --filter @workspace/club-ordering-mobile run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/club-ordering-mobile", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/club-ordering-mobile", "run", "serve" ]
+
+[services.env]
+PORT = "24663"
+BASE_PATH = "/club-ordering-mobile/"

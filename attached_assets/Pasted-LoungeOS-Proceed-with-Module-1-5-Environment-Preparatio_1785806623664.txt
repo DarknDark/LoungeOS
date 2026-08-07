@@ -1,0 +1,84 @@
+LoungeOS – Proceed with Module 1.5 (Environment Preparation)
+
+The architecture review and implementation plan are approved.
+
+I understand that Module 1.5 requires a real Firebase project before the production backbone can be implemented and tested.
+
+Do not substitute another database.
+
+Do not hardcode credentials.
+
+Do not embed secrets in the source code.
+
+Instead, prepare the project so it is ready for Firebase integration.
+
+Your tasks now
+1. Define the Required Environment Variables
+
+Create a checklist of all required environment variables for LoungeOS.
+
+Include variables such as:
+
+FIREBASE_PROJECT_ID
+FIREBASE_CLIENT_EMAIL
+FIREBASE_PRIVATE_KEY
+FIREBASE_STORAGE_BUCKET
+FIREBASE_DATABASE_URL (if used)
+
+Include any additional variables you require for Firebase Authentication or Firestore.
+
+Document:
+
+What each variable is used for.
+Whether it is required or optional.
+2. Build the Firebase Integration Layer
+
+Implement the Firebase integration so that:
+
+Secrets are read only from environment variables.
+No credentials are committed to the repository.
+Missing secrets produce clear startup errors.
+Secret values are never logged.
+3. Implement Dependency Injection
+
+Configure dependency injection so that:
+
+When Firebase credentials are available, Firestore repository implementations are used automatically.
+When credentials are absent, the application fails gracefully with descriptive errors rather than silently switching databases.
+4. Prepare Repository Implementations
+
+You may implement repository adapters, but they should obtain their Firestore client through the Firebase integration layer rather than constructing clients throughout the codebase.
+
+5. Authentication Foundation
+
+Prepare Firebase Authentication integration for staff.
+
+Do not build login screens yet.
+
+Implement only the backend/authentication foundation.
+
+6. Documentation
+
+Update ARCHITECTURE.md with:
+
+Firebase integration architecture.
+Environment variable requirements.
+Secret management policy.
+Authentication flow.
+Firestore initialization flow.
+7. Stop Before Verification
+
+If real Firebase credentials are required to continue:
+
+Stop implementation at that point.
+Report exactly which environment variables are still required.
+Do not ask for their values in chat.
+Assume they will be added securely through Replit Secrets.
+
+Do not continue to Module 2.
+
+Do not build customer or staff UI.
+
+Remain focused on completing the production architecture foundation.
+
+Once you've finished this preparation, I'll create the Firebase project, add the required secrets through Replit's secure Secrets manager, and then you'll be able to complete the Firestore and Authentication implementation against the real backend.

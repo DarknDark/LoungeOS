@@ -1,0 +1,138 @@
+The infrastructure hardening phase is complete, verified, and accepted. Do not redesign the UI or replace any existing architecture. Continue from the current codebase using the shared infrastructure (audit, notifications, timeline, event bus, metrics, realtime, offline queue, optimistic locking, and configuration validation) that has already been implemented.
+
+Next Task: Module 3 – Ordering Engine
+
+Implement Module 3 only.
+
+Requirements:
+
+Build the complete Ordering Engine using the existing Firebase-only architecture.
+Reuse the shared infrastructure from the hardening phase instead of creating new implementations.
+Do not modify the current customer or staff UI unless a screen requires minimal additions to support ordering.
+Do not start Module 4 or any later module.
+Ordering Engine
+
+Implement:
+
+Menu categories
+Menu items
+Item availability
+Item modifiers/options
+Item notes
+Quantity updates
+Cart management
+Order creation
+Order editing before submission
+Order cancellation rules
+Order status lifecycle
+Draft
+Submitted
+Accepted
+Preparing
+Ready
+Delivered
+Cancelled
+Order totals
+Tax calculation
+Service charge calculation
+Discounts (architecture ready even if no UI yet)
+Customer order history
+Active order tracking
+Firestore
+
+Use tenant-scoped collections only.
+
+Add repositories for:
+
+menuCategories
+menuItems
+modifiers
+orders
+orderItems
+
+All writes must use:
+
+optimistic locking
+audit logging
+timeline events
+notification engine
+Notifications
+
+Generate events for:
+
+Order submitted
+Kitchen accepted
+Preparing
+Ready
+Delivered
+Cancelled
+API
+
+Create versioned endpoints under:
+
+/api/v1/orders
+
+Generate:
+
+OpenAPI
+client
+Zod validators
+Security
+Customer can only access orders belonging to their active table session.
+Staff permissions must use Firebase Authentication and existing role middleware.
+Never expose Firestore directly to the client.
+No mock database.
+No PostgreSQL.
+No in-memory fallback.
+Realtime
+
+Integrate with the existing realtime subscription layer so order status updates appear instantly.
+
+Offline
+
+Use the existing offline synchronization queue for order mutations.
+
+Tests
+
+Add production tests covering:
+
+order creation
+duplicate submissions
+stock unavailable
+modifier validation
+pricing
+tax
+service charge
+optimistic locking
+permission checks
+realtime events
+notification generation
+Verification
+
+Before completion run:
+
+full workspace typecheck
+all tests
+API build
+API restart
+health endpoint
+Expo verification
+Recommendation (implement during Module 3)
+
+While implementing the Ordering Engine, also add these production improvements because they will save significant refactoring later:
+
+Inventory Reservation Layer
+Reserve stock when an order is accepted.
+Release stock if an order is cancelled.
+This prepares the system for the Inventory module.
+Kitchen Routing
+Add a routing abstraction so each menu item can be assigned to Kitchen, Bar, Shisha, or DJ without implementing the Kitchen UI yet.
+Future modules can plug into this without changing the Ordering Engine.
+Idempotency Keys
+Prevent duplicate orders caused by repeated taps or unstable network connections.
+Pricing Engine
+Centralize all price calculations (subtotal, tax, service charge, discounts, totals) into a reusable service for future payment and split-bill modules.
+Order Event Stream
+Emit standardized domain events for every order state transition through the existing event bus so Analytics, Notifications, Kitchen, Inventory, and Smart Waiter Mode can subscribe without modifying Module 3.
+
+After Module 3 is complete, stop and wait for approval before beginning Module 4

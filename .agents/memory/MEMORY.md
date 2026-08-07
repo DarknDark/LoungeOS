@@ -1,0 +1,14 @@
+- [Expo artifact routing](expo-artifact-routing.md) — grouped Expo Router screens may need an explicit root re-export for the proxied web preview.
+- [Expo SDK migration](expo-sdk-migration.md) — SDK 57 needs a fully aligned package graph and a non-default Metro build port in this workspace.
+- [Firebase preparation](firebase-preparation.md) — Firestore/Auth live verification is blocked until Firebase Admin Secrets are securely added.
+- [Firebase staff auth](firebase-staff-auth.md) — Mobile sign-in flow wired; Metro blockList fix for _tmp_ dirs; operational Firestore seed required before use.
+- [Firebase Firestore access](firebase-firestore-access.md) — Admin Auth can pass while Firestore RPCs remain denied; verify effective IAM and database alignment separately.
+- [Generated API codegen](generated-api-codegen.md) — Orval’s split Zod output needs deterministic barrel normalization to avoid runtime/type export collisions.
+- [Infrastructure hardening](infrastructure-hardening.md) — shared audit, notification, timeline, event, realtime, offline-sync, metrics, and locking primitives are provider-neutral.
+- [Ordering Engine](ordering-engine.md) — Module 3 uses Firebase tenant-scoped repositories with centralized pricing, idempotency, reservations, and shared lifecycle side effects.
+- [Mobile live ordering](mobile-live-integration.md) — customer mobile uses live sessions/orders with secure credentials; unsupported payment, staff, song, waiter, and client-realtime transports stay explicit.
+- [Payment settlement](payment-settlement.md) — cash/till Pay Now requests require waiter verification; M-Pesa stays explicitly unavailable without a real transport.
+- [Static Expo server security](static-server-security.md) — generated bundle serving uses explicit manifest allowlists and decoded path containment checks.
+- [Expo web font loading](expo-web-font-loading.md) — proxied web preview may keep native font loading pending; render with system fallback on web while retaining native font gating.
+- [Staff operations read model](staff-operations-read-model.md) — protected waiter table operations can read live tables, sessions, orders, payments, and pending joins; mobile staff auth remains explicit.
+- [Workspace dependency lockfile](workspace-dependency-lockfile.md) — package manifest changes require refreshing the pnpm lockfile before frozen installs can succeed.

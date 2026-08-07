@@ -1,0 +1,123 @@
+Excellent. The architecture is now frozen.
+
+Do not begin Module 4.
+
+From this point forward, complete one phase at a time, fully verified before starting the next.
+
+Phase 1 – Finish the Waiter Operational Workflow
+
+This phase ends only when the waiter can manage an entire table lifecycle from start to finish.
+
+Implement and verify the following in order:
+
+1. Active Tables
+
+The authenticated waiter dashboard must display live data only.
+
+Each active table must show:
+
+Table number
+Running bill
+Active status
+Assigned waiter
+Guest count
+Active customer session(s)
+Last activity timestamp
+
+Actions:
+
+View Bill
+Add Order
+Manual Order
+Request Payment
+Reopen Tab (when applicable)
+Close Table
+
+Do not display placeholder or demo data.
+
+2. Finishing Up Queue
+
+When a customer presses Close Tab:
+
+Customer sees:
+
+You're almost done.
+
+A waiter is coming to complete your payment.
+
+Buttons:
+
+Continue Payment
+Cancel
+
+If Cancel is pressed:
+
+Remove the finishing state.
+Return to the active ordering dashboard.
+Continue the existing session unchanged.
+
+If Continue Payment is pressed:
+
+Move the table into the Finishing Up queue.
+
+Show:
+
+Table
+Amount due
+Payment method
+Time requested
+
+Waiter actions:
+
+Verify Payment
+Collect Cash
+Close Table
+3. Close Table
+
+This is the authoritative end of the session.
+
+When the waiter presses Close Table, perform the entire operation atomically:
+
+Confirm no outstanding balance.
+End all active customer sessions.
+End the active table session.
+Remove temporary dashboards.
+Remove pending join approvals.
+Remove split-payment tickets.
+Write audit entry.
+Write timeline event.
+Send notifications.
+Release the table.
+
+Immediately after completion:
+
+The permanent QR must become available again automatically.
+No new QR.
+No QR rotation.
+No new table record.
+Verification
+
+After implementation:
+
+Run application tests.
+Run API tests.
+Run OpenAPI generation.
+Run API typecheck.
+Run mobile typecheck.
+Restart workflows.
+Verify API health.
+Perform a live smoke test covering:
+Customer scans QR.
+Customer orders.
+Customer presses Close Tab.
+Waiter sees the Finishing Up queue.
+Waiter verifies payment.
+Waiter presses Close Table.
+Table is released.
+The same permanent QR can immediately start a brand-new customer session.
+
+Do not proceed to Phase 2 until every step above passes.
+
+If any unexpected production failure occurs, stop immediately, fix only that failure, reverify the phase, and continue from the last successful checkpoint.
+
+Keep the implementation incremental, fully tested, and production-ready before moving on.

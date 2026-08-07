@@ -1,0 +1,944 @@
+LOUNGEOS – MASTER PROJECT CHARTER & IMPLEMENTATION PROMPT
+
+We are resetting the direction of this project.
+
+Do NOT treat this as another feature request.
+
+This document is now the MASTER SPECIFICATION for the entire project.
+
+Read this document completely before writing any code.
+
+Your first task is:
+
+Read and understand the existing codebase.
+Review the current architecture.
+Identify reusable components.
+Identify prototype shortcuts that should be removed or refactored.
+Create the ROADMAP.md file exactly as described below.
+Present the architecture review and refactoring plan.
+Wait for my approval before implementing Module 1.
+
+Do NOT skip ahead.
+
+Do NOT implement multiple modules at once.
+
+We will build LoungeOS one verified module at a time.
+
+PROJECT NAME
+
+LoungeOS
+
+PROJECT MISSION
+
+LoungeOS is a complete hospitality operating system.
+
+This is NOT just a QR ordering app.
+
+LoungeOS manages:
+
+Customer Ordering
+Drinks
+Food
+Waiter Operations
+Kitchen Operations
+Bartender Operations
+DJ Song Requests
+Payments
+Inventory
+Reports
+Daily Business Operations
+Administration
+
+The first deployment will be for Mamu's Lounge.
+
+However, LoungeOS must be designed so multiple clubs, lounges, restaurants and bars can use the same platform in the future.
+
+No business information should be hardcoded.
+
+Everything must be configurable.
+
+DEVELOPMENT PHILOSOPHY
+
+Do NOT continue patching the original Nightfall prototype.
+
+Instead:
+
+Review the existing code.
+Reuse what is still valuable.
+Refactor where necessary.
+Remove prototype shortcuts.
+Build production-ready architecture.
+
+Use:
+
+Clean Architecture
+SOLID Principles
+Reusable Components
+TypeScript
+Proper Separation of UI and Business Logic
+
+Never hardcode:
+
+Club Name
+
+Logo
+
+Menu
+
+Tables
+
+Till Number
+
+Theme
+
+Everything should be editable by the Administrator.
+
+DEVELOPMENT WORKFLOW
+
+Before implementing a module:
+
+Explain:
+
+Implementation plan
+Files to modify
+Why they are changing
+
+After implementing:
+
+Run TypeScript check
+Verify Expo build
+Verify Android Preview
+Verify Web Preview (if applicable)
+Verify nothing broke
+Summarize work completed
+
+Then STOP.
+
+Wait for approval before continuing.
+
+FIRST TASK (MANDATORY)
+
+Before writing new features create:
+
+ROADMAP.md
+
+Place it in the project root.
+
+This file becomes the master planning document.
+
+ROADMAP CONTENT
+
+Include:
+
+Project Vision
+
+Explain LoungeOS.
+
+Explain long-term goals.
+
+Explain that this is a scalable hospitality operating platform.
+
+Current Status
+
+Example
+
+Version
+
+0.2 Architecture Phase
+
+Progress
+
+25%
+
+Current Phase
+
+Architecture Refactor
+
+Goal
+
+Production Ready
+
+Module Checklist
+
+Architecture Refactor
+
+Customer Web App
+
+QR Session Management
+
+Table Locking
+
+Running Tabs
+
+Split Bill
+
+Payment Tokens
+
+Service Timeline
+
+Waiter Dashboard
+
+Bartender Dashboard
+
+Kitchen Dashboard
+
+DJ Dashboard
+
+Inventory
+
+Admin Dashboard
+
+Notifications
+
+Firebase Integration
+
+M-Pesa Integration
+
+Reports
+
+Business Day
+
+Testing
+
+Production Readiness
+
+Track progress using:
+
+⬜ Not Started
+
+🟨 In Progress
+
+✅ Complete
+
+Firestore Collections
+
+Document every collection.
+
+Include:
+
+clubs
+
+tables
+
+tableSessions
+
+customerSessions
+
+orders
+
+orderItems
+
+menuItems
+
+preparationStations
+
+kitchenTickets
+
+songRequests
+
+staff
+
+roles
+
+inventoryItems
+
+inventoryTransactions
+
+payments
+
+paymentTokens
+
+serviceTimeline
+
+businessDays
+
+notifications
+
+Document relationships between collections.
+
+Folder Structure
+
+Explain every folder.
+
+API Architecture
+
+Document:
+
+Authentication
+
+Authorization
+
+Realtime Updates
+
+Notifications
+
+Future Integrations
+
+Future Ideas
+
+Reserve a section.
+
+Do not implement future ideas yet.
+
+PRODUCT ARCHITECTURE
+
+LoungeOS consists of TWO completely different applications.
+
+CUSTOMER APPLICATION
+
+Responsive Web Application
+
+Opened by scanning QR Code.
+
+No Download.
+
+No Login.
+
+Very Simple.
+
+Customers must NEVER see:
+
+Admin
+
+Waiter
+
+Kitchen
+
+Bartender
+
+DJ
+
+Inventory
+
+Settings
+
+Developer Tools
+
+Hidden Menus
+
+Debug Navigation
+
+The interface should only contain customer features.
+
+STAFF APPLICATION
+
+Expo Mobile App
+
+Login Required.
+
+Firebase Authentication.
+
+Role-Based Access Control.
+
+Roles:
+
+Administrator
+
+Waiter
+
+Bartender
+
+Kitchen
+
+DJ
+
+Future roles should be easy to add.
+
+CUSTOMER EXPERIENCE
+
+First QR Scan creates:
+
+Table Session.
+
+Assign:
+
+Table Owner.
+
+Store:
+
+Club ID
+
+Table ID
+
+Session ID
+
+Opened Time
+
+Running Bill
+
+Timeline
+
+Status
+
+Immediately mark table as:
+
+Occupied.
+
+TABLE LOCKING
+
+If another customer scans:
+
+Do NOT create another owner.
+
+Display:
+
+"This table already has an active session.
+
+If you are joining this table, please ask the table owner to continue ordering.
+
+Need assistance?
+
+Call Waiter."
+
+CUSTOMER DASHBOARD
+
+Only display:
+
+Welcome
+
+Running Bill
+
+Order Drinks
+
+Order Food
+
+Request Song
+
+Call Waiter
+
+Service Timeline
+
+Close Tab
+
+Nothing else.
+
+MENU
+
+The menu must be fully managed by the Administrator.
+
+No menu items, prices, categories, or images should be hardcoded.
+
+Each menu item must support:
+
+Name
+Description
+Price
+Category
+Image
+Preparation Station
+Inventory Link
+Availability
+PREPARATION STATIONS
+
+Support multiple preparation stations.
+
+Examples:
+
+Bar
+
+Kitchen
+
+Pork Grill
+
+Nyama Choma
+
+Future stations should be easy to add.
+
+Orders must automatically route only the relevant items to the correct preparation station.
+
+CLOSE TAB
+
+When selected:
+
+Ask:
+
+Are you sure?
+
+Options:
+
+Pay Full Bill
+
+Split Bill
+
+SPLIT BILL
+
+Ask:
+
+How many additional contributors will help pay?
+
+Owner remains the main customer.
+
+Generate secure payment tokens.
+
+Example:
+
+PAY-82HF
+
+PAY-94KD
+
+Each token:
+
+Single Use
+
+Expires after payment
+
+Cannot exceed requested contributor count
+
+Temporarily unlock QR for contributor payment only.
+
+Contributor screen only displays:
+
+Enter Amount
+
+Phone Number
+
+Till Number
+
+Payment Instructions
+
+Pay
+
+I Have Paid
+
+No ordering.
+
+No menu.
+
+No song requests.
+
+No dashboard.
+
+PAYMENT
+
+Support:
+
+M-Pesa
+
+Cash
+
+For M-Pesa display:
+
+Club Name
+
+Till Number
+
+Table Number
+
+Amount
+
+Large message:
+
+Please confirm the Till Number displayed on your table before making payment.
+
+Customer presses:
+
+I HAVE PAID
+
+Waiter immediately receives notification.
+
+Waiter verifies payment.
+
+Only then may the table be closed.
+
+Cash follows the same verification flow.
+
+WAITER DASHBOARD
+
+Features:
+
+Live Table Map
+
+Incoming Orders
+
+Ready Orders
+
+Waiter Calls
+
+Payment Verification
+
+Split Bill Verification
+
+Cash Verification
+
+Close Table
+
+Table Timeline
+
+Statuses:
+
+Available
+
+Occupied
+
+Payment Pending
+
+Cleaning
+
+Reserved
+
+Only waiter or administrator can release a table.
+
+BARTENDER DASHBOARD
+
+Receives drink tickets only.
+
+Workflow:
+
+New
+
+Preparing
+
+Ready
+
+Collected
+
+Automatically notify waiter when ready.
+
+KITCHEN DASHBOARD
+
+Receives food tickets only.
+
+Workflow:
+
+Order Received
+
+Preparing
+
+Ready
+
+Collected
+
+Every status update automatically updates the customer Service Timeline.
+
+DJ DASHBOARD
+
+Customers search by:
+
+Song
+
+Artist
+
+Use an online music search API (or create a clean integration layer that can be connected later) so customers select the correct song and artist instead of relying on free-text entry.
+
+Prevent duplicate requests already in the queue.
+
+Customer sees:
+
+Queue Position
+
+Estimated Wait
+
+Playing
+
+Played
+
+Skipped
+
+If skipped:
+
+Display skip reason.
+
+Allow another request.
+
+DJ Dashboard:
+
+Play
+
+Playing
+
+Played
+
+Skip
+
+Skip Reason
+
+Custom Message
+
+DJ Profile:
+
+Photo
+
+Bio
+
+Instagram
+
+TikTok
+
+Facebook
+
+YouTube
+
+Mixcloud
+
+SoundCloud
+
+Booking Contact
+
+SERVICE TIMELINE
+
+Every customer action becomes a timeline event.
+
+Examples:
+
+Table Opened
+
+Drink Ordered
+
+Food Ordered
+
+Kitchen Accepted
+
+Kitchen Preparing
+
+Kitchen Ready
+
+Waiter Collected
+
+Food Served
+
+Drink Served
+
+Song Requested
+
+Song Playing
+
+Song Skipped
+
+Payment Requested
+
+Payment Verified
+
+Table Closed
+
+Customer always knows what is happening.
+
+INVENTORY
+
+Inventory must use transaction history.
+
+Never edit stock directly after sales.
+
+Every stock movement becomes an Inventory Transaction.
+
+Transaction Types:
+
+Sale
+
+Restock
+
+Waste
+
+Adjustment
+
+Provide:
+
+Low Stock Alerts
+
+Daily Usage
+
+Weekly Usage
+
+Monthly Usage
+
+Restock Suggestions
+
+BUSINESS DAY
+
+Administrator opens business day.
+
+Administrator closes business day.
+
+Closing a business day archives:
+
+Orders
+
+Payments
+
+Inventory
+
+Reports
+
+Timeline
+
+Sales
+
+Cash Totals
+
+M-Pesa Totals
+
+Staff Activity
+
+Never delete historical data.
+
+ADMIN DASHBOARD
+
+Administrator can manage:
+
+Club Name
+
+Logo
+
+Theme Colors
+
+Tables
+
+QR Codes
+
+Menu
+
+Prices
+
+Preparation Stations
+
+Staff Accounts
+
+Roles
+
+Inventory
+
+Business Day
+
+Reports
+
+M-Pesa Till Number
+
+Settings
+
+Everything must be editable from the UI.
+
+NOTIFICATIONS
+
+Create one centralized notification system.
+
+Fields:
+
+Recipient
+
+Role
+
+Priority
+
+Message
+
+Timestamp
+
+Read Status
+
+Related Record
+
+Examples:
+
+New Order
+
+Kitchen Ready
+
+Drink Ready
+
+Song Request
+
+Payment Waiting
+
+Low Stock
+
+Business Day Reminder
+
+Use Firestore real-time listeners.
+
+UI DESIGN
+
+Premium nightclub appearance.
+
+Luxury feel.
+
+Dark background.
+
+Gold accents.
+
+Smooth animations.
+
+Large touch targets.
+
+Modern cards.
+
+Elegant typography.
+
+Responsive layouts.
+
+Professional spacing.
+
+The default branding should be Mamu's Lounge, but it must be editable from the Admin dashboard.
+
+CODING STANDARDS
+
+Use:
+
+TypeScript
+
+Clean Architecture
+
+SOLID Principles
+
+Reusable Components
+
+No duplicated logic
+
+No hardcoded business values
+
+Document business rules
+
+Write maintainable code
+
+Design for future multi-club support.
+
+IMPLEMENTATION ORDER
+
+Implement modules in this exact order:
+
+Architecture Refactor
+Customer Web App
+QR Table Sessions
+Table Locking
+Running Tabs
+Split Bill
+Payment Tokens
+Service Timeline
+Waiter Dashboard
+Bartender Dashboard
+Kitchen Dashboard
+DJ Dashboard
+Inventory
+Admin Dashboard
+Notifications
+Firebase Integration
+M-Pesa Integration
+Reports
+Business Day
+Final Testing & Production Readiness
+
+Each module must be:
+
+Planned
+Implemented
+Tested
+Documented
+Verified
+
+before moving to the next.
+
+FINAL INSTRUCTION
+
+Treat LoungeOS as software that will be used every night by a real business.
+
+Prioritize:
+
+Reliability
+Simplicity for customers
+Speed for staff
+Maintainability for developers
+Scalability for future clubs
+
+Do not sacrifice architecture for short-term convenience.
+
+When uncertain, choose the design that is easier to maintain, test, and extend over time.
+
+Your first task is NOT to build features. Your first task is to create ROADMAP.md, review the current codebase, identify reusable components, present a refactoring plan, and begin Module 1: Architecture Refactor. Do not proceed to Module 2 until Module 1 has been completed, verified, documented, and approved.

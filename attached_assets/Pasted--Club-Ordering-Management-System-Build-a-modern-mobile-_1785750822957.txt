@@ -1,0 +1,255 @@
+# Club Ordering & Management System
+
+Build a modern, mobile-first club management system with a customer web app and separate staff dashboards.
+
+## Goal
+
+Create a system that helps nightclub customers order food and drinks, request songs, and pay their bill directly from their table by scanning a unique QR code.
+
+The system should be fast, clean, responsive, and easy to use.
+
+---
+
+# Customer Experience
+
+Customers should NOT be required to:
+
+* Download an app
+* Create an account
+* Log in
+
+Each table has a unique QR code.
+
+Example:
+
+clubname.com/table/1
+
+clubname.com/table/2
+
+clubname.com/table/3
+
+When the customer scans the QR code, the system automatically knows which table they are sitting at.
+
+---
+
+# Customer Features
+
+Home screen should include:
+
+* Order Drinks
+* Order Food
+* Request Song
+* View Current Bill
+* Call Waiter
+* Pay Bill
+
+## Drinks & Food
+
+Display a modern menu with:
+
+* Images
+* Names
+* Categories
+* Prices
+
+Customers can:
+
+* Add items to cart
+* Change quantities
+* Remove items
+* Submit order
+
+Orders are immediately sent to the appropriate staff dashboard.
+
+---
+
+# Song Requests
+
+Customers can:
+
+* Search artist
+* Search song
+* Submit request
+
+Requests should appear instantly on the DJ dashboard.
+
+---
+
+# Running Bill
+
+Every order should automatically be added to that table's running tab.
+
+Display:
+
+Round 1
+
+Round 2
+
+Round 3
+
+Current Total
+
+Customers should be able to view their bill at any time.
+
+---
+
+# Payment
+
+Support:
+
+* M-Pesa (prepare the architecture for integration)
+* Cash
+
+For M-Pesa:
+
+Prompt the customer to pay.
+
+Once payment succeeds:
+
+Mark the bill as Paid.
+
+For Cash:
+
+Only staff can close the bill.
+
+---
+
+# Staff Login
+
+Customers never log in.
+
+Staff must log in using a username and password.
+
+Each staff member has one role.
+
+Roles:
+
+* Admin
+* Waiter
+* Bartender
+* DJ
+
+Role-based access must prevent users from accessing dashboards that are not assigned to them.
+
+---
+
+# Waiter Dashboard
+
+Features:
+
+* Live incoming orders
+* Table number
+* Running bill
+* Order status
+* Mark delivered
+* Receive waiter call notifications
+* Close cash bills
+
+---
+
+# Bartender Dashboard
+
+Show drink orders only.
+
+Workflow:
+
+New
+
+Preparing
+
+Ready
+
+Completed
+
+When an order is marked Ready, the waiter should be notified.
+
+---
+
+# DJ Dashboard
+
+Display song requests in a queue.
+
+Features:
+
+* Mark Playing
+* Mark Played
+* Skip
+* Delete inappropriate requests
+
+---
+
+# Admin Dashboard
+
+Admin has full control.
+
+Features:
+
+* Add/Edit/Delete menu items
+* Manage categories
+* Manage tables
+* Generate QR codes
+* Create staff accounts
+* Disable staff accounts
+* View daily sales
+* View monthly sales
+* View active tables
+* View completed payments
+* Configure club information
+
+---
+
+# QR Codes
+
+Each table must have a unique QR code linked to its table ID.
+
+Scanning the QR code should automatically identify the table without requiring manual input.
+
+---
+
+# Notifications
+
+Real-time updates between dashboards.
+
+Examples:
+
+Customer orders → Waiter notified.
+
+Drink ordered → Bartender notified.
+
+Drink ready → Waiter notified.
+
+Song requested → DJ notified.
+
+Payment completed → Admin and Waiter notified.
+
+---
+
+# UI Design
+
+Use a premium nightclub theme.
+
+Dark background with elegant gold and amber accents.
+
+Rounded cards.
+
+Modern typography.
+
+Large buttons.
+
+Smooth animations.
+
+Responsive for phones, tablets, and desktop.
+
+---
+
+# Technical Requirements
+
+* Build with a modern JavaScript framework (React or Next.js) and TypeScript.
+* Use Firebase Authentication for staff login only.
+* Use Cloud Firestore for real-time data.
+* Customers access the app through the browser with no login.
+* Organize the code into reusable components.
+* Follow clean architecture and best practices.
+* Make it easy to extend with future features such as inventory, reservations, loyalty rewards, and support for multiple clubs.
+
+Generate the complete project structure, database schema, routing, authentication, reusable UI components, and the initial implementation for all dashboards and the customer web app.

@@ -1,0 +1,177 @@
+Module 3 is accepted as complete. Do not begin Module 4 yet.
+
+The next task is to complete the production integration by connecting the existing mobile application to the new backend without redesigning any screens.
+
+Mobile Integration Phase (Post-Module 3)
+
+Replace all demo/mock/prototype data with the live API.
+
+Requirements:
+
+Customer App
+
+Connect the existing screens to the production Ordering Engine.
+
+Replace all local demo data with the generated API client.
+
+Wire:
+
+Menu categories
+Menu items
+Item availability
+Modifiers
+Cart
+Draft orders
+Order submission
+Order editing
+Order cancellation
+Running table bill
+Active order history
+Order status tracking
+
+Do not redesign layouts.
+
+Only replace the data source.
+
+Authentication
+
+Every customer request must include:
+
+Customer Session Token
+Table Session ID
+Idempotency Key where required
+
+Use the existing authentication flow.
+
+Do not create another auth system.
+
+Realtime
+
+Replace polling with the existing realtime subscription layer.
+
+Live update:
+
+Order status
+Running bill
+Notifications
+Session state
+Offline
+
+Connect the existing offline synchronization queue.
+
+Support:
+
+Offline cart edits
+Retry failed requests
+Conflict resolution
+Automatic synchronization
+Error Handling
+
+Display production-safe messages for:
+
+Session expired
+Order cancelled
+Item unavailable
+Kitchen closed
+Network offline
+Duplicate submission
+Version conflict
+
+Never expose backend stack traces.
+
+Performance
+
+Implement:
+
+Request caching
+Optimistic UI updates
+Background refresh
+Lazy loading for menus
+Image caching
+Recommendation (implement now)
+
+Since the backend is already event-driven, also add these production improvements:
+
+1. Push Notification Foundation
+
+Create the notification registration layer now (without implementing customer push campaigns yet).
+
+Support:
+
+Order Ready
+Waiter Response
+DJ Request Accepted
+Payment Required
+
+This prevents refactoring later.
+
+2. Global State Store
+
+Centralize all app state into one store (such as Zustand, Redux Toolkit, or the project's existing state solution).
+
+Manage:
+
+Session
+Menu
+Orders
+Notifications
+Running bill
+Customer profile
+Connectivity
+
+Avoid component-level duplicated state.
+
+3. API Retry Layer
+
+Create a reusable API wrapper with:
+
+automatic retries
+exponential backoff
+token refresh (if needed later)
+idempotency support
+request deduplication
+
+All future modules should use this wrapper.
+
+4. Analytics Hooks
+
+Without creating the Analytics module yet, emit analytics events for:
+
+Menu viewed
+Item viewed
+Item added to cart
+Order submitted
+Order delivered
+Waiter called
+Song requested
+
+This prepares Module 10 without future rewrites.
+
+5. Feature Flag System
+
+Add a configuration-driven feature flag service so future modules can be enabled without new app releases.
+
+Examples:
+
+Split Bills
+DJ Requests
+Waiter Calls
+Inventory Visibility
+Loyalty
+Promotions
+
+Read flags from the existing Club Configuration.
+
+Verification
+
+Before completion:
+
+Full workspace typecheck
+All application tests
+API build
+Mobile build
+API restart
+Expo verification
+End-to-end test placing a real order through the mobile app into the production API (using the existing architecture; if Firebase secrets are still absent, verify against the configured interfaces without introducing mock persistence)
+
+When complete, stop and wait for approval before beginning Module 4 – Kitchen & Production Routing Engine.
