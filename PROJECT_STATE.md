@@ -1,6 +1,6 @@
 # LoungeOS - Project State
 
-Last Updated: 2026-08-06
+Last Updated: 2026-08-11
 
 ---
 
@@ -109,7 +109,7 @@ QR remains unchanged.
 
 Current milestone:
 
-Staff Administration completed.
+Realtime Synchronization completed.
 
 Verified:
 
@@ -120,6 +120,8 @@ Verified:
 - OpenAPI generated successfully
 - Generated API clients verified
 - Expo/mobile typecheck passes
+- Firestore realtime projection stream added
+- Five-second HTTP polling fallback retained
 
 ---
 
@@ -147,9 +149,11 @@ Firestore listeners
 
 Polling fallback (3-5 sec)
 
+✅ Completed
+
 ---
 
-## Phase 3
+## Phase 3 — Next milestone
 
 Manual waiter tables
 
@@ -238,6 +242,6 @@ Push to GitHub
 
 # Next Task
 
-Implement realtime synchronization.
+Implement manual waiter tables and the temporary customer dashboard.
 
 Not Module 4.

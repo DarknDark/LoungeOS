@@ -23,6 +23,7 @@ import {
   getStaffIdToken,
   onStaffAuthStateChanged,
 } from '@/services/firebase-client';
+import { startStaffRealtime } from '@/services/staff-realtime';
 
 const headers = { 'X-Club-Id': clubSettings.clubId };
 
@@ -224,6 +225,15 @@ export default function StaffOperationsDashboard() {
     },
     request: { headers },
   });
+  useEffect(() => {
+    if (!enabled) return;
+    return startStaffRealtime({
+      clubId: clubSettings.clubId,
+      onProjection: () => {
+        void queryClient.invalidateQueries({ queryKey: ['/api/v1/staff/tables'] });
+      },
+    });
+  }, [enabled, queryClient]);
   const menu = useListOrderMenu({
     query: {
       queryKey: ['/api/v1/orders/menu'],

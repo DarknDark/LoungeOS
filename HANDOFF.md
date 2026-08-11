@@ -24,3 +24,17 @@ Always:
 - regenerate clients
 - run tests
 - stop after milestone
+
+Current milestone completed:
+
+- Realtime Synchronization
+- Authenticated staff projection stream
+- Firestore session/order/notification listeners
+- Five-second HTTP polling fallback
+
+Next milestone:
+
+- Manual waiter tables
+- Temporary customer dashboard
+
+Do not begin the next milestone without approval.

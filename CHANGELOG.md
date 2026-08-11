@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-08-11 — Realtime Synchronization
+
+Completed the Realtime Synchronization milestone without changing the
+permanent QR, customer session, ordering, payment, table lifecycle, or staff
+administration modules.
+
+### Added
+
+- Firestore-backed listeners for table-session, order, and staff notification
+  changes.
+- Authenticated staff realtime projection stream.
+- Projection updates containing only resource and change-type identifiers;
+  operational records remain behind the protected staff query.
+- Five-second HTTP polling fallback retained for the staff operations dashboard.
+- Application and API authentication tests for realtime synchronization.
+
+### Verification
+
+- 29/29 application tests passing.
+- 2/2 API tests passing.
+- API typecheck passing.
+- Expo/mobile typecheck passing.
+- API build verification completed.
+
+### Deferred
+
+Manual waiter tables, the temporary customer dashboard, ReceiptService, SMS,
+printing, provider integrations, and Module 4 remain intentionally out of
+scope.
+
 ## 2026-08-06 — Staff Administration
 
 Completed the Staff Administration milestone without changing the frozen

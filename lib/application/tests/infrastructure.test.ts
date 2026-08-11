@@ -16,6 +16,7 @@ import {
   OfflineSyncCoordinator,
   createAuditService,
   createNotificationEngine,
+  createRealtimeProjectionService,
 } from '../src';
 
 test('event bus publishes typed and wildcard subscribers', async () => {
@@ -165,6 +166,46 @@ test('offline coordinator marks completed and retries conflicts', async () => {
 
   await coordinator.flush('club-1', '2026-08-04T10:00:00.000Z');
   assert.deepEqual(actions, ['sync-1:CONFLICT']);
+});
+
+test('realtime projection service forwards identifiers without source data', () => {
+  const subscriptions: Array<{ unsubscribe(): void }> = [];
+  const changes: Array<{ resource: string; type: string }> = [];
+  const service = createRealtimeProjectionService({
+    subscribeToSessions: (_clubId, listener) => {
+      listener({ type: 'modified', value: { secret: 'must-not-forward' } });
+      const subscription = { unsubscribe: () => undefined };
+      subscriptions.push(subscription);
+      return subscription;
+    },
+    subscribeToOrders: (_clubId, listener) => {
+      listener({ type: 'added', value: { totalMinor: 999 } });
+      const subscription = { unsubscribe: () => undefined };
+      subscriptions.push(subscription);
+      return subscription;
+    },
+    subscribeToNotifications: (_clubId, _recipientId, listener) => {
+      listener({ type: 'removed', value: { message: 'private' } });
+      const subscription = { unsubscribe: () => undefined };
+      subscriptions.push(subscription);
+      return subscription;
+    },
+  });
+
+  const subscription = service.subscribe({
+    clubId: 'club-1',
+    recipientId: 'staff-1',
+    listener: (projection) => changes.push(projection),
+  });
+  subscription.unsubscribe();
+
+  assert.deepEqual(changes, [
+    { resource: 'table-sessions', type: 'modified' },
+    { resource: 'orders', type: 'added' },
+    { resource: 'notifications', type: 'removed' },
+  ]);
+  assert.equal(JSON.stringify(changes).includes('secret'), false);
+  assert.equal(subscriptions.length, 3);
 });
 
 test('club configuration validation rejects missing required values', () => {
