@@ -418,6 +418,38 @@ test('manual tables require waiter approval and temporary access is read-only', 
   );
 });
 
+test('customer scanning permanent QR on a staff-opened manual table creates a pending join request', async () => {
+  const { service } = makeHarness();
+  const manual = await service.openManual({
+    actor: { kind: 'staff', id: 'staff-1', staffId: 'staff-1', clubId },
+    tableId,
+    now: '2026-08-04T12:00:00.000Z',
+  });
+  const scanned = await service.createFromQr({
+    actor: customerActor(),
+    tableId,
+    qrToken: 'qr-token',
+    deviceId: 'customer-device',
+    now: '2026-08-04T12:01:00.000Z',
+  });
+  assert.equal(scanned.tableSession.id, manual.id);
+  assert.equal(scanned.customerSession.approvalStatus, 'pending-approval');
+  assert.equal(scanned.customerSession.accessLevel, 'temporary');
+  const requests = await service.listJoinRequests({
+    actor: { kind: 'staff', id: 'staff-1', staffId: 'staff-1', clubId },
+    tableSessionId: manual.id,
+  });
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].id, scanned.customerSession.id);
+  const approved = await service.approveJoin({
+    actor: { kind: 'staff', id: 'staff-1', staffId: 'staff-1', clubId },
+    tableSessionId: manual.id,
+    customerSessionId: scanned.customerSession.id,
+    now: '2026-08-04T12:02:00.000Z',
+  });
+  assert.equal(approved.approvalStatus, 'approved');
+});
+
 test('customer-owned tables reject ordinary new joins', async () => {
   const { service } = makeHarness();
   const owner = await service.createFromQr({

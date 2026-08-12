@@ -153,11 +153,11 @@ Polling fallback (3-5 sec)
 
 ---
 
-## Phase 3 — Next milestone
+## Phase 3
 
-Manual waiter tables
+Manual waiter tables: ✅ Completed
 
-Temporary customer dashboard
+Temporary customer dashboard: ⬜ Next milestone (Unfinished)
 
 ---
 
@@ -242,6 +242,6 @@ Push to GitHub
 
 # Next Task
 
-Implement manual waiter tables and the temporary customer dashboard.
+Implement the Temporary Customer Dashboard (Phase 3 Part 2).
 
 Not Module 4.

@@ -482,6 +482,25 @@ export function createTableSessionService(
         throw new TableSessionError('Only a customer can create a table session.', 'ACCESS_DENIED');
       }
       const table = await tableById(input.actor.clubId, input.tableId);
+      if (table.activeSessionId) {
+        const activeSession = await repos.tableSessions.getById(
+          input.actor.clubId,
+          table.activeSessionId,
+        );
+        if (
+          activeSession &&
+          activeSession.controllerType === 'staff' &&
+          activeSession.status === 'active' &&
+          !isExpired(input.now, activeSession.expiresAt)
+        ) {
+          return service.join({
+            actor: input.actor,
+            tableSessionId: activeSession.id,
+            deviceId: input.deviceId,
+            now: input.now,
+          });
+        }
+      }
       assertTableCanOpen(table);
       return createOwnerSession({
         actor: input.actor,
@@ -670,6 +689,26 @@ export function createTableSessionService(
         input.qrToken,
         input.now,
       );
+      if (table.activeSessionId) {
+        const activeSession = await repos.tableSessions.getById(
+          input.actor.clubId,
+          table.activeSessionId,
+        );
+        if (
+          activeSession &&
+          activeSession.controllerType === 'staff' &&
+          activeSession.status === 'active' &&
+          !isExpired(input.now, activeSession.expiresAt)
+        ) {
+          return service.join({
+            actor: input.actor,
+            tableSessionId: activeSession.id,
+            qrToken: input.qrToken,
+            deviceId: input.deviceId,
+            now: input.now,
+          });
+        }
+      }
       return createOwnerSession({ ...input, table });
     },
 
@@ -786,7 +825,9 @@ export function createTableSessionService(
           `${session.id}:joined:${customer.id}`,
           session,
           customer.id,
-          'You joined the table session.',
+          session.controllerType === 'staff'
+            ? 'A customer scanned the table QR code and requested join approval.'
+            : 'You joined the table session.',
           input.now,
         ),
       );

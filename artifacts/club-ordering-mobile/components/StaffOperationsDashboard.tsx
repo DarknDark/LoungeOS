@@ -84,6 +84,7 @@ function TableCard({
   onApprove,
   onReopen,
   onClose,
+  onOpenManual,
 }: {
   item: StaffTableOperations;
   busy: boolean;
@@ -92,6 +93,7 @@ function TableCard({
   onApprove: (customerSessionId: string) => void;
   onReopen: () => void;
   onClose: () => void;
+  onOpenManual: () => void;
 }) {
   const session = item.session;
   const finishing = item.table.status === 'finishing';
@@ -154,7 +156,9 @@ function TableCard({
           </View>
         </>
       ) : (
-        <Text style={styles.emptyCopy}>Available for a new QR session or manual waiter opening.</Text>
+        <View style={styles.actionRow}>
+          <Action label="Open Manual Table" icon="hand-left-outline" primary disabled={busy} onPress={onOpenManual} />
+        </View>
       )}
     </View>
   );
@@ -361,6 +365,7 @@ export default function StaffOperationsDashboard() {
           onApprove={(customerSessionId) => void run(() => approve.mutateAsync({ sessionId: item.session?.id ?? '', data: { customerSessionId } }), 'Guest approved.')}
           onReopen={() => void run(() => reopen.mutateAsync({ sessionId: item.session?.id ?? '' }), 'Tab reopened.')}
           onClose={() => void run(() => close.mutateAsync({ sessionId: item.session?.id ?? '' }), 'Table closed and released.')}
+          onOpenManual={() => void run(() => manual.mutateAsync({ data: { tableId: item.table.id } }), `${item.table.label} opened.`)}
         />
       )) : <View style={styles.empty}><Text style={styles.emptyTitle}>No tables waiting for settlement</Text><Text style={styles.emptyCopy}>Payment and close requests will appear here in real time.</Text></View>}
 
@@ -375,6 +380,7 @@ export default function StaffOperationsDashboard() {
           onApprove={(customerSessionId) => void run(() => approve.mutateAsync({ sessionId: item.session?.id ?? '', data: { customerSessionId } }), 'Guest approved.')}
           onReopen={() => void run(() => reopen.mutateAsync({ sessionId: item.session?.id ?? '' }), 'Tab reopened.')}
           onClose={() => void run(() => close.mutateAsync({ sessionId: item.session?.id ?? '' }), 'Table closed and released.')}
+          onOpenManual={() => void run(() => manual.mutateAsync({ data: { tableId: item.table.id } }), `${item.table.label} opened.`)}
         />
       ))}
 

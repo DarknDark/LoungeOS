@@ -31,10 +31,10 @@ Current milestone completed:
 - Authenticated staff projection stream
 - Firestore session/order/notification listeners
 - Five-second HTTP polling fallback
+- Manual waiter tables (Phase 3 Part 1)
 
 Next milestone:
 
-- Manual waiter tables
-- Temporary customer dashboard
+- Temporary customer dashboard (Phase 3 Part 2 - Unfinished)
 
 Do not begin the next milestone without approval.
