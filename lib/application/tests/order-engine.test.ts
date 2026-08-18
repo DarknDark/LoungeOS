@@ -29,6 +29,8 @@ function makeHarness(options?: {
   modifierOptions?: MenuModifier['options'];
   taxPercentage?: number;
   serviceChargePercentage?: number;
+  customerAccessLevel?: CustomerSession['accessLevel'];
+  customerApprovalStatus?: CustomerSession['approvalStatus'];
 }) {
   let sequence = 0;
   const orders = new Map<string, Order>();
@@ -59,8 +61,8 @@ function makeHarness(options?: {
     createdAt: '2026-08-04T10:00:00.000Z',
     expiresAt: '2026-08-04T23:00:00.000Z',
     isTableOwner: true,
-    accessLevel: 'owner',
-    approvalStatus: 'approved',
+    accessLevel: options?.customerAccessLevel ?? 'owner',
+    approvalStatus: options?.customerApprovalStatus ?? 'approved',
     recoveryTokenHash: `hash:${token}`,
   };
   const menuItem: MenuItem = {
@@ -264,7 +266,20 @@ function makeHarness(options?: {
     staffId: 'staff-1',
     id: 'staff-1',
   };
-  return { service, actor, staffActor, session, orders, notifications, timeline, audit, queued, events, inventory };
+  return {
+    service,
+    actor,
+    staffActor,
+    session,
+    customer,
+    orders,
+    notifications,
+    timeline,
+    audit,
+    queued,
+    events,
+    inventory,
+  };
 }
 
 test('creates a priced order, updates the running bill, and emits shared side effects', async () => {
@@ -394,4 +409,117 @@ test('restricts customer access to active table sessions and queues mutations', 
       }),
     (error: unknown) => error instanceof OrderError && error.code === 'SESSION_NOT_ACTIVE',
   );
+});
+
+test('blocks ordering for a customer session still pending waiter approval', async () => {
+  const harness = makeHarness({
+    customerAccessLevel: 'temporary',
+    customerApprovalStatus: 'pending-approval',
+  });
+  const input = {
+    actor: harness.actor,
+    tableSessionId,
+    idempotencyKey: 'pending-order-key',
+    items: [{ menuItemId: 'menu-item-1', quantity: 1 }],
+    now,
+  };
+  await assert.rejects(
+    () => harness.service.create(input),
+    (error: unknown) =>
+      error instanceof OrderError && error.code === 'NOT_AUTHORIZED' && error.status === 403,
+  );
+  await assert.rejects(
+    () => harness.service.createDraft(input),
+    (error: unknown) =>
+      error instanceof OrderError && error.code === 'NOT_AUTHORIZED' && error.status === 403,
+  );
+  assert.equal(harness.orders.size, 0);
+  assert.equal(harness.session.runningTotalMinor, 0);
+});
+
+test('blocks ordering for an approved but still-temporary customer session', async () => {
+  // Mirrors TableSessionService.approveJoin: approval alone never upgrades a
+  // waiter-managed customer past `accessLevel: 'temporary'`, so ordering must
+  // stay blocked even once approvalStatus is 'approved'.
+  const harness = makeHarness({
+    customerAccessLevel: 'temporary',
+    customerApprovalStatus: 'approved',
+  });
+  await assert.rejects(
+    () =>
+      harness.service.create({
+        actor: harness.actor,
+        tableSessionId,
+        idempotencyKey: 'temporary-order-key',
+        items: [{ menuItemId: 'menu-item-1', quantity: 1 }],
+        now,
+      }),
+    (error: unknown) =>
+      error instanceof OrderError && error.code === 'NOT_AUTHORIZED' && error.status === 403,
+  );
+});
+
+test('blocks draft edits and cancellation for a temporary/pending customer session', async () => {
+  const harness = makeHarness();
+  const created = await harness.service.create({
+    actor: harness.actor,
+    tableSessionId,
+    idempotencyKey: 'owner-order-key',
+    items: [{ menuItemId: 'menu-item-1', quantity: 1 }],
+    now,
+  });
+  // Downgrade the same customer session to temporary/pending after the order
+  // exists, simulating a table later placed under waiter control.
+  harness.customer.accessLevel = 'temporary';
+  harness.customer.approvalStatus = 'pending-approval';
+  await assert.rejects(
+    () =>
+      harness.service.cancel({
+        actor: harness.actor,
+        orderId: created.order.id,
+        now,
+      }),
+    (error: unknown) =>
+      error instanceof OrderError && error.code === 'NOT_AUTHORIZED' && error.status === 403,
+  );
+});
+
+test('allows a temporary/pending customer session read-only access to orders', async () => {
+  const owner = makeHarness();
+  const created = await owner.service.create({
+    actor: owner.actor,
+    tableSessionId,
+    idempotencyKey: 'read-only-order-key',
+    items: [{ menuItemId: 'menu-item-1', quantity: 1 }],
+    now,
+  });
+
+  const pending = makeHarness({
+    customerAccessLevel: 'temporary',
+    customerApprovalStatus: 'pending-approval',
+  });
+  // `get`/`getForSession` check expiry against the real wall-clock instead of
+  // an injected `now`, so the mock session/customer must be set to expire
+  // well beyond the current real date, not just the fixed test `now` used
+  // elsewhere in this suite.
+  pending.session.expiresAt = '2099-01-01T00:00:00.000Z';
+  pending.customer.expiresAt = '2099-01-01T00:00:00.000Z';
+  // getForSession/get must remain reachable (read-only) so a customer waiting
+  // for approval, or with permanent temporary/read-only access, can still see
+  // the dashboard's running bill and ordered items.
+  const forSession = await pending.service.getForSession({
+    actor: pending.actor,
+    tableSessionId,
+  });
+  assert.ok(Array.isArray(forSession));
+
+  // `get` requires an order that belongs to the pending session's table
+  // session; reuse the owner-created order id against the pending harness's
+  // in-memory session (same tableSessionId/table by construction).
+  pending.orders.set(created.order.id, created.order);
+  const single = await pending.service.get({
+    actor: pending.actor,
+    orderId: created.order.id,
+  });
+  assert.equal(single.order.id, created.order.id);
 });

@@ -1,5 +1,6 @@
 export * from './services';
 export * from './projections';
+export * from './customer-access';
 export * from './table-sessions';
 export * from './infrastructure';
 export * from './notification-engine';

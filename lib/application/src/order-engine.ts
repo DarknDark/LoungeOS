@@ -25,6 +25,7 @@ import { calculateOrderPricing } from './pricing';
 import { createAuditService } from './audit-engine';
 import { createNotificationEngine } from './notification-engine';
 import { createTimelineService } from './timeline-engine';
+import { checkCustomerAccessLevel } from './customer-access';
 
 type OrderItemInput = {
   menuItemId: string;
@@ -129,6 +130,7 @@ export function createOrderService(
     actor: RequestActor,
     tableSessionId: string,
     now: string,
+    allowTemporaryReadOnly = false,
   ): Promise<{ session: TableSession; customer: CustomerSession }> {
     if (actor.kind !== 'customer' || !actor.customerSessionId || !actor.customerSessionToken) {
       throw new OrderError('A customer session is required.', 'NOT_AUTHORIZED', 401);
@@ -146,6 +148,21 @@ export function createOrderService(
       tokens.hash(actor.customerSessionToken) !== customer.recoveryTokenHash
     ) {
       throw new OrderError('The customer session is not authorized.', 'NOT_AUTHORIZED', 401);
+    }
+    const accessViolation = checkCustomerAccessLevel(customer, allowTemporaryReadOnly);
+    if (accessViolation === 'ACCESS_TEMPORARY_READ_ONLY') {
+      throw new OrderError(
+        'Temporary table access is read-only until your waiter changes it.',
+        'NOT_AUTHORIZED',
+        403,
+      );
+    }
+    if (accessViolation === 'ACCESS_PENDING_APPROVAL') {
+      throw new OrderError(
+        'Your table access request is waiting for waiter approval.',
+        'NOT_AUTHORIZED',
+        403,
+      );
     }
     if (
       session.status === 'closed' ||
@@ -695,7 +712,7 @@ export function createOrderService(
       if (input.actor.kind === 'customer') {
         const found = await repos.orders.getById(input.actor.clubId, input.orderId);
         if (!found) throw new OrderError('The order was not found.', 'ORDER_NOT_FOUND', 404);
-        await activeCustomer(input.actor, found.tableSessionId, new Date().toISOString());
+        await activeCustomer(input.actor, found.tableSessionId, new Date().toISOString(), true);
       }
       return orderForActor(input.actor, input.orderId);
     },
@@ -705,6 +722,7 @@ export function createOrderService(
         input.actor,
         input.tableSessionId,
         new Date().toISOString(),
+        true,
       );
       const page = await repos.orders.listForSession(
         input.actor.clubId,
