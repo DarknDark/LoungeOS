@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+/*
+ * This is a minimal Tailwind v4 entry point for the scaffold. The real
+ * visual design (palette, type scale, layout tokens) is intentionally
+ * deferred to Checkpoint 5, when the actual QR-entry / pending-approval /
+ * dashboard screens are built, per the workspace's frontend-design skill.
+ */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}
