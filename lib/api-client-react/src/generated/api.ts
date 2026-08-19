@@ -31,6 +31,7 @@ import type {
   HealthStatus,
   HeartbeatRequest,
   JoinTableSessionRequest,
+  Notification,
   OpenManualTableSessionRequest,
   OpenTableSessionRequest,
   OrderListResponse,
@@ -1687,6 +1688,78 @@ export const useSubmitSongRequest = <TError = ErrorType<ApiErrorResponse>,
         TContext
       > => {
       return useMutation(getSubmitSongRequestMutationOptions(options));
+    }
+
+export const getCallWaiterUrl = (sessionId: string,) => {
+
+
+
+
+  return `/api/v1/customer/table-sessions/${sessionId}/call-waiter`
+}
+
+/**
+ * Allowed for temporary and pending-approval customer access, unlike ordering and song requests, since a customer waiting on approval or with permanent read-only access must still be able to flag down staff. The customer session must still be valid.
+ * @summary Call a waiter to the table
+ */
+export const callWaiter = async (sessionId: string, options?: Parameters<typeof customFetch>[1]): Promise<Notification> => {
+
+  return customFetch<Notification>(getCallWaiterUrl(sessionId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCallWaiterMutationOptions = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof callWaiter>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof callWaiter>>, TError,{sessionId: string}, TContext> => {
+
+const mutationKey = ['callWaiter'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof callWaiter>>, {sessionId: string}> = (props) => {
+          const {sessionId} = props ?? {};
+
+          return  callWaiter(sessionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CallWaiterMutationResult = NonNullable<Awaited<ReturnType<typeof callWaiter>>>
+
+    export type CallWaiterMutationError = ErrorType<ApiErrorResponse>
+
+    /**
+ * @summary Call a waiter to the table
+ */
+export const useCallWaiter = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof callWaiter>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof callWaiter>>,
+        TError,
+        {sessionId: string},
+        TContext
+      > => {
+      return useMutation(getCallWaiterMutationOptions(options));
     }
 
 export const getListOrderMenuUrl = () => {

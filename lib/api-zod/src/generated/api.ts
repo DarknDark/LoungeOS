@@ -1090,6 +1090,47 @@ export const SubmitSongRequestResponse = zod.object({
 
 
 /**
+ * Allowed for temporary and pending-approval customer access, unlike ordering and song requests, since a customer waiting on approval or with permanent read-only access must still be able to flag down staff. The customer session must still be valid.
+ * @summary Call a waiter to the table
+ */
+
+
+
+export const CallWaiterParams = zod.object({
+  "sessionId": zod.coerce.string().min(1)
+})
+
+
+
+
+
+
+export const CallWaiterHeader = zod.object({
+  "X-Club-Id": zod.string().min(1),
+  "X-Customer-Session-Id": zod.string().min(1),
+  "X-Customer-Session-Token": zod.string().min(1)
+})
+
+export const CallWaiterResponse = zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "recipientId": zod.string().optional(),
+  "recipientRole": zod.string().optional(),
+  "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
+  "category": zod.enum(['waiter', 'kitchen', 'bar', 'dj', 'payment', 'inventory', 'session', 'business-day', 'administration']),
+  "message": zod.string(),
+  "relatedRecord": zod.object({
+  "type": zod.string(),
+  "id": zod.string()
+}).optional(),
+  "createdAt": zod.coerce.date(),
+  "readAt": zod.coerce.date().optional(),
+  "deliveredAt": zod.coerce.date().optional(),
+  "archivedAt": zod.coerce.date().optional()
+})
+
+
+/**
  * @summary List the available menu for a club
  */
 

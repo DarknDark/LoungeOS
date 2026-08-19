@@ -516,6 +516,34 @@ paths:
           $ref: "#/components/responses/ApiError"
         "409":
           $ref: "#/components/responses/ApiError"
+  /v1/customer/table-sessions/{sessionId}/call-waiter:
+    post:
+      operationId: callWaiter
+      tags: [customer-requests]
+      summary: Call a waiter to the table
+      description: >-
+        Allowed for temporary and pending-approval customer access, unlike
+        ordering and song requests, since a customer waiting on approval or
+        with permanent read-only access must still be able to flag down
+        staff. The customer session must still be valid.
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/CustomerSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionTokenHeader"
+      responses:
+        "201":
+          description: Waiter-call notification created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+        "429":
+          $ref: "#/components/responses/ApiError"
   /v1/orders/menu:
     get:
       operationId: listOrderMenu

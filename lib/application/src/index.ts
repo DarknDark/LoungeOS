@@ -10,5 +10,6 @@ export * from './configuration';
 export * from './pricing';
 export * from './order-engine';
 export * from './dj-engine';
+export * from './customer-requests';
 export * from './staff-administration';
 export * from './realtime';
