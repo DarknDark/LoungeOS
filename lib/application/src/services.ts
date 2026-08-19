@@ -300,6 +300,10 @@ export type DJService = {
     artist: string;
     now: string;
   }): Promise<SongRequest>;
+  listForSession(input: {
+    actor: RequestActor;
+    tableSessionId: string;
+  }): Promise<SongRequest[]>;
   updateStatus(input: {
     actor: RequestActor;
     requestId: string;

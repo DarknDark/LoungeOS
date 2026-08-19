@@ -370,6 +370,23 @@ export interface SongRequest {
   skipReason?: string;
 }
 
+export interface SubmitSongRequestBody {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  song: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  artist: string;
+}
+
+export interface SongRequestListResponse {
+  songRequests: SongRequest[];
+}
+
 export type ServiceTimelineEventSourceRecord = {
   type: string;
   id: string;

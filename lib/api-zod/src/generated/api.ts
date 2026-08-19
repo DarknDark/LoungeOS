@@ -1003,6 +1003,93 @@ export const EnableCustomerTableSessionSplitResponse = zod.void()
 
 
 /**
+ * @summary List song requests submitted for the current table session
+ */
+
+
+
+export const ListSongRequestsForSessionParams = zod.object({
+  "sessionId": zod.coerce.string().min(1)
+})
+
+
+
+
+
+
+export const ListSongRequestsForSessionHeader = zod.object({
+  "X-Club-Id": zod.string().min(1),
+  "X-Customer-Session-Id": zod.string().min(1),
+  "X-Customer-Session-Token": zod.string().min(1)
+})
+
+export const ListSongRequestsForSessionResponse = zod.object({
+  "songRequests": zod.array(zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "customerSessionId": zod.string(),
+  "businessDayId": zod.string(),
+  "songId": zod.string().optional(),
+  "song": zod.string(),
+  "artist": zod.string(),
+  "duplicateKey": zod.string(),
+  "queuePosition": zod.number().optional(),
+  "status": zod.enum(['queued', 'playing', 'played', 'skipped']),
+  "skipReason": zod.string().optional()
+}))
+})
+
+
+/**
+ * @summary Submit a song request for the DJ
+ */
+
+
+
+export const SubmitSongRequestParams = zod.object({
+  "sessionId": zod.coerce.string().min(1)
+})
+
+
+
+
+
+
+export const SubmitSongRequestHeader = zod.object({
+  "X-Club-Id": zod.string().min(1),
+  "X-Customer-Session-Id": zod.string().min(1),
+  "X-Customer-Session-Token": zod.string().min(1)
+})
+
+export const submitSongRequestBodySongMax = 200;
+
+export const submitSongRequestBodyArtistMax = 200;
+
+
+
+export const SubmitSongRequestBody = zod.object({
+  "song": zod.string().min(1).max(submitSongRequestBodySongMax),
+  "artist": zod.string().min(1).max(submitSongRequestBodyArtistMax)
+})
+
+export const SubmitSongRequestResponse = zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "tableSessionId": zod.string(),
+  "customerSessionId": zod.string(),
+  "businessDayId": zod.string(),
+  "songId": zod.string().optional(),
+  "song": zod.string(),
+  "artist": zod.string(),
+  "duplicateKey": zod.string(),
+  "queuePosition": zod.number().optional(),
+  "status": zod.enum(['queued', 'playing', 'played', 'skipped']),
+  "skipReason": zod.string().optional()
+})
+
+
+/**
  * @summary List the available menu for a club
  */
 

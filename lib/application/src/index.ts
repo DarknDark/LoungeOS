@@ -9,5 +9,6 @@ export * from './timeline-engine';
 export * from './configuration';
 export * from './pricing';
 export * from './order-engine';
+export * from './dj-engine';
 export * from './staff-administration';
 export * from './realtime';

@@ -41,12 +41,15 @@ import type {
   RecoverTableSessionRequest,
   Role,
   RoleListResponse,
+  SongRequest,
+  SongRequestListResponse,
   SplitTableSessionRequest,
   Staff,
   StaffListResponse,
   StaffTableListResponse,
   SubmitOrderBody,
   SubmitPaymentRequest,
+  SubmitSongRequestBody,
   TableSession,
   TableSessionAccess,
   TableValidationResponse,
@@ -1535,6 +1538,155 @@ export const useEnableCustomerTableSessionSplit = <TError = ErrorType<ApiErrorRe
         TContext
       > => {
       return useMutation(getEnableCustomerTableSessionSplitMutationOptions(options));
+    }
+
+export const getListSongRequestsForSessionUrl = (sessionId: string,) => {
+
+
+
+
+  return `/api/v1/customer/table-sessions/${sessionId}/song-requests`
+}
+
+/**
+ * @summary List song requests submitted for the current table session
+ */
+export const listSongRequestsForSession = async (sessionId: string, options?: Parameters<typeof customFetch>[1]): Promise<SongRequestListResponse> => {
+
+  return customFetch<SongRequestListResponse>(getListSongRequestsForSessionUrl(sessionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSongRequestsForSessionQueryKey = (sessionId: string,) => {
+    return [
+    `/api/v1/customer/table-sessions/${sessionId}/song-requests`
+    ] as const;
+    }
+
+
+export const getListSongRequestsForSessionQueryOptions = <TData = Awaited<ReturnType<typeof listSongRequestsForSession>>, TError = ErrorType<ApiErrorResponse>>(sessionId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSongRequestsForSession>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSongRequestsForSessionQueryKey(sessionId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSongRequestsForSession>>> = ({ signal }) => listSongRequestsForSession(sessionId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: sessionId !== null && sessionId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSongRequestsForSession>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSongRequestsForSessionQueryResult = NonNullable<Awaited<ReturnType<typeof listSongRequestsForSession>>>
+export type ListSongRequestsForSessionQueryError = ErrorType<ApiErrorResponse>
+
+
+/**
+ * @summary List song requests submitted for the current table session
+ */
+
+export function useListSongRequestsForSession<TData = Awaited<ReturnType<typeof listSongRequestsForSession>>, TError = ErrorType<ApiErrorResponse>>(
+ sessionId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSongRequestsForSession>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSongRequestsForSessionQueryOptions(sessionId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSubmitSongRequestUrl = (sessionId: string,) => {
+
+
+
+
+  return `/api/v1/customer/table-sessions/${sessionId}/song-requests`
+}
+
+/**
+ * @summary Submit a song request for the DJ
+ */
+export const submitSongRequest = async (sessionId: string,
+    submitSongRequestBody: SubmitSongRequestBody, options?: Parameters<typeof customFetch>[1]): Promise<SongRequest> => {
+
+  return customFetch<SongRequest>(getSubmitSongRequestUrl(sessionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(submitSongRequestBody)
+  }
+);}
+
+
+
+
+
+export const getSubmitSongRequestMutationOptions = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSongRequest>>, TError,{sessionId: string;data: BodyType<SubmitSongRequestBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitSongRequest>>, TError,{sessionId: string;data: BodyType<SubmitSongRequestBody>}, TContext> => {
+
+const mutationKey = ['submitSongRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitSongRequest>>, {sessionId: string;data: BodyType<SubmitSongRequestBody>}> = (props) => {
+          const {sessionId,data} = props ?? {};
+
+          return  submitSongRequest(sessionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitSongRequestMutationResult = NonNullable<Awaited<ReturnType<typeof submitSongRequest>>>
+    export type SubmitSongRequestMutationBody = BodyType<SubmitSongRequestBody>
+    export type SubmitSongRequestMutationError = ErrorType<ApiErrorResponse>
+
+    /**
+ * @summary Submit a song request for the DJ
+ */
+export const useSubmitSongRequest = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSongRequest>>, TError,{sessionId: string;data: BodyType<SubmitSongRequestBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitSongRequest>>,
+        TError,
+        {sessionId: string;data: BodyType<SubmitSongRequestBody>},
+        TContext
+      > => {
+      return useMutation(getSubmitSongRequestMutationOptions(options));
     }
 
 export const getListOrderMenuUrl = () => {

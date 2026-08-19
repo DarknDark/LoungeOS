@@ -14,6 +14,8 @@ tags:
     description: Anonymous customer table-session operations
   - name: orders
     description: Customer ordering and staff order operations
+  - name: customer-requests
+    description: Customer-initiated song requests and waiter calls
   - name: staff-administration
     description: Protected staff and role administration operations
 paths:
@@ -453,6 +455,59 @@ paths:
       responses:
         "204":
           description: Bill splitting enabled
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/customer/table-sessions/{sessionId}/song-requests:
+    get:
+      operationId: listSongRequestsForSession
+      tags: [customer-requests]
+      summary: List song requests submitted for the current table session
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/CustomerSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionTokenHeader"
+      responses:
+        "200":
+          description: Song requests submitted from this table session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SongRequestListResponse"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "409":
+          $ref: "#/components/responses/ApiError"
+    post:
+      operationId: submitSongRequest
+      tags: [customer-requests]
+      summary: Submit a song request for the DJ
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - $ref: "#/components/parameters/ClubId"
+        - $ref: "#/components/parameters/CustomerSessionIdHeader"
+        - $ref: "#/components/parameters/CustomerSessionTokenHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitSongRequestBody"
+      responses:
+        "201":
+          description: Queued or matched song request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SongRequest"
         "400":
           $ref: "#/components/responses/ApiError"
         "401":
@@ -1331,6 +1386,20 @@ components:
         skipReason: { type: string }
       required:
         [id, clubId, tableSessionId, customerSessionId, businessDayId, song, artist, duplicateKey, status]
+    SubmitSongRequestBody:
+      type: object
+      properties:
+        song: { type: string, minLength: 1, maxLength: 200 }
+        artist: { type: string, minLength: 1, maxLength: 200 }
+      required: [song, artist]
+    SongRequestListResponse:
+      type: object
+      properties:
+        songRequests:
+          type: array
+          items:
+            $ref: "#/components/schemas/SongRequest"
+      required: [songRequests]
     ServiceTimelineEvent:
       type: object
       properties:
