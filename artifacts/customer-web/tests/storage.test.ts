@@ -95,6 +95,7 @@ test("customerHeaders maps a stored session to the standard customer request hea
   const headers = customerHeaders(sample);
   assert.deepEqual(headers, {
     "X-Club-Id": "mamus-lounge",
+    "X-Table-Session-Id": "table-session-1",
     "X-Customer-Session-Id": "customer-session-1",
     "X-Customer-Session-Token": "recovery-token-abc",
   });

@@ -48,6 +48,7 @@ export function clearStoredSession(): void {
 export function customerHeaders(session: StoredCustomerSession): Record<string, string> {
   return {
     "X-Club-Id": session.clubId,
+    "X-Table-Session-Id": session.tableSessionId,
     "X-Customer-Session-Id": session.customerSessionId,
     "X-Customer-Session-Token": session.recoveryToken,
   };
