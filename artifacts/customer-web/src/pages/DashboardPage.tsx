@@ -6,6 +6,8 @@ import { useOrders } from "../session/useOrders";
 import { apiErrorCode } from "../api/errors";
 import { RunningBillCard } from "../components/RunningBillCard";
 import { OrderedItemsList } from "../components/OrderedItemsList";
+import { CallWaiterButton } from "../components/CallWaiterButton";
+import { RequestSongForm } from "../components/RequestSongForm";
 
 const TERMINAL_ERROR_CODES = new Set([
   "SESSION_NOT_FOUND",
@@ -17,9 +19,11 @@ const TERMINAL_ERROR_CODES = new Set([
 
 // This page must never render ordering, payment, bill-splitting, or table
 // closure controls — those remain staff/mobile-app-only, per
-// ARCHITECTURE.md's customer/staff product boundary. It is read-only:
-// running bill + ordered items (Checkpoint 6), request song and call
-// waiter land in later checkpoints (11-12).
+// ARCHITECTURE.md's customer/staff product boundary. It is read-only for
+// the bill/orders (Checkpoint 6) plus two customer-initiated actions
+// (Checkpoint 7): call waiter (allowed regardless of access level/approval
+// status) and request song (blocked for permanently-temporary/read-only
+// access, per Checkpoint 2's access rule).
 export default function DashboardPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [, setLocation] = useLocation();
@@ -68,6 +72,7 @@ export default function DashboardPage() {
   if (terminalCode && TERMINAL_ERROR_CODES.has(terminalCode)) return null;
 
   const tableSession = status.data?.tableSession;
+  const customerSession = status.data?.customerSession;
   const orderList = orders.data?.orders ?? [];
   const hasTransientError = Boolean(status.error || orders.error) && !terminalCode;
 
@@ -82,6 +87,8 @@ export default function DashboardPage() {
         <RunningBillCard orders={orderList} runningTotalMinor={tableSession.runningTotalMinor} />
       ) : null}
       <OrderedItemsList orders={orderList} />
+      <CallWaiterButton session={stored} />
+      <RequestSongForm session={stored} readOnly={customerSession?.accessLevel === "temporary"} />
     </main>
   );
 }
