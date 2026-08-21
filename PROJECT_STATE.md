@@ -157,7 +157,7 @@ Polling fallback (3-5 sec)
 
 Manual waiter tables: ✅ Completed
 
-Temporary customer dashboard: ⬜ Next milestone (Unfinished)
+Temporary customer dashboard: ✅ Completed (Phase 3 Part 2 — `artifacts/customer-web`)
 
 ---
 
@@ -242,6 +242,6 @@ Push to GitHub
 
 # Next Task
 
-Implement the Temporary Customer Dashboard (Phase 3 Part 2).
-
-Not Module 4.
+Phase 3 Part 2 (Temporary Customer Dashboard) is complete. Next: Phase 4
+(ReceiptService abstraction) or Module 4, per prioritization — not started
+yet.

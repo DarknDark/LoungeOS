@@ -50,16 +50,18 @@ export function CallWaiterButton({ session }: CallWaiterButtonProps) {
             ? `Waiter notified (${secondsRemaining}s)`
             : "Call waiter"}
       </button>
-      {callWaiter.isError ? (
-        <p className="text-xs text-red-600">
-          {isRateLimited
-            ? "A waiter has already been called recently. Please wait a moment."
-            : "Couldn't reach a waiter. Please try again."}
-        </p>
-      ) : null}
-      {callWaiter.isSuccess && !callWaiter.isError ? (
-        <p className="text-xs text-neutral-500">A waiter has been notified.</p>
-      ) : null}
+      <div aria-live="polite">
+        {callWaiter.isError ? (
+          <p className="text-xs text-red-600">
+            {isRateLimited
+              ? "A waiter has already been called recently. Please wait a moment."
+              : "Couldn't reach a waiter. Please try again."}
+          </p>
+        ) : null}
+        {callWaiter.isSuccess && !callWaiter.isError ? (
+          <p className="text-xs text-neutral-500">A waiter has been notified.</p>
+        ) : null}
+      </div>
     </div>
   );
 }

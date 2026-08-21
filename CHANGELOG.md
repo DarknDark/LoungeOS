@@ -1,5 +1,59 @@
 # Changelog
 
+## 2026-08-20 — Temporary Customer Dashboard (Phase 3 Part 2)
+
+Completed the Temporary Customer Dashboard milestone: a new, isolated QR
+customer web app (`artifacts/customer-web`) covering table join through
+session recovery, the pending-approval waiting screen, and a read-only
+dashboard with two customer-initiated actions, without changing the frozen
+permanent QR, customer session, ordering, payment, or table lifecycle
+architecture, and without modifying the Expo staff/mobile app.
+
+### Added
+
+- `artifacts/customer-web`: Vite + React + wouter + Tailwind CSS app, using
+  `@workspace/api-client-react`/`@workspace/api-zod` exclusively for API
+  access (no hand-written fetch/business logic).
+- QR entry (`/t/:tableId`) creating or resuming a customer table session,
+  persisted in `localStorage`; session recovery on refresh/reopen.
+- Pending-approval screen with the exact required copy ("Please wait. Your
+  waiter has been notified."), five-second polling, and auto-redirect to
+  the dashboard on approval.
+- Read-only dashboard: running bill (subtotal, taxes/fees, total due) and
+  ordered items with per-order status, kept in sync via five-second HTTP
+  polling — no SSE/realtime infrastructure, no direct Firestore access.
+- Call Waiter action, allowed for pending/temporary customer access as an
+  intentional exception, with server-enforced (not merely cosmetic)
+  rate-limiting.
+- Request Song action, requiring full customer approval, with client-side
+  validation mirroring the API contract and DJ-queue-position feedback.
+- Backend: `DJService` + song-request API, `CustomerRequestService` +
+  call-waiter API, and a minimal, server-enforced authorization fix closing
+  a gap that would otherwise have let temporary/pending customers place
+  orders.
+- Accessibility: `aria-live` status/error announcements, associated form
+  labels, a resizable (non-zoom-locked) viewport.
+- Unit tests across both the new backend services and the new frontend
+  logic (validation, formatting, persistence, error handling).
+
+### Verification
+
+- 57/57 `lib/application` tests passing.
+- 2/2 `artifacts/api-server` tests passing.
+- 39/39 `artifacts/customer-web` tests passing.
+- Full workspace typecheck (`tsc --build` + per-package `tsc --noEmit`)
+  passing across all libraries, the API server, customer-web, and the Expo
+  mobile app.
+- `artifacts/customer-web` production build (`vite build`) passing with no
+  warnings.
+- Zero imports from `artifacts/club-ordering-mobile` or any staff UI
+  package in `artifacts/customer-web`; the Expo app was not modified.
+
+### Deferred
+
+ReceiptService, SMS, printing, provider integrations, and Module 4 remain
+intentionally out of scope.
+
 ## 2026-08-12 — Manual Waiter Tables (Phase 3 Part 1)
 
 Completed the Manual Waiter Tables milestone. Waiters can manually open tables without customer QR scans, customer scans on staff-controlled manual tables route into a waiter join-request workflow with a green waiting state ("Please wait. Your waiter has been notified."), and authorized staff can view and approve pending join requests.

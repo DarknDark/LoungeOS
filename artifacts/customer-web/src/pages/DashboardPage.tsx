@@ -58,7 +58,7 @@ export default function DashboardPage() {
   // Still loading the very first fetch of either query.
   if (status.isPending || orders.isPending) {
     return (
-      <main className="flex h-full items-center justify-center p-6 text-center">
+      <main className="flex h-full items-center justify-center p-6 text-center" aria-live="polite">
         <p className="text-sm text-neutral-500">Loading your table…</p>
       </main>
     );
@@ -79,7 +79,7 @@ export default function DashboardPage() {
   return (
     <main className="mx-auto flex h-full max-w-md flex-col gap-4 p-4">
       {hasTransientError ? (
-        <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-700">
+        <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-700" aria-live="polite">
           Having trouble reaching the table. Retrying…
         </p>
       ) : null}

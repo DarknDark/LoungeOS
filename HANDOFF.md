@@ -32,9 +32,12 @@ Current milestone completed:
 - Firestore session/order/notification listeners
 - Five-second HTTP polling fallback
 - Manual waiter tables (Phase 3 Part 1)
+- Temporary customer dashboard (Phase 3 Part 2 — `artifacts/customer-web`: QR
+  entry/session recovery, pending-approval polling, read-only running
+  bill/ordered items, call waiter, request song)
 
 Next milestone:
 
-- Temporary customer dashboard (Phase 3 Part 2 - Unfinished)
+- Not yet assigned.
 
 Do not begin the next milestone without approval.

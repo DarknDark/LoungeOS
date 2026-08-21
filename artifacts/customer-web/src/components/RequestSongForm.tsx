@@ -67,7 +67,11 @@ export function RequestSongForm({ session, readOnly }: RequestSongFormProps) {
     <section className="rounded-lg border border-neutral-200 p-4">
       <h2 className="text-sm font-semibold text-neutral-700">Request a song</h2>
       <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-2">
+        <label htmlFor="song-request-title" className="sr-only">
+          Song title
+        </label>
         <input
+          id="song-request-title"
           type="text"
           placeholder="Song title"
           value={song}
@@ -76,7 +80,11 @@ export function RequestSongForm({ session, readOnly }: RequestSongFormProps) {
           maxLength={200}
           className="rounded-md border border-neutral-300 px-3 py-2 text-sm disabled:bg-neutral-50"
         />
+        <label htmlFor="song-request-artist" className="sr-only">
+          Artist
+        </label>
         <input
+          id="song-request-artist"
           type="text"
           placeholder="Artist"
           value={artist}
@@ -93,17 +101,19 @@ export function RequestSongForm({ session, readOnly }: RequestSongFormProps) {
           {submitSongRequest.isPending ? "Sending…" : "Request song"}
         </button>
       </form>
-      {validationError ? <p className="mt-2 text-xs text-red-600">{validationError}</p> : null}
-      {serverErrorMessage ? (
-        <p className="mt-2 text-xs text-red-600">{serverErrorMessage}</p>
-      ) : null}
-      {submitSongRequest.isSuccess ? (
-        <p className="mt-2 text-xs text-neutral-500">
-          {submitSongRequest.data.queuePosition
-            ? `Added to the DJ's queue — you're #${submitSongRequest.data.queuePosition}.`
-            : "Sent to the DJ."}
-        </p>
-      ) : null}
+      <div aria-live="polite">
+        {validationError ? <p className="mt-2 text-xs text-red-600">{validationError}</p> : null}
+        {serverErrorMessage ? (
+          <p className="mt-2 text-xs text-red-600">{serverErrorMessage}</p>
+        ) : null}
+        {submitSongRequest.isSuccess ? (
+          <p className="mt-2 text-xs text-neutral-500">
+            {submitSongRequest.data.queuePosition
+              ? `Added to the DJ's queue — you're #${submitSongRequest.data.queuePosition}.`
+              : "Sent to the DJ."}
+          </p>
+        ) : null}
+      </div>
     </section>
   );
 }
