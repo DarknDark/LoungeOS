@@ -1394,6 +1394,39 @@ export const CreateStaffOrderResponse = zod.object({
 
 
 /**
+ * Read-only in Phase 4 Checkpoint 1. Ticket status mutation (POST .../status) is Checkpoint 3 scope.
+ * @summary List kitchen/bar tickets for a preparation station
+ */
+
+
+
+export const ListStaffKitchenTicketsQueryParams = zod.object({
+  "stationId": zod.coerce.string().min(1)
+})
+
+
+
+
+export const ListStaffKitchenTicketsHeader = zod.object({
+  "X-Club-Id": zod.string().min(1)
+})
+
+export const ListStaffKitchenTicketsResponse = zod.object({
+  "kitchenTickets": zod.array(zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "orderId": zod.string(),
+  "stationId": zod.string(),
+  "orderItemIds": zod.array(zod.string()),
+  "status": zod.enum(['new', 'preparing', 'ready', 'collected']),
+  "assignedStaffId": zod.string().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+/**
  * @summary Create an editable draft order
  */
 

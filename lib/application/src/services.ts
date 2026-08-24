@@ -284,6 +284,12 @@ export type InventoryService = {
 };
 
 export type KitchenService = {
+  createTicketsForOrder(input: {
+    actor: RequestActor;
+    order: Order;
+    items: OrderItem[];
+    now: string;
+  }): Promise<KitchenTicket[]>;
   updateTicket(input: {
     actor: RequestActor;
     ticketId: string;

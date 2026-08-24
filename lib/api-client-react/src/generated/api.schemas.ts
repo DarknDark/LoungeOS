@@ -402,6 +402,32 @@ export interface ServiceTimelineEvent {
   occurredAt: string;
 }
 
+export type KitchenTicketStatus = typeof KitchenTicketStatus[keyof typeof KitchenTicketStatus];
+
+
+export const KitchenTicketStatus = {
+  new: 'new',
+  preparing: 'preparing',
+  ready: 'ready',
+  collected: 'collected',
+} as const;
+
+export interface KitchenTicket {
+  id: string;
+  clubId: string;
+  orderId: string;
+  stationId: string;
+  orderItemIds: string[];
+  status: KitchenTicketStatus;
+  assignedStaffId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface KitchenTicketListResponse {
+  kitchenTickets: KitchenTicket[];
+}
+
 export type TableStatus = typeof TableStatus[keyof typeof TableStatus];
 
 
@@ -653,6 +679,13 @@ export type TableSessionIdHeaderParameter = string;
 export type CustomerSessionIdHeaderParameter = string;
 
 export type CustomerSessionTokenHeaderParameter = string;
+
+export type ListStaffKitchenTicketsParams = {
+/**
+ * @minLength 1
+ */
+stationId: string;
+};
 
 export type SubmitOrderBody = {
   /** @minimum 0 */

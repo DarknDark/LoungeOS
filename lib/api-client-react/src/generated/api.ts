@@ -31,6 +31,8 @@ import type {
   HealthStatus,
   HeartbeatRequest,
   JoinTableSessionRequest,
+  KitchenTicketListResponse,
+  ListStaffKitchenTicketsParams,
   Notification,
   OpenManualTableSessionRequest,
   OpenTableSessionRequest,
@@ -2057,6 +2059,91 @@ export const useCreateStaffOrder = <TError = ErrorType<ApiErrorResponse>,
       > => {
       return useMutation(getCreateStaffOrderMutationOptions(options));
     }
+
+export const getListStaffKitchenTicketsUrl = (params: ListStaffKitchenTicketsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/staff/kitchen-tickets?${stringifiedParams}` : `/api/v1/staff/kitchen-tickets`
+}
+
+/**
+ * Read-only in Phase 4 Checkpoint 1. Ticket status mutation (POST .../status) is Checkpoint 3 scope.
+ * @summary List kitchen/bar tickets for a preparation station
+ */
+export const listStaffKitchenTickets = async (params: ListStaffKitchenTicketsParams, options?: Parameters<typeof customFetch>[1]): Promise<KitchenTicketListResponse> => {
+
+  return customFetch<KitchenTicketListResponse>(getListStaffKitchenTicketsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListStaffKitchenTicketsQueryKey = (params?: ListStaffKitchenTicketsParams,) => {
+    return [
+    `/api/v1/staff/kitchen-tickets`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListStaffKitchenTicketsQueryOptions = <TData = Awaited<ReturnType<typeof listStaffKitchenTickets>>, TError = ErrorType<ApiErrorResponse>>(params: ListStaffKitchenTicketsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStaffKitchenTickets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListStaffKitchenTicketsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStaffKitchenTickets>>> = ({ signal }) => listStaffKitchenTickets(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStaffKitchenTickets>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListStaffKitchenTicketsQueryResult = NonNullable<Awaited<ReturnType<typeof listStaffKitchenTickets>>>
+export type ListStaffKitchenTicketsQueryError = ErrorType<ApiErrorResponse>
+
+
+/**
+ * @summary List kitchen/bar tickets for a preparation station
+ */
+
+export function useListStaffKitchenTickets<TData = Awaited<ReturnType<typeof listStaffKitchenTickets>>, TError = ErrorType<ApiErrorResponse>>(
+ params: ListStaffKitchenTicketsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStaffKitchenTickets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListStaffKitchenTicketsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getCreateOrderDraftUrl = () => {
 

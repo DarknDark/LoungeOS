@@ -26,6 +26,7 @@ import { createAuditService } from './audit-engine';
 import { createNotificationEngine } from './notification-engine';
 import { createTimelineService } from './timeline-engine';
 import { checkCustomerAccessLevel } from './customer-access';
+import { createKitchenService } from './kitchen-engine';
 
 type OrderItemInput = {
   menuItemId: string;
@@ -52,6 +53,8 @@ export type OrderEngineDependencies = {
     | 'serviceTimeline'
     | 'realtime'
     | 'offlineQueue'
+    | 'tickets'
+    | 'stations'
   >;
   ids: { next(): string };
   tokens: { hash(value: string): string };
@@ -125,6 +128,9 @@ export function createOrderService(
   const audit = createAuditService(repos.audit);
   const notifications = createNotificationEngine(repos.notifications);
   const timeline = createTimelineService(repos.serviceTimeline);
+  const kitchen = createKitchenService({
+    repositories: { tickets: repos.tickets, stations: repos.stations },
+  });
 
   async function activeCustomer(
     actor: RequestActor,
@@ -679,6 +685,14 @@ export function createOrderService(
             });
           }
         }
+      }
+      if (input.status === 'preparing') {
+        await kitchen.createTicketsForOrder({
+          actor: input.actor,
+          order: current.order,
+          items: current.items,
+          now: input.now,
+        });
       }
       const updated: Order = {
         ...current.order,

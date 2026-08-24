@@ -6,6 +6,7 @@ import djRouter from "./dj";
 import customerRequestsRouter from "./customer-requests";
 import staffAdministrationRouter from "./staff-administration";
 import realtimeRouter from "./realtime";
+import kitchenRouter from "./kitchen";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(djRouter);
 router.use(customerRequestsRouter);
 router.use(staffAdministrationRouter);
 router.use(realtimeRouter);
+router.use(kitchenRouter);
 
 export default router;

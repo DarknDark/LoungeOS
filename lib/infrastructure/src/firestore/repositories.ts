@@ -27,6 +27,8 @@ import {
   type InventoryReservation,
   type Payment,
   type SongRequest,
+  type PreparationStation,
+  type KitchenTicket,
 } from '@workspace/domain';
 import type {
   BusinessDayRepository,
@@ -55,6 +57,8 @@ import type {
   RealtimeSubscription,
   OfflineQueue,
   SyncQueueItem,
+  StationRepository,
+  KitchenTicketRepository,
 } from '@workspace/domain';
 
 type DocumentData = Record<string, unknown>;
@@ -1777,6 +1781,76 @@ export class FirestoreRoleRepository implements RoleRepository {
   }
 }
 
+export class FirestoreStationRepository implements StationRepository {
+  constructor(private readonly firestore: Firestore) {}
+
+  async getById(clubId: string, stationId: string): Promise<PreparationStation | null> {
+    const document = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.preparationStations,
+    )
+      .doc(stationId)
+      .get();
+    return documentWithId<PreparationStation>(document.id, document.data());
+  }
+
+  async listActive(clubId: string): Promise<PreparationStation[]> {
+    const snapshot = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.preparationStations,
+    )
+      .where('active', '==', true)
+      .get();
+    return snapshot.docs
+      .map((document) => documentWithId<PreparationStation>(document.id, document.data()))
+      .filter((station): station is PreparationStation => station !== null);
+  }
+}
+
+export class FirestoreKitchenTicketRepository implements KitchenTicketRepository {
+  constructor(private readonly firestore: Firestore) {}
+
+  async getById(clubId: string, ticketId: string): Promise<KitchenTicket | null> {
+    const document = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.kitchenTickets,
+    )
+      .doc(ticketId)
+      .get();
+    const data = document.data();
+    return isDeleted(data) ? null : documentWithId<KitchenTicket>(document.id, data);
+  }
+
+  async save(ticket: KitchenTicket): Promise<void> {
+    await scopedCollection(
+      this.firestore,
+      ticket.clubId,
+      FIRESTORE_COLLECTIONS.kitchenTickets,
+    )
+      .doc(ticket.id)
+      .set(ticket, { merge: true });
+  }
+
+  async listForStation(
+    clubId: string,
+    stationId: string,
+    query?: DomainPageQuery,
+  ): Promise<Page<KitchenTicket>> {
+    const snapshot = await scopedCollection(
+      this.firestore,
+      clubId,
+      FIRESTORE_COLLECTIONS.kitchenTickets,
+    )
+      .where('stationId', '==', stationId)
+      .orderBy('createdAt')
+      .get();
+    return pageFromSnapshot<KitchenTicket>(snapshot, limitFor(query));
+  }
+}
+
 export type Module2Repositories = Pick<
   RepositoryRegistry,
   | 'clubs'
@@ -1802,6 +1876,8 @@ export type Module2Repositories = Pick<
    | 'inventory'
    | 'inventoryReservations'
   | 'payments'
+  | 'stations'
+  | 'tickets'
 >;
 
 export function createModule2Repositories(firestore: Firestore): Module2Repositories {
@@ -1829,5 +1905,7 @@ export function createModule2Repositories(firestore: Firestore): Module2Reposito
     inventory: new FirestoreInventoryRepository(firestore),
     inventoryReservations: new FirestoreInventoryReservationRepository(firestore),
     payments: new FirestorePaymentRepository(firestore),
+    stations: new FirestoreStationRepository(firestore),
+    tickets: new FirestoreKitchenTicketRepository(firestore),
   };
 }

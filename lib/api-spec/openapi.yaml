@@ -18,6 +18,8 @@ tags:
     description: Customer-initiated song requests and waiter calls
   - name: staff-administration
     description: Protected staff and role administration operations
+  - name: kitchen
+    description: Staff kitchen/bar ticket operations
 paths:
   /healthz:
     get:
@@ -649,6 +651,35 @@ paths:
         "403":
           $ref: "#/components/responses/ApiError"
         "409":
+          $ref: "#/components/responses/ApiError"
+  /v1/staff/kitchen-tickets:
+    get:
+      operationId: listStaffKitchenTickets
+      tags: [kitchen]
+      summary: List kitchen/bar tickets for a preparation station
+      description: >-
+        Read-only in Phase 4 Checkpoint 1. Ticket status mutation
+        (POST .../status) is Checkpoint 3 scope.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - name: stationId
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          description: Kitchen tickets for the requested station
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KitchenTicketListResponse"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
           $ref: "#/components/responses/ApiError"
   /v1/orders/drafts:
     post:
@@ -1444,6 +1475,31 @@ components:
           required: [type, id]
         occurredAt: { type: string, format: date-time }
       required: [id, clubId, tableSessionId, type, message, occurredAt]
+    KitchenTicket:
+      type: object
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        orderId: { type: string }
+        stationId: { type: string }
+        orderItemIds:
+          type: array
+          items: { type: string }
+        status:
+          type: string
+          enum: [new, preparing, ready, collected]
+        assignedStaffId: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, clubId, orderId, stationId, orderItemIds, status, createdAt, updatedAt]
+    KitchenTicketListResponse:
+      type: object
+      properties:
+        kitchenTickets:
+          type: array
+          items:
+            $ref: "#/components/schemas/KitchenTicket"
+      required: [kitchenTickets]
     StaffTableListResponse:
       type: object
       properties:

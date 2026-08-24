@@ -11,5 +11,6 @@ export * from './pricing';
 export * from './order-engine';
 export * from './dj-engine';
 export * from './customer-requests';
+export * from './kitchen-engine';
 export * from './staff-administration';
 export * from './realtime';

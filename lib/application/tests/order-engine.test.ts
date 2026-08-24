@@ -4,6 +4,7 @@ import {
   DEFAULT_CLUB_SETTINGS,
   type CustomerSession,
   type InventoryItem,
+  type KitchenTicket,
   type MenuCategoryRecord,
   type MenuItem,
   type MenuModifier,
@@ -40,6 +41,7 @@ function makeHarness(options?: {
   const audit: unknown[] = [];
   const queued: unknown[] = [];
   const inventory = new Map<string, InventoryItem>();
+  const kitchenTickets = new Map<string, KitchenTicket>();
   const session: TableSession = {
     id: tableSessionId,
     clubId,
@@ -78,6 +80,23 @@ function makeHarness(options?: {
     sortOrder: 1,
     version: 0,
   };
+  const barMenuItem: MenuItem = {
+    id: 'menu-item-2',
+    clubId,
+    name: 'Mojito',
+    description: 'Test bar item',
+    priceMinor: 800,
+    currency: 'KES',
+    category: 'drinks',
+    preparationStationId: 'bar',
+    available: true,
+    sortOrder: 2,
+    version: 0,
+  };
+  const menuItemsById = new Map<string, MenuItem>([
+    [menuItem.id, menuItem],
+    [barMenuItem.id, barMenuItem],
+  ]);
   const categories: MenuCategoryRecord[] = [
     {
       id: 'category-food',
@@ -144,8 +163,8 @@ function makeHarness(options?: {
       save: async () => undefined,
     },
     menuItems: {
-      getById: async () => menuItem,
-      listAvailable: async () => (menuItem.available ? [menuItem] : []),
+      getById: async (_clubId: string, menuItemId: string) => menuItemsById.get(menuItemId) ?? null,
+      listAvailable: async () => (menuItem.available ? [menuItem, barMenuItem] : [barMenuItem]),
       save: async () => undefined,
     },
     modifiers: {
@@ -246,6 +265,19 @@ function makeHarness(options?: {
       markRetry: async () => undefined,
       markCompleted: async () => undefined,
     },
+    tickets: {
+      getById: async (_clubId: string, ticketId: string) => kitchenTickets.get(ticketId) ?? null,
+      save: async (ticket: KitchenTicket) => {
+        kitchenTickets.set(ticket.id, ticket);
+      },
+      listForStation: async (_clubId: string, stationId: string) => ({
+        items: [...kitchenTickets.values()].filter((ticket) => ticket.stationId === stationId),
+      }),
+    },
+    stations: {
+      getById: async () => null,
+      listActive: async () => [],
+    },
   } as never;
 
   const service = createOrderService({
@@ -278,6 +310,7 @@ function makeHarness(options?: {
     audit,
     queued,
     events,
+    kitchenTickets,
     inventory,
   };
 }
@@ -387,6 +420,98 @@ test('reserves stock on acceptance and rejects stale transitions', async () => {
       }),
     /STALE_VERSION|CONFLICT/,
   );
+});
+
+test('creates a kitchen ticket when an order moves from accepted to preparing', async () => {
+  const harness = makeHarness();
+  const created = await harness.service.create({
+    actor: harness.actor,
+    tableSessionId,
+    idempotencyKey: 'ticket-key',
+    items: [{ menuItemId: 'menu-item-1', quantity: 1 }],
+    now,
+  });
+  const accepted = await harness.service.updateStatus({
+    actor: harness.staffActor,
+    orderId: created.order.id,
+    status: 'accepted',
+    expectedVersion: created.order.version ?? 0,
+    now,
+  });
+  assert.equal(harness.kitchenTickets.size, 0);
+
+  await harness.service.updateStatus({
+    actor: harness.staffActor,
+    orderId: created.order.id,
+    status: 'preparing',
+    expectedVersion: accepted.order.version ?? 0,
+    now,
+  });
+
+  assert.equal(harness.kitchenTickets.size, 1);
+  const ticket = harness.kitchenTickets.get(`${created.order.id}:kitchen`);
+  assert.ok(ticket);
+  assert.equal(ticket!.status, 'new');
+  assert.equal(ticket!.orderId, created.order.id);
+});
+
+test('splits a preparing order across stations into one ticket per station', async () => {
+  const harness = makeHarness();
+  const created = await harness.service.create({
+    actor: harness.actor,
+    tableSessionId,
+    idempotencyKey: 'multi-station-key',
+    items: [
+      { menuItemId: 'menu-item-1', quantity: 1 },
+      { menuItemId: 'menu-item-2', quantity: 2 },
+    ],
+    now,
+  });
+  const accepted = await harness.service.updateStatus({
+    actor: harness.staffActor,
+    orderId: created.order.id,
+    status: 'accepted',
+    expectedVersion: created.order.version ?? 0,
+    now,
+  });
+  await harness.service.updateStatus({
+    actor: harness.staffActor,
+    orderId: created.order.id,
+    status: 'preparing',
+    expectedVersion: accepted.order.version ?? 0,
+    now,
+  });
+
+  assert.equal(harness.kitchenTickets.size, 2);
+  assert.ok(harness.kitchenTickets.has(`${created.order.id}:kitchen`));
+  assert.ok(harness.kitchenTickets.has(`${created.order.id}:bar`));
+});
+
+test('does not create a kitchen ticket for an order that is cancelled before reaching preparing', async () => {
+  const harness = makeHarness();
+  const created = await harness.service.create({
+    actor: harness.actor,
+    tableSessionId,
+    idempotencyKey: 'cancelled-key',
+    items: [{ menuItemId: 'menu-item-1', quantity: 1 }],
+    now,
+  });
+  const accepted = await harness.service.updateStatus({
+    actor: harness.staffActor,
+    orderId: created.order.id,
+    status: 'accepted',
+    expectedVersion: created.order.version ?? 0,
+    now,
+  });
+  await harness.service.updateStatus({
+    actor: harness.staffActor,
+    orderId: created.order.id,
+    status: 'cancelled',
+    expectedVersion: accepted.order.version ?? 0,
+    now,
+  });
+
+  assert.equal(harness.kitchenTickets.size, 0);
 });
 
 test('restricts customer access to active table sessions and queues mutations', async () => {

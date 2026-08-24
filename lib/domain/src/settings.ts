@@ -267,6 +267,8 @@ export const DEFAULT_CLUB_SETTINGS: ClubSettings = {
     roles: [
       { id: 'administrator', name: 'Administrator', permissions: ['*'], active: true },
       { id: 'waiter', name: 'Waiter', permissions: ['tables.read'], active: true },
+      { id: 'kitchen', name: 'Kitchen', permissions: ['tickets.manage'], active: true },
+      { id: 'bartender', name: 'Bartender', permissions: ['tickets.manage'], active: true },
     ],
   },
   pricing: {
