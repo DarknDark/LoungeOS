@@ -1,0 +1,32 @@
+{
+  "name": "@workspace/kds-web",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test tests/*.test.ts"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "catalog:",
+    "@workspace/api-client-react": "workspace:*",
+    "@workspace/api-zod": "workspace:*",
+    "firebase": "^12.17.1",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "wouter": "catalog:"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "tailwindcss": "catalog:",
+    "tsx": "catalog:",
+    "vite": "catalog:"
+  }
+}

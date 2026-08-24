@@ -20,7 +20,8 @@ function staffOperationsAllowed(
         role.active &&
         (role.name === "administrator" ||
           role.permissions.includes("tables.release") ||
-          role.permissions.includes("settings.manage")),
+          role.permissions.includes("settings.manage") ||
+          role.permissions.includes("tickets.manage")),
     );
   });
 }
