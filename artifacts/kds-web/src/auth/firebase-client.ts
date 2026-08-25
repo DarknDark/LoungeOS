@@ -19,10 +19,11 @@
  *   VITE_FIREBASE_MESSAGING_SENDER_ID  (optional, auth-only deployments)
  */
 
-const apiKey = import.meta.env.VITE_FIREBASE_API_KEY as string | undefined;
-const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined;
-const appId = import.meta.env.VITE_FIREBASE_APP_ID as string | undefined;
-const senderId = (import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string | undefined) ?? "";
+const env = (import.meta as { env?: Record<string, string | undefined> }).env ?? {};
+const apiKey = env.VITE_FIREBASE_API_KEY;
+const projectId = env.VITE_FIREBASE_PROJECT_ID;
+const appId = env.VITE_FIREBASE_APP_ID;
+const senderId = env.VITE_FIREBASE_MESSAGING_SENDER_ID ?? "";
 
 /** True when all required client config env vars are present. */
 export function isFirebaseClientConfigured(): boolean {

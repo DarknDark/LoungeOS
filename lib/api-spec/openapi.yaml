@@ -657,9 +657,6 @@ paths:
       operationId: listStaffKitchenTickets
       tags: [kitchen]
       summary: List kitchen/bar tickets for a preparation station
-      description: >-
-        Read-only in Phase 4 Checkpoint 1. Ticket status mutation
-        (POST .../status) is Checkpoint 3 scope.
       security:
         - bearerAuth: []
       parameters:
@@ -680,6 +677,44 @@ paths:
         "401":
           $ref: "#/components/responses/ApiError"
         "403":
+          $ref: "#/components/responses/ApiError"
+  /v1/staff/kitchen-tickets/{ticketId}/status:
+    post:
+      operationId: updateStaffKitchenTicketStatus
+      tags: [kitchen]
+      summary: Transition a kitchen/bar ticket to a new status
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClubId"
+        - name: ticketId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateKitchenTicketStatusRequest"
+      responses:
+        "200":
+          description: The updated kitchen ticket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KitchenTicket"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        "403":
+          $ref: "#/components/responses/ApiError"
+        "404":
+          $ref: "#/components/responses/ApiError"
+        "409":
           $ref: "#/components/responses/ApiError"
   /v1/orders/drafts:
     post:
@@ -1500,6 +1535,13 @@ components:
           items:
             $ref: "#/components/schemas/KitchenTicket"
       required: [kitchenTickets]
+    UpdateKitchenTicketStatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [new, preparing, ready, collected]
+      required: [status]
     StaffTableListResponse:
       type: object
       properties:

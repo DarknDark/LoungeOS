@@ -1394,7 +1394,6 @@ export const CreateStaffOrderResponse = zod.object({
 
 
 /**
- * Read-only in Phase 4 Checkpoint 1. Ticket status mutation (POST .../status) is Checkpoint 3 scope.
  * @summary List kitchen/bar tickets for a preparation station
  */
 
@@ -1423,6 +1422,40 @@ export const ListStaffKitchenTicketsResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 }))
+})
+
+
+/**
+ * @summary Transition a kitchen/bar ticket to a new status
+ */
+
+
+
+export const UpdateStaffKitchenTicketStatusParams = zod.object({
+  "ticketId": zod.coerce.string().min(1)
+})
+
+
+
+
+export const UpdateStaffKitchenTicketStatusHeader = zod.object({
+  "X-Club-Id": zod.string().min(1)
+})
+
+export const UpdateStaffKitchenTicketStatusBody = zod.object({
+  "status": zod.enum(['new', 'preparing', 'ready', 'collected'])
+})
+
+export const UpdateStaffKitchenTicketStatusResponse = zod.object({
+  "id": zod.string(),
+  "clubId": zod.string(),
+  "orderId": zod.string(),
+  "stationId": zod.string(),
+  "orderItemIds": zod.array(zod.string()),
+  "status": zod.enum(['new', 'preparing', 'ready', 'collected']),
+  "assignedStaffId": zod.string().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
 })
 
 

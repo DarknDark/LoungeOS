@@ -78,6 +78,8 @@ export * from './tableSessionStatus';
 export * from './tableStatus';
 export * from './tableValidationResponse';
 export * from './updateDraftOrderRequest';
+export * from './updateKitchenTicketStatusRequest';
+export * from './updateKitchenTicketStatusRequestStatus';
 export * from './updateOrderStatusRequest';
 export * from './updateOrderStatusRequestStatus';
 export * from './updateRoleRequest';

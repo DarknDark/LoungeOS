@@ -31,6 +31,7 @@ import type {
   HealthStatus,
   HeartbeatRequest,
   JoinTableSessionRequest,
+  KitchenTicket,
   KitchenTicketListResponse,
   ListStaffKitchenTicketsParams,
   Notification,
@@ -57,6 +58,7 @@ import type {
   TableSessionAccess,
   TableValidationResponse,
   UpdateDraftOrderRequest,
+  UpdateKitchenTicketStatusRequest,
   UpdateOrderStatusRequest,
   UpdateRoleRequest,
   UpdateStaffRequest
@@ -2076,7 +2078,6 @@ export const getListStaffKitchenTicketsUrl = (params: ListStaffKitchenTicketsPar
 }
 
 /**
- * Read-only in Phase 4 Checkpoint 1. Ticket status mutation (POST .../status) is Checkpoint 3 scope.
  * @summary List kitchen/bar tickets for a preparation station
  */
 export const listStaffKitchenTickets = async (params: ListStaffKitchenTicketsParams, options?: Parameters<typeof customFetch>[1]): Promise<KitchenTicketListResponse> => {
@@ -2144,6 +2145,78 @@ export function useListStaffKitchenTickets<TData = Awaited<ReturnType<typeof lis
 
 
 
+
+export const getUpdateStaffKitchenTicketStatusUrl = (ticketId: string,) => {
+
+
+
+
+  return `/api/v1/staff/kitchen-tickets/${ticketId}/status`
+}
+
+/**
+ * @summary Transition a kitchen/bar ticket to a new status
+ */
+export const updateStaffKitchenTicketStatus = async (ticketId: string,
+    updateKitchenTicketStatusRequest: UpdateKitchenTicketStatusRequest, options?: Parameters<typeof customFetch>[1]): Promise<KitchenTicket> => {
+
+  return customFetch<KitchenTicket>(getUpdateStaffKitchenTicketStatusUrl(ticketId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateKitchenTicketStatusRequest)
+  }
+);}
+
+
+
+
+
+export const getUpdateStaffKitchenTicketStatusMutationOptions = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateStaffKitchenTicketStatus>>, TError,{ticketId: string;data: BodyType<UpdateKitchenTicketStatusRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateStaffKitchenTicketStatus>>, TError,{ticketId: string;data: BodyType<UpdateKitchenTicketStatusRequest>}, TContext> => {
+
+const mutationKey = ['updateStaffKitchenTicketStatus'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateStaffKitchenTicketStatus>>, {ticketId: string;data: BodyType<UpdateKitchenTicketStatusRequest>}> = (props) => {
+          const {ticketId,data} = props ?? {};
+
+          return  updateStaffKitchenTicketStatus(ticketId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateStaffKitchenTicketStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updateStaffKitchenTicketStatus>>>
+    export type UpdateStaffKitchenTicketStatusMutationBody = BodyType<UpdateKitchenTicketStatusRequest>
+    export type UpdateStaffKitchenTicketStatusMutationError = ErrorType<ApiErrorResponse>
+
+    /**
+ * @summary Transition a kitchen/bar ticket to a new status
+ */
+export const useUpdateStaffKitchenTicketStatus = <TError = ErrorType<ApiErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateStaffKitchenTicketStatus>>, TError,{ticketId: string;data: BodyType<UpdateKitchenTicketStatusRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateStaffKitchenTicketStatus>>,
+        TError,
+        {ticketId: string;data: BodyType<UpdateKitchenTicketStatusRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateStaffKitchenTicketStatusMutationOptions(options));
+    }
 
 export const getCreateOrderDraftUrl = () => {
 

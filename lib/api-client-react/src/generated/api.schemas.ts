@@ -428,6 +428,20 @@ export interface KitchenTicketListResponse {
   kitchenTickets: KitchenTicket[];
 }
 
+export type UpdateKitchenTicketStatusRequestStatus = typeof UpdateKitchenTicketStatusRequestStatus[keyof typeof UpdateKitchenTicketStatusRequestStatus];
+
+
+export const UpdateKitchenTicketStatusRequestStatus = {
+  new: 'new',
+  preparing: 'preparing',
+  ready: 'ready',
+  collected: 'collected',
+} as const;
+
+export interface UpdateKitchenTicketStatusRequest {
+  status: UpdateKitchenTicketStatusRequestStatus;
+}
+
 export type TableStatus = typeof TableStatus[keyof typeof TableStatus];
 
 

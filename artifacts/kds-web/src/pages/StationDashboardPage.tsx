@@ -72,7 +72,7 @@ export default function StationDashboardPage() {
                 {COLUMN_LABELS[column]} ({columns[column].length})
               </h2>
               {columns[column].map((ticket) => (
-                <TicketCard key={ticket.id} ticket={ticket} />
+                <TicketCard key={ticket.id} ticket={ticket} clubId={CLUB_ID} stationId={stationId} />
               ))}
             </section>
           ))}
