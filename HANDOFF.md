@@ -35,6 +35,12 @@ Current milestone completed:
 - Temporary customer dashboard (Phase 3 Part 2 — `artifacts/customer-web`: QR
   entry/session recovery, pending-approval polling, read-only running
   bill/ordered items, call waiter, request song)
+- Kitchen Tickets & KDS (Phase 4 — kitchen ticket domain/repositories,
+  order-lifecycle integration, default Kitchen/Bartender roles,
+  `artifacts/kds-web` staff KDS app reusing the existing staff realtime SSE
+  stream, station actions with optimistic updates. Known gap: no staff UI
+  yet advances an order past `submitted`, so ticket creation has no live
+  user-facing trigger — see PROJECT_STATE.md's Phase 4 section)
 
 Next milestone:
 

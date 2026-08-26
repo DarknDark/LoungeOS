@@ -163,6 +163,21 @@ Temporary customer dashboard: ✅ Completed (Phase 3 Part 2 — `artifacts/custo
 
 ## Phase 4
 
+Kitchen Tickets & KDS: ✅ Completed
+
+- Checkpoint 1: Kitchen ticket domain/repository foundation (`FirestoreStationRepository`, `FirestoreKitchenTicketRepository`), `KitchenService.createTicketsForOrder`/`updateTicket`, order-lifecycle integration on the `accepted → preparing` transition (deterministic, idempotent ticket IDs — `${orderId}:${stationId}`), default Kitchen/Bartender role seeding (`tickets.manage`), read-only `GET /v1/staff/kitchen-tickets`.
+- Checkpoint 2: isolated KDS web app (`artifacts/kds-web`) — Firebase staff sign-in, client-side station selection (Kitchen/Bar), 3-column read-only ticket board, staff realtime SSE stream reused as a change-signal (extended `tickets.manage` into the existing permission gate), 5-second polling fallback.
+- Checkpoint 3: `POST /v1/staff/kitchen-tickets/{ticketId}/status`, interactive station-action buttons in the KDS with optimistic updates and rollback on error.
+- Checkpoint 4: cross-device/SSE-lifecycle verification, monorepo-wide typecheck/test/build pass, dead-code sweep, documentation reconciliation.
+
+`Order.status` and `KitchenTicket.status` remain separate state machines by design — a ticket reaching `ready`/`collected` does not change the order's own status.
+
+**Known gap, not yet addressed**: no staff-facing UI currently advances an order past `submitted` (the mobile staff dashboard has no order-status-mutation control), so kitchen ticket creation — while fully implemented and tested at the API/service level — has no live user-facing trigger yet. Adding that control is out of scope for Phase 4 and deferred to a future phase.
+
+---
+
+## Phase 5
+
 ReceiptService abstraction
 
 (no providers)
@@ -242,6 +257,7 @@ Push to GitHub
 
 # Next Task
 
-Phase 3 Part 2 (Temporary Customer Dashboard) is complete. Next: Phase 4
-(ReceiptService abstraction) or Module 4, per prioritization — not started
-yet.
+Phase 4 (Kitchen Tickets & KDS) is complete. Next: Phase 5 (ReceiptService
+abstraction) or Module 4, per prioritization — not started yet. Note the
+known gap in Phase 4's section above (no order-status-advance staff UI)
+before planning further KDS-dependent work.

@@ -54,7 +54,6 @@ export type OrderEngineDependencies = {
     | 'realtime'
     | 'offlineQueue'
     | 'tickets'
-    | 'stations'
   >;
   ids: { next(): string };
   tokens: { hash(value: string): string };
@@ -129,7 +128,7 @@ export function createOrderService(
   const notifications = createNotificationEngine(repos.notifications);
   const timeline = createTimelineService(repos.serviceTimeline);
   const kitchen = createKitchenService({
-    repositories: { tickets: repos.tickets, stations: repos.stations },
+    repositories: { tickets: repos.tickets },
   });
 
   async function activeCustomer(

@@ -1,5 +1,67 @@
 # Changelog
 
+## 2026-08-21 — Kitchen Tickets & KDS (Phase 4)
+
+Completed the Kitchen Tickets & KDS milestone: kitchen ticket creation
+wired into the existing order lifecycle, and a new, isolated staff-facing
+Kitchen Display System app (`artifacts/kds-web`), without modifying
+`artifacts/club-ordering-mobile` (verified zero cumulative diff across all
+four checkpoints) and without merging `Order.status` and
+`KitchenTicket.status`, which remain separate state machines.
+
+### Added
+
+- Kitchen ticket domain: `FirestoreStationRepository`,
+  `FirestoreKitchenTicketRepository`, wired into `Module2Repositories`.
+- `KitchenService.createTicketsForOrder` — one ticket per distinct
+  preparation station touched by an order, created on the order's
+  `accepted → preparing` transition. Deterministic ticket IDs
+  (`${orderId}:${stationId}`) make creation idempotent: a duplicate or
+  racing call is a no-op once a ticket has progressed past `new`.
+- `KitchenService.updateTicket` — staff/system-gated status transitions
+  validated against the existing `TICKET_TRANSITIONS` state machine.
+- Default `kitchen` and `bartender` roles (`tickets.manage`) added to
+  `DEFAULT_CLUB_SETTINGS.staff.roles`.
+- `GET /v1/staff/kitchen-tickets` and
+  `POST /v1/staff/kitchen-tickets/{ticketId}/status`, both gated by
+  `tickets.manage` (or administrator).
+- `artifacts/kds-web`: Vite + React + wouter + Tailwind CSS app — Firebase
+  staff sign-in, client-side station selection (Kitchen/Bar; no station
+  CRUD/listing endpoint was built), a 3-column (New/Preparing/Ready)
+  ticket board, and interactive station-action buttons with optimistic
+  updates and rollback on error.
+- Realtime: the existing staff SSE stream (`/v1/staff/realtime`) is reused
+  as-is — a bare change-signal that triggers a React Query refetch, not a
+  new realtime architecture. Its permission gate was extended to also
+  accept `tickets.manage` (previously only `tables.release`/
+  `settings.manage`/administrator could connect). A ported, XHR-based SSE
+  client (native `EventSource` can't carry the required auth headers) is
+  used, matching `club-ordering-mobile`'s existing approach.
+- Unit tests across the new backend service, the new frontend app, and
+  extended API-server integration tests.
+
+### Known gap
+
+No staff-facing UI currently advances an order past `submitted` — the
+mobile staff dashboard has no order-status-mutation control. Kitchen
+ticket creation is fully implemented and tested at the API/service level,
+but has no live, user-facing trigger yet. Verified via direct API/service
+calls during Checkpoint 4; addressing this is deferred to a future phase.
+
+### Verification
+
+- 72/72 `lib/application` tests, 6/6 `artifacts/api-server` tests, 39/39
+  `artifacts/customer-web` tests, 29/29 `artifacts/kds-web` tests — 146/146
+  total, passing.
+- Full aggregate workspace typecheck (`pnpm run typecheck`, covering all
+  libraries plus every artifact and `scripts` package) passing from a cold
+  cache.
+- `artifacts/customer-web` and `artifacts/kds-web` production builds
+  (`vite build`) passing with no warnings.
+- Zero cumulative diff on `artifacts/club-ordering-mobile` (including
+  `StaffOperationsDashboard.tsx`) across all four checkpoints, confirmed
+  against the Phase 3 Part 2 baseline commit, not just checkpoint-by-checkpoint.
+
 ## 2026-08-20 — Temporary Customer Dashboard (Phase 3 Part 2)
 
 Completed the Temporary Customer Dashboard milestone: a new, isolated QR

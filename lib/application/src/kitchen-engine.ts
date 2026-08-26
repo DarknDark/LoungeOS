@@ -3,7 +3,7 @@ import { TICKET_TRANSITIONS } from '@workspace/domain';
 import type { KitchenService, RequestActor } from './services';
 
 export type KitchenEngineDependencies = {
-  repositories: Pick<RepositoryRegistry, 'tickets' | 'stations'>;
+  repositories: Pick<RepositoryRegistry, 'tickets'>;
 };
 
 export class KitchenError extends Error {

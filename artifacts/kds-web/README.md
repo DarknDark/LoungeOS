@@ -5,14 +5,25 @@ a separate product surface from `artifacts/customer-web` (the customer QR
 app) and `artifacts/club-ordering-mobile` (the Expo staff/customer
 prototype) — it does not import from, and is not imported by, either.
 
-## Status: Phase 4 Checkpoint 2
+## Status: Phase 4 complete (Checkpoints 1–4)
 
 Firebase staff sign-in, station selection (Kitchen/Bar), and a 3-column
-(New / Preparing / Ready) display-only ticket board, kept live via the
+(New / Preparing / Ready) ticket board with interactive station-action
+buttons (Start preparing / Mark ready / Mark collected), kept live via the
 existing staff SSE realtime stream (`/v1/staff/realtime`) as a
 change-signal that triggers a React Query refetch, with 5-second polling
-as a fallback. **No ticket status mutation actions exist yet** — that is
-Checkpoint 3's "Station Actions" scope.
+as a fallback. Status updates use optimistic UI updates with rollback on
+error, and are isolated per ticket card — acting on one ticket doesn't
+block or affect another in-flight update.
+
+**Known gap** (not specific to this app — see the repo root's
+`PROJECT_STATE.md` Phase 4 section): no staff-facing UI anywhere in the
+product currently advances an order past `submitted`, so kitchen tickets
+have no live, user-facing creation trigger yet, even though creation
+itself is fully implemented and tested. This app's board and actions work
+correctly on any ticket that does exist — verified via direct API/service
+calls — this just documents that the trigger path itself is still missing
+upstream.
 
 ### How it works
 
@@ -29,6 +40,16 @@ Checkpoint 3's "Station Actions" scope.
   (`MenuItem.preparationStationId`, `KitchenTicket.stationId`).
 - Data: `GET /v1/staff/kitchen-tickets?stationId=...` via the generated
   `@workspace/api-client-react` client, polled every 5 seconds.
+- Station actions: `POST /v1/staff/kitchen-tickets/{ticketId}/status`
+  transitions a ticket (`new→preparing`, `new→ready`, `preparing→ready`,
+  `ready→collected` — matching the backend's `TICKET_TRANSITIONS`, not
+  duplicated client-side). Each `TicketCard` owns its own mutation
+  instance (`src/tickets/useUpdateTicketStatus.ts`), so per-card
+  loading/error state stays isolated. On mutate, the card's status is
+  updated optimistically (moving it to its new column immediately); on
+  error, the previous cache state is restored and an inline message is
+  shown; either way, the query is invalidated afterward so the
+  server-confirmed state always wins.
 - Realtime: a ported XHR-based SSE client
   (`src/tickets/useStaffRealtime.ts`) connects to `/v1/staff/realtime`.
   Native `EventSource` can't set the `Authorization`/`X-Club-Id` headers
