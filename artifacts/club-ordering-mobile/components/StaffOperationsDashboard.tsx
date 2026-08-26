@@ -24,6 +24,7 @@ import {
   onStaffAuthStateChanged,
 } from '@/services/firebase-client';
 import { startStaffRealtime } from '@/services/staff-realtime';
+import { StaffOrderList } from './StaffOrderList';
 
 const headers = { 'X-Club-Id': clubSettings.clubId };
 
@@ -383,6 +384,9 @@ export default function StaffOperationsDashboard() {
           onOpenManual={() => void run(() => manual.mutateAsync({ data: { tableId: item.table.id } }), `${item.table.label} opened.`)}
         />
       ))}
+
+      <Text style={styles.section}>Active Orders</Text>
+      <StaffOrderList tables={tables} />
 
       {available.length ? (
         <View style={styles.manual}>
