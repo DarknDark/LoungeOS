@@ -1,19 +1,19 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { type StaffTableOperations } from '@workspace/api-client-react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { clubSettings } from '@/config/clubSettings';
 import colors from '@/constants/colors';
+import { StaffOrderDetailCard } from './StaffOrderDetailCard';
 
-// Phase 5 Checkpoint 5.1 — shell only. This component is intentionally
-// read-only: it groups and displays each table's active/submitted orders
-// using data StaffOperationsDashboard.tsx already fetches via
-// useListStaffTables (no duplicate fetcher, no new hook), with no
-// status-change actions yet. Status-advance controls (submitted ->
-// accepted -> preparing -> ready -> delivered, using the existing
-// useUpdateOrderStatus hook) are a later checkpoint's scope.
+// Phase 5 Checkpoint 5.1 (shell) + 5.2 (detail inspection). Groups and
+// displays each table's active/submitted orders using data
+// StaffOperationsDashboard.tsx already fetches via useListStaffTables (no
+// duplicate fetcher, no new hook). Tapping an order expands it into a full
+// StaffOrderDetailCard (metadata + itemized line items). Still no
+// status-change actions — that's Checkpoint 5.3's scope.
 
-function money(minor: number) {
+export function money(minor: number) {
   try {
     return new Intl.NumberFormat(clubSettings.currency.locale, {
       style: 'currency',
@@ -44,14 +44,29 @@ function isActiveOrder(status: string): boolean {
 
 type TableWithActiveOrders = {
   table: StaffTableOperations['table'];
+  session: StaffTableOperations['session'];
   orders: StaffTableOperations['orders'];
 };
 
 export function StaffOrderList({ tables }: { tables: StaffTableOperations[] }) {
+  const [expandedOrderIds, setExpandedOrderIds] = useState<Set<string>>(new Set());
+  const toggleExpanded = (orderId: string) => {
+    setExpandedOrderIds((current) => {
+      const next = new Set(current);
+      if (next.has(orderId)) {
+        next.delete(orderId);
+      } else {
+        next.add(orderId);
+      }
+      return next;
+    });
+  };
+
   const tablesWithActiveOrders = useMemo<TableWithActiveOrders[]>(() => {
     return tables
       .map((item) => ({
         table: item.table,
+        session: item.session,
         orders: item.orders.filter((entry) => isActiveOrder(entry.order.status)),
       }))
       .filter((entry) => entry.orders.length > 0);
@@ -68,20 +83,39 @@ export function StaffOrderList({ tables }: { tables: StaffTableOperations[] }) {
 
   return (
     <View style={styles.list}>
-      {tablesWithActiveOrders.map(({ table, orders }) => (
+      {tablesWithActiveOrders.map(({ table, session, orders }) => (
         <View style={styles.tableGroup} key={table.id}>
           <Text style={styles.tableLabel}>{table.label}</Text>
-          {orders.map(({ order, items }) => (
-            <View style={styles.orderCard} key={order.id}>
-              <View style={styles.orderHeader}>
-                <StatusBadge status={order.status} />
-                <Text style={styles.orderTotal}>{money(order.totalMinor)}</Text>
-              </View>
-              <Text style={styles.orderItems}>
-                {items.map((item) => `${item.quantity}× ${item.nameSnapshot}`).join(', ')}
-              </Text>
-            </View>
-          ))}
+          {orders.map(({ order, items }) => {
+            const expanded = expandedOrderIds.has(order.id);
+            return (
+              <Pressable
+                key={order.id}
+                style={styles.orderCard}
+                onPress={() => toggleExpanded(order.id)}
+                accessibilityRole="button"
+                accessibilityLabel={expanded ? 'Collapse order details' : 'Expand order details'}
+              >
+                <View style={styles.orderHeader}>
+                  <StatusBadge status={order.status} />
+                  <View style={styles.orderHeaderRight}>
+                    <Text style={styles.orderTotal}>{money(order.totalMinor)}</Text>
+                    <Ionicons
+                      name={expanded ? 'chevron-up' : 'chevron-down'}
+                      size={14}
+                      color={colors.light.mutedForeground}
+                    />
+                  </View>
+                </View>
+                <Text style={styles.orderItems}>
+                  {items.map((item) => `${item.quantity}× ${item.nameSnapshot}`).join(', ')}
+                </Text>
+                {expanded ? (
+                  <StaffOrderDetailCard order={order} items={items} table={table} session={session} />
+                ) : null}
+              </Pressable>
+            );
+          })}
         </View>
       ))}
     </View>
@@ -120,6 +154,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   orderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  orderHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   orderTotal: { color: colors.light.foreground, fontSize: 13, fontWeight: '700' },
   orderItems: { color: colors.light.mutedForeground, fontSize: 11, lineHeight: 16 },
   status: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8 },
