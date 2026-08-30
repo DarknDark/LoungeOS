@@ -1,15 +1,34 @@
-import React from 'react';
-import { type Order, type OrderItem, type StaffTableOperations } from '@workspace/api-client-react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  getListStaffTablesQueryKey,
+  useUpdateOrderStatus,
+  type Order,
+  type OrderItem,
+  type OrderStatus,
+  type StaffTableOperations,
+  type UpdateOrderStatusRequestStatus,
+} from '@workspace/api-client-react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { clubSettings } from '@/config/clubSettings';
 import colors from '@/constants/colors';
 import { money } from './StaffOrderList';
 
-// Phase 5 Checkpoint 5.2 — read-only order detail/line-item inspection.
-// No status-mutation controls here (Checkpoint 5.3's scope) — this view
-// exists purely so staff can inspect what's actually in an order before
-// acting on it. All data comes from the OrderResponse StaffOrderList
-// already has (order + items), plus the owning table/session for context
-// — no new fetching.
+// Phase 5 Checkpoint 5.2 (read-only detail) + 5.3 (status-transition
+// actions). Actions call the existing useUpdateOrderStatus hook directly
+// — no new fetcher, no custom endpoint, no change to OrderService or the
+// backend state machine. Advancing accepted -> preparing relies entirely
+// on the already-built order-lifecycle hook (Phase 4) that creates kitchen
+// tickets as a side effect of that exact transition; nothing here
+// duplicates or re-implements that.
+//
+// This component owns its own mutation instance and refreshes the same
+// staff-tables query StaffOperationsDashboard.tsx already polls
+// (getListStaffTablesQueryKey()), so no props/callbacks need to be
+// threaded through StaffOperationsDashboard.tsx at all — it remains
+// completely untouched by this checkpoint.
+
+const clubHeaders = { 'X-Club-Id': clubSettings.clubId };
 
 function shortOrderId(orderId: string): string {
   return orderId.slice(0, 8);
@@ -38,6 +57,47 @@ function formatTimestamp(iso: string): string {
   }
 }
 
+type OrderAction = { label: string; targetStatus: UpdateOrderStatusRequestStatus };
+
+// Only the transitions this checkpoint was asked to expose: accept,
+// start preparing, and cancel/reject from any non-terminal, staff-visible
+// status. 'draft' (an unsubmitted customer cart) intentionally gets no
+// actions — staff shouldn't act on an order the customer hasn't submitted
+// yet. 'ready' can still be cancelled (matches ORDER_TRANSITIONS allowing
+// cancellation from any non-terminal status) but has no forward action
+// here, since advancing to 'delivered' wasn't part of this checkpoint's
+// scope.
+function nextOrderActions(status: OrderStatus): OrderAction[] {
+  switch (status) {
+    case 'submitted':
+      return [
+        { label: 'Accept Order', targetStatus: 'accepted' },
+        { label: 'Reject', targetStatus: 'cancelled' },
+      ];
+    case 'accepted':
+      return [
+        { label: 'Start Preparing', targetStatus: 'preparing' },
+        { label: 'Cancel Order', targetStatus: 'cancelled' },
+      ];
+    case 'preparing':
+    case 'ready':
+      return [{ label: 'Cancel Order', targetStatus: 'cancelled' }];
+    default:
+      return [];
+  }
+}
+
+function isConflictError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    (error as { name?: unknown }).name === 'ApiError' &&
+    'status' in error &&
+    (error as { status?: unknown }).status === 409
+  );
+}
+
 type StaffOrderDetailCardProps = {
   order: Order;
   items: OrderItem[];
@@ -46,6 +106,29 @@ type StaffOrderDetailCardProps = {
 };
 
 export function StaffOrderDetailCard({ order, items, table, session }: StaffOrderDetailCardProps) {
+  const queryClient = useQueryClient();
+  const updateStatus = useUpdateOrderStatus({ request: { headers: clubHeaders } });
+  const [actionError, setActionError] = useState<string | null>(null);
+  const actions = nextOrderActions(order.status);
+
+  const advance = async (targetStatus: UpdateOrderStatusRequestStatus) => {
+    setActionError(null);
+    try {
+      await updateStatus.mutateAsync({
+        orderId: order.id,
+        data: { status: targetStatus, version: order.version ?? 0 },
+      });
+      await queryClient.invalidateQueries({ queryKey: getListStaffTablesQueryKey() });
+    } catch (error) {
+      if (isConflictError(error)) {
+        setActionError('This order changed elsewhere. Refreshing…');
+        await queryClient.invalidateQueries({ queryKey: getListStaffTablesQueryKey() });
+      } else {
+        setActionError(error instanceof Error ? error.message : 'Could not update this order.');
+      }
+    }
+  };
+
   return (
     <View style={styles.detail}>
       <View style={styles.metaRow}>
@@ -122,6 +205,43 @@ export function StaffOrderDetailCard({ order, items, table, session }: StaffOrde
           <Text style={styles.lineItemNotes}>{order.notes}</Text>
         </View>
       ) : null}
+
+      {actions.length > 0 ? (
+        <>
+          <View style={styles.divider} />
+          <View style={styles.actionsRow}>
+            {actions.map((action) => (
+              <Pressable
+                key={action.targetStatus}
+                disabled={updateStatus.isPending}
+                onPress={() => void advance(action.targetStatus)}
+                style={[
+                  styles.actionButton,
+                  action.targetStatus === 'cancelled' ? styles.actionButtonDanger : styles.actionButtonPrimary,
+                  updateStatus.isPending ? styles.actionButtonDisabled : null,
+                ]}
+              >
+                {updateStatus.isPending ? (
+                  <ActivityIndicator size="small" color={colors.light.background} />
+                ) : (
+                  <Text
+                    style={
+                      action.targetStatus === 'cancelled'
+                        ? styles.actionTextDanger
+                        : styles.actionTextPrimary
+                    }
+                  >
+                    {action.label}
+                  </Text>
+                )}
+              </Pressable>
+            ))}
+          </View>
+          {actionError ? (
+            <Text style={styles.actionErrorText}>{actionError}</Text>
+          ) : null}
+        </>
+      ) : null}
     </View>
   );
 }
@@ -152,4 +272,19 @@ const styles = StyleSheet.create({
   totalsLabelStrong: { color: colors.light.foreground, fontSize: 12, fontWeight: '700' },
   totalsValueStrong: { color: colors.light.foreground, fontSize: 12, fontWeight: '700' },
   orderNotes: { marginTop: 4, gap: 2 },
+  actionsRow: { flexDirection: 'row', gap: 8 },
+  actionButton: {
+    flex: 1,
+    minHeight: 36,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  actionButtonPrimary: { backgroundColor: colors.light.primary },
+  actionButtonDanger: { backgroundColor: '#3d1c1c', borderWidth: 1, borderColor: '#7a3b3b' },
+  actionButtonDisabled: { opacity: 0.6 },
+  actionTextPrimary: { color: colors.light.background, fontSize: 12, fontWeight: '700' },
+  actionTextDanger: { color: '#e08b8b', fontSize: 12, fontWeight: '700' },
+  actionErrorText: { color: '#e08b8b', fontSize: 10, marginTop: 4 },
 });
