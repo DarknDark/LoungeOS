@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   getListStaffTablesQueryKey,
@@ -15,12 +15,12 @@ import colors from '@/constants/colors';
 import { money } from './StaffOrderList';
 
 // Phase 5 Checkpoint 5.2 (read-only detail) + 5.3 (status-transition
-// actions). Actions call the existing useUpdateOrderStatus hook directly
-// — no new fetcher, no custom endpoint, no change to OrderService or the
-// backend state machine. Advancing accepted -> preparing relies entirely
-// on the already-built order-lifecycle hook (Phase 4) that creates kitchen
-// tickets as a side effect of that exact transition; nothing here
-// duplicates or re-implements that.
+// actions) + 5.4 (polish). Actions call the existing useUpdateOrderStatus
+// hook directly — no new fetcher, no custom endpoint, no change to
+// OrderService or the backend state machine. Advancing accepted ->
+// preparing relies entirely on the already-built order-lifecycle hook
+// (Phase 4) that creates kitchen tickets as a side effect of that exact
+// transition; nothing here duplicates or re-implements that.
 //
 // This component owns its own mutation instance and refreshes the same
 // staff-tables query StaffOperationsDashboard.tsx already polls
@@ -35,7 +35,9 @@ function shortOrderId(orderId: string): string {
 }
 
 function formatElapsedSince(createdAt: string): string {
-  const elapsedMs = Math.max(0, Date.now() - new Date(createdAt).getTime());
+  const createdAtMs = new Date(createdAt).getTime();
+  if (Number.isNaN(createdAtMs)) return '';
+  const elapsedMs = Math.max(0, Date.now() - createdAtMs);
   const totalMinutes = Math.floor(elapsedMs / 60_000);
   if (totalMinutes < 1) return 'just now';
   if (totalMinutes < 60) return `${totalMinutes} min ago`;
@@ -111,6 +113,10 @@ export function StaffOrderDetailCard({ order, items, table, session }: StaffOrde
   const [actionError, setActionError] = useState<string | null>(null);
   const actions = nextOrderActions(order.status);
 
+  useEffect(() => {
+    setActionError(null);
+  }, [order.status]);
+
   const advance = async (targetStatus: UpdateOrderStatusRequestStatus) => {
     setActionError(null);
     try {
@@ -152,24 +158,29 @@ export function StaffOrderDetailCard({ order, items, table, session }: StaffOrde
       <View style={styles.metaRow}>
         <Text style={styles.metaLabel}>SUBMITTED</Text>
         <Text style={styles.metaValue}>
-          {formatTimestamp(order.createdAt)} · {formatElapsedSince(order.createdAt)}
+          {formatTimestamp(order.createdAt)}
+          {formatElapsedSince(order.createdAt) ? ` · ${formatElapsedSince(order.createdAt)}` : ''}
         </Text>
       </View>
 
       <View style={styles.divider} />
 
-      {items.map((item) => (
-        <View style={styles.lineItem} key={item.id}>
-          <View style={styles.lineItemHeader}>
-            <Text style={styles.lineItemName}>
-              {item.quantity}× {item.nameSnapshot}
-            </Text>
-            <Text style={styles.lineItemPrice}>{money(item.lineSubtotalMinor)}</Text>
+      {items.length === 0 ? (
+        <Text style={styles.lineItemNotes}>No items recorded for this order.</Text>
+      ) : (
+        items.map((item) => (
+          <View style={styles.lineItem} key={item.id}>
+            <View style={styles.lineItemHeader}>
+              <Text style={styles.lineItemName}>
+                {item.quantity}× {item.nameSnapshot}
+              </Text>
+              <Text style={styles.lineItemPrice}>{money(item.lineSubtotalMinor)}</Text>
+            </View>
+            <Text style={styles.lineItemUnit}>{money(item.unitPriceMinor)} each</Text>
+            {item.notes ? <Text style={styles.lineItemNotes}>Note: {item.notes}</Text> : null}
           </View>
-          <Text style={styles.lineItemUnit}>{money(item.unitPriceMinor)} each</Text>
-          {item.notes ? <Text style={styles.lineItemNotes}>Note: {item.notes}</Text> : null}
-        </View>
-      ))}
+        ))
+      )}
 
       <View style={styles.divider} />
 

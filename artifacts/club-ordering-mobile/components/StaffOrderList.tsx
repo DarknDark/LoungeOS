@@ -6,12 +6,18 @@ import { clubSettings } from '@/config/clubSettings';
 import colors from '@/constants/colors';
 import { StaffOrderDetailCard } from './StaffOrderDetailCard';
 
-// Phase 5 Checkpoint 5.1 (shell) + 5.2 (detail inspection). Groups and
+// Phase 5 Checkpoint 5.1 (shell) + 5.2 (detail inspection) + 5.3 (status
+// actions, in StaffOrderDetailCard.tsx) + 5.4 (polish). Groups and
 // displays each table's active/submitted orders using data
 // StaffOperationsDashboard.tsx already fetches via useListStaffTables (no
-// duplicate fetcher, no new hook). Tapping an order expands it into a full
-// StaffOrderDetailCard (metadata + itemized line items). Still no
-// status-change actions — that's Checkpoint 5.3's scope.
+// duplicate fetcher, no new hook). Tapping an order's header expands it
+// into a full StaffOrderDetailCard (metadata, itemized line items, and
+// status-transition actions).
+//
+// The expand/collapse toggle (a Pressable) and the expanded detail card
+// are siblings, not nested — StaffOrderDetailCard has its own interactive
+// Pressable buttons, and nesting one Pressable inside another is a known
+// source of ambiguous tap handling in React Native.
 
 export function money(minor: number) {
   try {
@@ -89,31 +95,33 @@ export function StaffOrderList({ tables }: { tables: StaffTableOperations[] }) {
           {orders.map(({ order, items }) => {
             const expanded = expandedOrderIds.has(order.id);
             return (
-              <Pressable
-                key={order.id}
-                style={styles.orderCard}
-                onPress={() => toggleExpanded(order.id)}
-                accessibilityRole="button"
-                accessibilityLabel={expanded ? 'Collapse order details' : 'Expand order details'}
-              >
-                <View style={styles.orderHeader}>
-                  <StatusBadge status={order.status} />
-                  <View style={styles.orderHeaderRight}>
-                    <Text style={styles.orderTotal}>{money(order.totalMinor)}</Text>
-                    <Ionicons
-                      name={expanded ? 'chevron-up' : 'chevron-down'}
-                      size={14}
-                      color={colors.light.mutedForeground}
-                    />
+              <View key={order.id} style={styles.orderCard}>
+                <Pressable
+                  onPress={() => toggleExpanded(order.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={expanded ? 'Collapse order details' : 'Expand order details'}
+                >
+                  <View style={styles.orderHeader}>
+                    <StatusBadge status={order.status} />
+                    <View style={styles.orderHeaderRight}>
+                      <Text style={styles.orderTotal}>{money(order.totalMinor)}</Text>
+                      <Ionicons
+                        name={expanded ? 'chevron-up' : 'chevron-down'}
+                        size={14}
+                        color={colors.light.mutedForeground}
+                      />
+                    </View>
                   </View>
-                </View>
-                <Text style={styles.orderItems}>
-                  {items.map((item) => `${item.quantity}× ${item.nameSnapshot}`).join(', ')}
-                </Text>
+                  <Text style={styles.orderItems}>
+                    {items.length > 0
+                      ? items.map((item) => `${item.quantity}× ${item.nameSnapshot}`).join(', ')
+                      : 'No items recorded'}
+                  </Text>
+                </Pressable>
                 {expanded ? (
                   <StaffOrderDetailCard order={order} items={items} table={table} session={session} />
                 ) : null}
-              </Pressable>
+              </View>
             );
           })}
         </View>
